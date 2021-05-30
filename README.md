@@ -18,15 +18,47 @@ For BOARD=stm32f072disco, the inexpensive [32F072BDISCOVERY evaluation board](ht
 
 ## Building
 
-After initially downloading this project's code, issue the following command to download TinyUSB and CMSIS_5 code (as well as all submodules):
+After initially downloading this project's code, issue the following command to download TinyUSB and CMSIS_5 code:
 
 ```
-git submodule update --init --recursive
+git submodule update --init
 ```
 
 Follow the TinyUSB build instructions [available here](https://github.com/hathach/tinyusb/tree/master/docs), but issue the make command in the base directory of Dapper Mime.
 
 Note that each TinyUSB board name being targeted needs a corresponding subdirectory under the Dapper Mime ./bsp/ subdirectory and a customized version of DAP_config.h for the target.
+
+Alternatively, one can compile with CMake:
+
+```
+mkdir cmake-build && cd cmake-build
+cmake -DBOARD=raspberry_pi_pico -DFAMILIY=rp2040 -DCMAKE_BUILD_TYPE=Debug ..
+```
+
+## Usage
+
+The pin mapping is as follows:
+
+| Pin number | Usage (SWD mode) | Usage (JTAG mode) |
+|:---------- |:---------------- |:----------------- |
+| GP2        | SWCLK            | TCK               |
+| GP3        | SWDIO            | TMS               |
+| GP4        | UART TX          | UART TX           |
+| GP5        | UART RX          | UART RX           |
+| GP6        |                  | TDI               |
+| GP7        |                  | TDO               |
+| GP8        |                  | nTRST             |
+| GP9        |                  | nRESET            |
+
+The UART pins are for connecting to the device to be debugged, the data is
+echoed back over the USB CDC interface (typically a `/dev/ttyAMAx` device on
+Linux).
+
+In SWD mode, the pin mapping is entirely as with the standard Picoprobe setup,
+as described in Chapter 5 and Appendix A of [Getting Started with Raspberry Pi
+Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
+
+JTAG mode is currently untested.
 
 ## License
 

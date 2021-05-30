@@ -58,7 +58,20 @@
 #define PICOPROBE_UART_INTERFACE uart1
 #define PICOPROBE_UART_BAUDRATE 115200
 
+// JTAG config
+#define PROBE_PIN_JTAG_TCK    2 // == SWCLK
+#define PROBE_PIN_JTAG_TMS    3 // == SWDIO
+#define PROBE_PIN_JTAG_TDI    6
+#define PROBE_PIN_JTAG_TDO    7
+#define PROBE_PIN_JTAG_nTRST  8
+#define PROBE_PIN_JTAG_nRESET 9
+
 // LED config
+
+// you can change these two as you like
+#define PICOPROBE_LED_CONNECTED 1
+#define PICOPROBE_LED_RUNNING   0
+
 #ifndef PICOPROBE_LED
 
 #ifndef PICO_DEFAULT_LED_PIN
