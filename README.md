@@ -21,7 +21,7 @@ For BOARD=stm32f072disco, the inexpensive [32F072BDISCOVERY evaluation board](ht
 After initially downloading this project's code, issue the following command to download TinyUSB and CMSIS_5 code:
 
 ```
-git submodule update --init
+git submodule update --init --recursive
 ```
 
 Follow the TinyUSB build instructions [available here](https://github.com/hathach/tinyusb/tree/master/docs), but issue the make command in the base directory of Dapper Mime.
@@ -34,6 +34,11 @@ Alternatively, one can compile with CMake:
 mkdir cmake-build && cd cmake-build
 cmake -DBOARD=raspberry_pi_pico -DFAMILIY=rp2040 -DCMAKE_BUILD_TYPE=Debug ..
 ```
+
+If you have the Pico SDK installed on your system, and the `PICO_SDK_PATH`
+environment variable is specified properly, you can omit the `--recursive` flag
+in the `git submodule` invocation (to avoid many many git clones), and pass
+the `-DUSE_SYSTEMWIDE_PICOSDK=On` flag to CMake, too.
 
 ## Usage
 
