@@ -65,6 +65,9 @@ Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
 
 JTAG mode is currently untested.
 
+In your OpenOCD flags, use `-f interface/cmsis-dap.cfg`. Default transport is
+JTAG, if OpenOCD doesn't specify a default to the probe.
+
 ## License
 
 TinyUSB is licensed under the [MIT license](https://opensource.org/licenses/MIT).
