@@ -155,8 +155,11 @@ This information includes:
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
-  (void)str;
-  return (0U);
+  const static char vnd[] = "Raspberry Pi";
+  for (size_t i = 0; i < sizeof(vnd); ++i) str[i] = vnd[i];
+  return sizeof(vnd)-1;
+  //(void)str;
+  //return (0U);
 }
 
 /** Get Product ID string.
@@ -164,8 +167,11 @@ __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
-  (void)str;
-  return (0U);
+  const static char prd[] = "RP2040 DapperMime-JTAG";
+  for (size_t i = 0; i < sizeof(prd); ++i) str[i] = prd[i];
+  return sizeof(prd)-1;
+  //(void)str;
+  //return (0U);
 }
 
 /** Get Serial Number string.
@@ -173,8 +179,11 @@ __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetSerNumString (char *str) {
-  (void)str;
-  return (0U);
+  const static char ser[] = "1337";
+  for (size_t i = 0; i < sizeof(ser); ++i) str[i] = ser[i];
+  return sizeof(ser)-1;
+  //(void)str;
+  //return (0U);
 }
 
 ///@}

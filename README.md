@@ -56,7 +56,7 @@ The pin mapping is as follows:
 | GP9        |                  | nRESET            |
 
 The UART pins are for connecting to the device to be debugged, the data is
-echoed back over the USB CDC interface (typically a `/dev/ttyAMAx` device on
+echoed back over the USB CDC interface (typically a `/dev/ttyACMx` device on
 Linux).
 
 In SWD mode, the pin mapping is entirely as with the standard Picoprobe setup,
