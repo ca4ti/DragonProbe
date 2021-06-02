@@ -49,9 +49,10 @@ These microcontrollers support the following protocols:
 | RP2040 | X   | X    | X    | Planned        | Planned | Planned     |
 | STM32F072B Discovery  | X | | X |           |     |                 |
 
-The original repository (Dapper Mime) supported only SWD and UART, and worked
-for these two boards. This fork focusses on adding more protocols, but the
-author of this fork only has a Raspberry Pi Pico.
+The [original repository](https://github.com/majbthrd/DapperMime/) (Dapper
+Mime) supported only SWD and UART, and worked for these two boards. This fork
+focusses on adding more protocols, but the author of this fork only has a
+Raspberry Pi Pico.
 
 The pin mapping for the RP2040 is as follows:
 
