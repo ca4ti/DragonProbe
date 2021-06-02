@@ -298,7 +298,9 @@ Disables the DAP Hardware I/O pins which configures:
  - TCK/SWCLK, TMS/SWDIO, TDI, TDO, nTRST, nRESET to High-Z mode.
 */
 __STATIC_INLINE void PORT_OFF (void) {
-  sio_hw->gpio_oe_clr = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK;
+  sio_hw->gpio_oe_clr = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK
+    | PROBE_PIN_TDI_MASK //| PROBE_PIN_TDO_MASK
+    | PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
 }
 
 

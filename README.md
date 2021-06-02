@@ -42,18 +42,34 @@ the `-DUSE_SYSTEMWIDE_PICOSDK=On` flag to CMake, too.
 
 ## Usage
 
-The pin mapping is as follows:
+These microcontrollers support the following protocols:
 
-| Pin number | Usage (SWD mode) | Usage (JTAG mode) |
-|:---------- |:---------------- |:----------------- |
-| GP2        | SWCLK            | TCK               |
-| GP3        | SWDIO            | TMS               |
-| GP4        | UART TX          | UART TX           |
-| GP5        | UART RX          | UART RX           |
-| GP6        |                  | TDI               |
-| GP7        |                  | TDO               |
-| GP8        |                  | nTRST             |
-| GP9        |                  | nRESET            |
+| MCU    | SWD | JTAG | UART |
+|:------ |:---:|:----:|:----:|
+| RP2040 | X   | X    | X    |
+| STM32F072B Discovery  | X | | X |
+
+The original repository (Dapper Mime) supported only SWD and UART, and worked
+for these two boards. This fork focusses on adding more protocols, but the
+author of this fork only has a Raspberry Pi Pico.
+
+The pin mapping for the RP2040 is as follows:
+
+| Pin number | Usage           |
+|:---------- |:--------------- |
+| GP0        | stdio UART TX   |
+| GP1        | stdio UART RX   |
+| GND        | &lt;ground;&gt; |
+| GP2        | SWCLK/TCK       |
+| GP3        | SWDIO/TMS       |
+| GP4        | UART TX         |
+| GP5        | UART RX         |
+| GND        | &lt;ground;&gt; |
+| GP6        | TDI             |
+| GP7        | TDO             |
+| GP8        | nTRST           |
+| GP9        | nRESET          |
+| GND        | &lt;ground;&gt; |
 
 The UART pins are for connecting to the device to be debugged, the data is
 echoed back over the USB CDC interface (typically a `/dev/ttyACMx` device on
@@ -63,7 +79,8 @@ In SWD mode, the pin mapping is entirely as with the standard Picoprobe setup,
 as described in Chapter 5 and Appendix A of [Getting Started with Raspberry Pi
 Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
 
-JTAG mode is currently untested.
+In JTAG mode, TCK and TMS have the same pins as SWCLK and SWDIO, respectively,
+TDI and TDO are on the next two consecutive free pins.
 
 In your OpenOCD flags, use `-f interface/cmsis-dap.cfg`. Default transport is
 JTAG, if OpenOCD doesn't specify a default to the probe.
@@ -73,4 +90,10 @@ JTAG, if OpenOCD doesn't specify a default to the probe.
 TinyUSB is licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ARM's CMSIS_5 code is licensed under the [Apache 2.0 license](https://opensource.org/licenses/Apache-2.0).
+
+## TODO
+
+- [ ] Flashrom/SPI support using Serprog
+- [ ] I2C support by emulating the I2C Tiny USB
+- [ ] AVR programming (USBavr emulation?)
 
