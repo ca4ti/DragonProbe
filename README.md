@@ -44,10 +44,10 @@ the `-DUSE_SYSTEMWIDE_PICOSDK=On` flag to CMake, too.
 
 These microcontrollers support the following protocols:
 
-| MCU    | SWD | JTAG | UART |
-|:------ |:---:|:----:|:----:|
-| RP2040 | X   | X    | X    |
-| STM32F072B Discovery  | X | | X |
+| MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | AVR programming |
+|:------ |:---:|:----:|:----:|:-------------- |:--- |:--------------- |
+| RP2040 | X   | X    | X    | Planned        | Planned | Planned     |
+| STM32F072B Discovery  | X | | X |           |     |                 |
 
 The original repository (Dapper Mime) supported only SWD and UART, and worked
 for these two boards. This fork focusses on adding more protocols, but the
@@ -55,21 +55,21 @@ author of this fork only has a Raspberry Pi Pico.
 
 The pin mapping for the RP2040 is as follows:
 
-| Pin number | Usage           |
-|:---------- |:--------------- |
-| GP0        | stdio UART TX   |
-| GP1        | stdio UART RX   |
-| GND        | &lt;ground;&gt; |
-| GP2        | SWCLK/TCK       |
-| GP3        | SWDIO/TMS       |
-| GP4        | UART TX         |
-| GP5        | UART RX         |
-| GND        | &lt;ground;&gt; |
-| GP6        | TDI             |
-| GP7        | TDO             |
-| GP8        | nTRST           |
-| GP9        | nRESET          |
-| GND        | &lt;ground;&gt; |
+| Pin number | Usage          |
+|:---------- |:-------------- |
+| GP0        | stdio UART TX  |
+| GP1        | stdio UART RX  |
+| GND        | &lt;ground&gt; |
+| GP2        | SWCLK/TCK      |
+| GP3        | SWDIO/TMS      |
+| GP4        | UART TX        |
+| GP5        | UART RX        |
+| GND        | &lt;ground&gt; |
+| GP6        | TDI            |
+| GP7        | TDO            |
+| GP8        | nTRST          |
+| GP9        | nRESET         |
+| GND        | &lt;ground&gt; |
 
 The UART pins are for connecting to the device to be debugged, the data is
 echoed back over the USB CDC interface (typically a `/dev/ttyACMx` device on
