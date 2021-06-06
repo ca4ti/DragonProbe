@@ -46,7 +46,7 @@ These microcontrollers support the following protocols:
 
 | MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | AVR programming |
 |:------ |:---:|:----:|:----:|:-------------- |:--- |:--------------- |
-| RP2040 | X   | X    | X    | Planned        | Planned | Planned     |
+| RP2040 | X   | X    | X    | WIP            | Planned | Planned     |
 | STM32F072B Discovery  | X | | X |           |     |                 |
 
 The [original repository](https://github.com/majbthrd/DapperMime/) (Dapper
@@ -70,6 +70,11 @@ The pin mapping for the RP2040 is as follows:
 | GP7        | TDO            |
 | GP8        | nTRST          |
 | GP9        | nRESET         |
+| GND        | &lt;ground&gt; |
+| GP10       | SCLK           |
+| GP11       | MOSI           |
+| GP12       | MISO           |
+| GP13       | nCS            |
 | GND        | &lt;ground&gt; |
 
 The UART pins are for connecting to the device to be debugged, the data is
