@@ -8,7 +8,7 @@ INC += \
 	./bsp/default \
 	$(TOP)/hw
 
-APP_SOURCE += $(wildcard ./*.c)
+APP_SOURCE += $(wildcard ./*.c) $(wildcard ./bsp/$(BOARD)/*.c)
 
 SRC_C += $(addprefix $(CURRENT_PATH)/, $(APP_SOURCE))
 
@@ -17,7 +17,6 @@ SRC_C += \
     ./CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c \
     ./CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c \
     ./CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c \
-    ./CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c \
-    ./bsp/$(BOARD)/cdc_uart.c
+    ./CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
 
 include ./tinyusb/examples/rules.mk

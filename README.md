@@ -74,7 +74,8 @@ The pin mapping for the RP2040 is as follows:
 
 The UART pins are for connecting to the device to be debugged, the data is
 echoed back over the USB CDC interface (typically a `/dev/ttyACMx` device on
-Linux).
+Linux). If you want to get stdio readout on your computer, connect GP0 to GP5,
+and GP1 to GP4.
 
 In SWD mode, the pin mapping is entirely as with the standard Picoprobe setup,
 as described in Chapter 5 and Appendix A of [Getting Started with Raspberry Pi
@@ -94,7 +95,23 @@ ARM's CMSIS_5 code is licensed under the [Apache 2.0 license](https://opensource
 
 ## TODO
 
+- [x] CMSIS-DAP JTAG implementation
 - [ ] Flashrom/SPI support using Serprog
+- [ ] UART with CTS/RTS flow control
 - [ ] I2C support by emulating the I2C Tiny USB
+  - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
+  - Does SMBus stuff need special treatment here?
+- [ ] Maybe add some way of reconfiguring features while the device is running.
+      Eg. CTS/RTS enable/disable, temperature ADC I2C address, ...
+  - Maybe use the Serprog USB serial interface for this, with some extension
+    commands not typically used for Serprog.
 - [ ] AVR programming (USBavr emulation?)
+- Renesas E7-{0,1,2} programming thing????
+  - Renesas tell us how this works pls
+- Maybe steal other features from the Bus Pirate or Glasgow or so
+  - 1-wire? Never seen this one in the wild
+  - MIDI? Feels mostly gimmicky...
+  - PS/2? Hmmmm idk
+  - HD44780 LCD? See MIDI
+  - CAN? If I'd first be able to find a CAN device to test it with, sure
 

@@ -27,27 +27,50 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "bsp/board.h"
+#include "bsp/board.h" /* a tinyusb header */
 #include "tusb.h"
 
 #include "DAP_config.h" /* ARM code *assumes* this is included prior to DAP.h */
 #include "DAP.h"
 
-void cdc_uart_init(void);
-void cdc_task(void);
+#include "protocfg.h"
+#include "protos.h"
+
+#ifdef PICO_BOARD
+#include <pico/binary_info.h>
+#endif
 
 int main(void)
 {
+  // TODO: split this out in a bsp-specific file
+#ifdef PICO_BOARD
+  // use hardcoded values from TinyUSB board.h
+  bi_decl(bi_2pins_with_func(0, 1, GPIO_FUNC_UART));
+#endif
   board_init();
+
+#ifdef DBOARD_HAS_UART
   cdc_uart_init();
+#endif
+#ifdef DBOARD_HAS_SERPROG
+  cdc_serprog_init();
+#endif
+#ifdef DBOARD_HAS_CMSISDAP
   DAP_Setup();
+#endif
 
   tusb_init();
 
   while (1)
   {
     tud_task(); // tinyusb device task
-    cdc_task();
+#ifdef DBOARD_HAS_UART
+    cdc_uart_task();
+#endif
+#ifdef DBOARD_HAS_SERPROG
+    cdc_serprog_task();
+#endif
+	sleep_ms(100);
   }
 
   return 0;
@@ -80,7 +103,9 @@ void tud_hid_set_report_cb(uint8_t report_id, hid_report_type_t report_type, uin
   (void) report_id;
   (void) report_type;
 
+#ifdef DBOARD_HAS_CMSISDAP
   DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
+#endif
 
   tud_hid_report(0, TxDataBuffer, response_size);
 }

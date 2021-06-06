@@ -57,6 +57,7 @@ This information includes:
 #include <hardware/regs/io_bank0.h>
 #include <hardware/structs/iobank0.h>
 #include <hardware/gpio.h>
+#include <pico/binary_info.h>
 
 #include "picoprobe_config.h"
 
@@ -559,6 +560,17 @@ __STATIC_INLINE void DAP_SETUP (void) {
 
   hw_write_masked(&padsbank0_hw->io[PICOPROBE_LED], 0, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
   iobank0_hw->io[PICOPROBE_LED].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+
+  bi_decl(bi_2pins_with_names(
+    PROBE_PIN_JTAG_TCK, "TCK / SWCLK",
+    PROBE_PIN_JTAG_TMS, "TMS / SWDIO"
+  ));
+  bi_decl(bi_4pins_with_names(
+    PROBE_PIN_JTAG_TDI   , "TDI",
+    PROBE_PIN_JTAG_TDO   , "TDO",
+    PROBE_PIN_JTAG_nTRST , "nTRST",
+    PROBE_PIN_JTAG_nRESET, "nRESET"
+  ));
 }
 
 /** Reset Target Device with custom specific I/O pin or command sequence.

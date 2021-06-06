@@ -66,6 +66,13 @@
 #define PROBE_PIN_JTAG_nTRST  8
 #define PROBE_PIN_JTAG_nRESET 9
 
+// SPI config
+#define PROBE_SPI_DEV spi1
+#define PROBE_SPI_SCLK 10
+#define PROBE_SPI_MOSI 11
+#define PROBE_SPI_MISO 12
+#define PROBE_SPI_nCS  13
+
 // LED config
 
 // you can change these two as you like

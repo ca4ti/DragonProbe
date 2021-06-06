@@ -65,7 +65,11 @@
 #endif
 
 // This example doesn't use an RTOS
+#ifdef PICO_BOARD
+#define CFG_TUSB_OS               OPT_OS_PICO
+#else
 #define CFG_TUSB_OS               OPT_OS_NONE
+#endif
 
 // CFG_TUSB_DEBUG is defined by compiler in DEBUG build
 // #define CFG_TUSB_DEBUG           0
@@ -94,7 +98,7 @@
 #endif
 
 //------------- CLASS -------------//
-#define CFG_TUD_CDC               1
+#define CFG_TUD_CDC               2
 #define CFG_TUD_MSC               0
 #define CFG_TUD_HID               1
 #define CFG_TUD_MIDI              0

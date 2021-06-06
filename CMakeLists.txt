@@ -7,6 +7,9 @@ set(TOP "./tinyusb")
 get_filename_component(TOP "${TOP}" REALPATH)
 
 option(USE_SYSTEMWIDE_PICOSDK "Use the systemwide Pico SDK instead of relying on the one from a deeply nested Git submodule (OFF by default)" OFF)
+# OPTION: PICO_NO_FLASH: load only into RAM (useful for testing)
+# OPTION: PICO_COPY_TO_RAM: place the code/rodata into RAM at startup (while still stored in flash)
+# TODO: add option for FAMILY and BOARD
 
 # Check for -DFAMILY=
 if(FAMILY STREQUAL "rp2040")
@@ -25,6 +28,10 @@ if(FAMILY STREQUAL "rp2040")
 
   include(${TOP}/hw/bsp/${FAMILY}/family.cmake)
 
+  # need uart stdio, usb is busy doing other stuff
+  pico_enable_stdio_uart(${PROJECT} 1)
+  pico_enable_stdio_usb(${PROJECT} 0)
+
   # Example source
   target_sources(${PROJECT} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
@@ -35,6 +42,8 @@ if(FAMILY STREQUAL "rp2040")
     ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
     ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
     ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_uart.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/spi_serprog.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/cdc_serprog.c
   )
 
  # Example include
@@ -50,7 +59,8 @@ if(FAMILY STREQUAL "rp2040")
   target_compile_definitions(${PROJECT} PUBLIC
   )
 
-  target_link_libraries(${PROJECT} pico_stdlib pico_fix_rp2040_usb_device_enumeration pico_unique_id)
+  target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
+    pico_fix_rp2040_usb_device_enumeration)
 
   pico_add_extra_outputs(${PROJECT})
 

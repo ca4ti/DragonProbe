@@ -26,6 +26,8 @@
 #include "tusb.h"
 #include "unique.h"
 
+#include "protocfg.h"
+
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
  *
@@ -52,13 +54,13 @@ tusb_desc_device_t const desc_device =
 {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0200,
+    .bcdUSB             = 0x0110, // FIXME: 0x0200 ?
     .bDeviceClass       = 0x00,
     .bDeviceSubClass    = 0x00,
     .bDeviceProtocol    = 0x00,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor           = 0xCafe,
+    .idVendor           = 0xCafe, // TODO
     .idProduct          = USB_PID,
     .bcdDevice          = 0x0101,
 
@@ -99,29 +101,65 @@ uint8_t const * tud_hid_descriptor_report_cb(void)
 
 enum
 {
-  ITF_NUM_HID,
-  ITF_NUM_CDC_COM,
-  ITF_NUM_CDC_DATA,
+#ifdef DBOARD_HAS_CMSISDAP
+  ITF_NUM_HID_CMSISDAP,
+#endif
+
+#ifdef DBOARD_HAS_UART
+  ITF_NUM_CDC_UART_COM,
+  ITF_NUM_CDC_UART_DATA,
+#endif
+
+#ifdef DBOARD_HAS_SERPROG
+  ITF_NUM_CDC_SERPROG_COM,
+  ITF_NUM_CDC_SERPROG_DATA,
+#endif
+
   ITF_NUM_TOTAL
 };
 
-#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
+/*#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_INOUT_DESC_LEN)*/
 
-#define EPNUM_HID       0x01
-#define EPNUM_CDC_NOTIF 0x83
-#define EPNUM_CDC_OUT   0x02
-#define EPNUM_CDC_IN    0x82
+static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
+#ifdef DBOARD_HAS_UART
+    + TUD_CDC_DESC_LEN
+#endif
+#ifdef DBOARD_HAS_CMSISDAP
+    + TUD_HID_INOUT_DESC_LEN
+#endif
+#ifdef DBOARD_HAS_SERPROG
+    + TUD_CDC_DESC_LEN
+#endif
+    ;
 
+#define EPNUM_CDC_UART_OUT      0x02 // 2
+#define EPNUM_CDC_UART_IN       0x82 // 83
+#define EPNUM_CDC_UART_NOTIF    0x83 // 1
+#define EPNUM_HID_CMSISDAP      0x04 // 4,5?
+#define EPNUM_CDC_SERPROG_OUT   0x05 // 7
+#define EPNUM_CDC_SERPROG_IN    0x85 // 8
+#define EPNUM_CDC_SERPROG_NOTIF 0x86 // 6
+
+// NOTE: if you modify this table, don't forget to keep tusb_config.h up to date as well!
 uint8_t const desc_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
 
-  // Interface number, string index, protocol, report descriptor len, EP In & Out address, size & polling interval
-  TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID, 0, HID_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, 0x80 | EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
-
+#ifdef DBOARD_HAS_UART
   // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_COM, 0, EPNUM_CDC_NOTIF, 64, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_UART_COM, 0, EPNUM_CDC_UART_NOTIF, 64, EPNUM_CDC_UART_OUT, EPNUM_CDC_UART_IN, 64),
+#endif
+
+#ifdef DBOARD_HAS_CMSISDAP
+  // Interface number, string index, protocol, report descriptor len, EP In & Out address, size & polling interval
+  TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID_CMSISDAP, 0, HID_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID_CMSISDAP, 0x80 | (EPNUM_HID_CMSISDAP+0), CFG_TUD_HID_EP_BUFSIZE, 1),
+#endif
+
+#ifdef DBOARD_HAS_SERPROG
+  // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_SERPROG_COM, 0, EPNUM_CDC_SERPROG_NOTIF, 64, EPNUM_CDC_SERPROG_OUT, EPNUM_CDC_SERPROG_IN, 64),
+#endif
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -141,8 +179,8 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 char const* string_desc_arr [] =
 {
   [STRID_LANGID]       = (const char[]) { 0x09, 0x04 }, // supported language is English (0x0409)
-  [STRID_MANUFACTURER] = "TinyUSB",                     // Manufacturer
-  [STRID_PRODUCT]      = PRODUCT_PREFIX "CMSIS-DAP",    // Product
+  [STRID_MANUFACTURER] = "TinyUSB",                     // Manufacturer // TODO
+  [STRID_PRODUCT]      = PRODUCT_PREFIX "CMSIS-DAP",    // Product      // TODO
 };
 static uint16_t _desc_str[32];
 
