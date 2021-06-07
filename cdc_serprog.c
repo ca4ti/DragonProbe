@@ -197,14 +197,14 @@ void cdc_serprog_task(void) {
     //       bytes seem to be sent one by one, so its probably better to rework
     //       this, a lot
     if (conn && avail) {
-        printf("rbp=%d\n", bufpos);
+        //printf("rbp=%d\n", bufpos);
         uint32_t nread = tud_cdc_n_read(CDC_N_SERPROG, &rx_buf[bufpos], sizeof(rx_buf) - bufpos);
         printf("got %d\n", nread);
         cdc_uart_task();
 
         bufpos = 0;
         do {
-            printf("hbp=%d\n", /*rx_buf[bufpos],*/ bufpos);
+            //printf("hbp=%d\n", /*rx_buf[bufpos],*/ bufpos);
             cdc_uart_task();
             uint32_t dec = serprog_handle_cmd(&rx_buf[bufpos], nread);
             cdc_uart_task();
@@ -218,9 +218,9 @@ void cdc_serprog_task(void) {
                 // so we move the leftover data to the start of the buffer,
                 // and make sure the next call will put the new data right
                 // after it
-                printf("mv %d %d %d ", nread, bufpos, rx_buf[bufpos]);
+                //printf("mv %d %d %d ", nread, bufpos, rx_buf[bufpos]);
                 memmove(rx_buf, &rx_buf[bufpos], nread);
-                printf("%d\n", rx_buf[0]);
+                //printf("%d\n", rx_buf[0]);
                 bufpos = nread;
                 break;
             }

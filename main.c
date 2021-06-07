@@ -36,12 +36,64 @@
 #include "protocfg.h"
 #include "protos.h"
 
+#include "libco.h"
+#include "thread.h"
+
 #ifdef PICO_BOARD
 #include <pico/binary_info.h>
 #endif
 
+static cothread_t mainthread
+#ifdef DBOARD_HAS_UART
+  , uartthread
+#endif
+#ifdef DBOARD_HAS_SERPROG
+  , serprogthread
+#endif
+;
+
+void thread_yield(void) {
+  co_switch(mainthread);
+}
+
+#ifdef DBOARD_HAS_UART
+static void uart_thread_fn(void) {
+  cdc_uart_init();
+  thread_yield();
+  while (1) {
+    cdc_uart_task();
+    thread_yield();
+  }
+}
+#endif
+
+#ifdef DBOARD_HAS_SERPROG
+static void serprog_thread_fn(void) {
+  cdc_serprog_init();
+  thread_yield();
+  while (1) {
+    cdc_serprog_task();
+    thread_yield();
+  }
+}
+#endif
+
+#ifdef DBOARD_HAS_UART
+static uint8_t uartstack[4096];
+#endif
+#ifdef DBOARD_HAS_UART
+static uint8_t serprogstack[4096];
+#endif
+
+extern uint32_t co_active_buffer[64];
+uint32_t co_active_buffer[64];
+extern cothread_t co_active_handle;
+cothread_t co_active_handle;
+
 int main(void)
 {
+  mainthread = co_active();
+
   // TODO: split this out in a bsp-specific file
 #ifdef PICO_BOARD
   // use hardcoded values from TinyUSB board.h
@@ -50,10 +102,14 @@ int main(void)
   board_init();
 
 #ifdef DBOARD_HAS_UART
-  cdc_uart_init();
+  //cdc_uart_init();
+  uartthread = co_derive(uartstack, sizeof uartstack, uart_thread_fn);
+  co_switch(uartthread); // will call cdc_uart_init() on correct thread
 #endif
 #ifdef DBOARD_HAS_SERPROG
-  cdc_serprog_init();
+  //cdc_serprog_init();
+  serprogthread = co_derive(serprogstack, sizeof serprogstack, serprog_thread_fn);
+  co_switch(serprogthread); // will call cdc_serprog_init() on correct thread
 #endif
 #ifdef DBOARD_HAS_CMSISDAP
   DAP_Setup();
@@ -65,12 +121,17 @@ int main(void)
   {
     tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_UART
-    cdc_uart_task();
+    //cdc_uart_task();
+    co_switch(uartthread);
 #endif
+
+    tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_SERPROG
-    cdc_serprog_task();
+    //cdc_serprog_task();
+    co_switch(serprogthread);
 #endif
-	sleep_ms(100);
+
+    //printf("hi\n");
   }
 
   return 0;
