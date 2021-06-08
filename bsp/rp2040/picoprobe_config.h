@@ -55,6 +55,8 @@
 // UART config
 #define PICOPROBE_UART_TX 4
 #define PICOPROBE_UART_RX 5
+#define PICOPROBE_UART_CTS 10
+#define PICOPROBE_UART_RTS 11
 #define PICOPROBE_UART_INTERFACE uart1
 #define PICOPROBE_UART_BAUDRATE 115200
 
@@ -68,8 +70,8 @@
 
 // SPI config
 #define PROBE_SPI_DEV spi1
-#define PROBE_SPI_SCLK 10
-#define PROBE_SPI_MOSI 11
+#define PROBE_SPI_SCLK 14
+#define PROBE_SPI_MOSI 15
 #define PROBE_SPI_MISO 12
 #define PROBE_SPI_nCS  13
 

@@ -67,6 +67,10 @@ void cdc_uart_task(void) {
     }
 }
 
+void cdc_uart_set_hwflow(bool enable) {
+    uart_set_hw_flow(PICOPROBE_UART_INTERFACE, enable, enable);
+}
+
 void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
     picoprobe_info("New baud rate %d\n", line_coding->bit_rate);
     uart_init(PICOPROBE_UART_INTERFACE, line_coding->bit_rate);

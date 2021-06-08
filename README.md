@@ -56,26 +56,29 @@ Raspberry Pi Pico.
 
 The pin mapping for the RP2040 is as follows:
 
-| Pin number | Usage          |
-|:---------- |:-------------- |
-| GP0        | stdio UART TX  |
-| GP1        | stdio UART RX  |
-| GND        | &lt;ground&gt; |
-| GP2        | SWCLK/TCK      |
-| GP3        | SWDIO/TMS      |
-| GP4        | UART TX        |
-| GP5        | UART RX        |
-| GND        | &lt;ground&gt; |
-| GP6        | TDI            |
-| GP7        | TDO            |
-| GP8        | nTRST          |
-| GP9        | nRESET         |
-| GND        | &lt;ground&gt; |
-| GP10       | SCLK           |
-| GP11       | MOSI           |
-| GP12       | MISO           |
-| GP13       | nCS            |
-| GND        | &lt;ground&gt; |
+| Pin number | Usage          | Usage          | Pin number |
+|:---------- |:-------------- | --------------:| ----------:|
+| GP0        | stdio UART TX  |                | VBUS       |
+| GP1        | stdio UART RX  |                | VSYS       |
+| GND        | &lt;ground&gt; | &lt;ground&gt; | GND        |
+| GP2        | SWCLK/TCK      |                | 3V3 EN     |
+| GP3        | SWDIO/TMS      |                | 3V3 OUT    |
+| GP4        | UART TX        |                | ADC VREF   |
+| GP5        | UART RX        |                | GP28 / ADC2|
+| GND        | &lt;ground&gt; | &lt;ground&gt; | GND  / AGND|
+| GP6        | TDI            |                | GP27 / ADC1|
+| GP7        | TDO            |                | GP26 / ADC0|
+| GP8        | nTRST          |                | RUN        |
+| GP9        | nRESET         |                | GP22       |
+| GND        | &lt;ground&gt; | &lt;ground&gt; | GND        |
+| GP10       | UART CTS       | SCL            | GP21       |
+| GP11       | UART RTS       | SDA            | GP20       |
+| GP12       | MISO           |                | GP19       |
+| GP13       | nCS            |                | GP18       |
+| GND        | &lt;ground&gt; | &lt;ground&gt; | GND        |
+| GP14       | SCLK           |                | GP17       |
+| GP15       | MOSI           |                | GP16       |
+| &lt;end&gt;| &lt;bottom&gt; | &lt;bottom&gt; | &lt;end&gt;|
 
 On the RP2040, two USB CDC interfaces are exposed: the first is the UART
 interface, the second is for Serprog. If you have no other USB CDC devices,
@@ -120,15 +123,20 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 
 - [x] CMSIS-DAP JTAG implementation
 - [x] Flashrom/SPI support using Serprog
+  - [ ] Parallel ROM flashing support, too, by having the device switch into a
+        separate mode that temporarily disables all other IO protocols
 - [ ] UART with CTS/RTS flow control
+  - Needs configurable stuff as well, as some UART interfaces won't use this.
+- [ ] Debug interface to send printf stuff directly to USB, instead of having
+-     to use the UART interface as a loopback thing.
 - [ ] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - Does SMBus stuff need special treatment here?
-- [ ] Maybe add some way of reconfiguring features while the device is running.
-      Eg. CTS/RTS enable/disable, temperature ADC I2C address, ...
-  - Maybe use the Serprog USB serial interface for this, with some extension
-    commands not typically used for Serprog.
+- [ ] Maybe use the ADCs for something?
 - [ ] AVR programming (USBavr emulation?)
+  - AVR ISP is hardly used anymore
+  - TPI/UPDI requires 5V levels, Pico doesn't do that :/
+  - debugWIRE????
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
 - Maybe steal other features from the Bus Pirate or Glasgow or so
