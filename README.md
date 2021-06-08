@@ -46,7 +46,7 @@ These microcontrollers support the following protocols:
 
 | MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | AVR programming |
 |:------ |:---:|:----:|:----:|:-------------- |:--- |:--------------- |
-| RP2040 | X   | X    | X    | WIP            | Planned | Planned     |
+| RP2040 | X   | X    | X    | X              | Planned | Planned     |
 | STM32F072B Discovery  | X | | X |           |     |                 |
 
 The [original repository](https://github.com/majbthrd/DapperMime/) (Dapper
@@ -77,6 +77,10 @@ The pin mapping for the RP2040 is as follows:
 | GP13       | nCS            |
 | GND        | &lt;ground&gt; |
 
+On the RP2040, two USB CDC interfaces are exposed: the first is the UART
+interface, the second is for Serprog. If you have no other USB CDC devices,
+these will be `/dev/ttyACM0` and `/dev/ttyACM1`, respectively.
+
 The UART pins are for connecting to the device to be debugged, the data is
 echoed back over the USB CDC interface (typically a `/dev/ttyACMx` device on
 Linux). If you want to get stdio readout on your computer, connect GP0 to GP5,
@@ -92,16 +96,30 @@ TDI and TDO are on the next two consecutive free pins.
 In your OpenOCD flags, use `-f interface/cmsis-dap.cfg`. Default transport is
 JTAG, if OpenOCD doesn't specify a default to the probe.
 
+For Serprog, use the following `flashrom` options (if `/dev/ttyACM1` is the USB
+serial device on your machine corresponding to the Serprog CDC interface of the
+Pico):
+
+```
+flashrom -c <flashchip> -p serprog:dev=/dev/ttyACM1:115200 <rest of the read/write cmd>
+```
+
+Different serial speeds can be used, too. Serprog support is *techincally*
+untested, as in it does output the correct SPI commands as seen by my logic
+analyzer, but I don't have a SPI flash chip to test it on.
+
 ## License
 
 TinyUSB is licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ARM's CMSIS_5 code is licensed under the [Apache 2.0 license](https://opensource.org/licenses/Apache-2.0).
 
+libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
+
 ## TODO
 
 - [x] CMSIS-DAP JTAG implementation
-- [ ] Flashrom/SPI support using Serprog
+- [x] Flashrom/SPI support using Serprog
 - [ ] UART with CTS/RTS flow control
 - [ ] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
