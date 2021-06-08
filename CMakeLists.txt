@@ -1,3 +1,9 @@
+option(USE_SYSTEMWIDE_PICOSDK "Use the systemwide Pico SDK instead of relying on the one from a deeply nested Git submodule (OFF by default)" OFF)
+option(PICO_NO_FLASH "Disable writing the compiled program to flash, and only load it to RAM. Useful for testing, but not much else (OFF by default)." OFF)
+option(PICO_COPY_TO_RAM "Run all code in RAM, while the program is also stored on flash. On bootup, everything will be copied to RAM (OFF by default)." OFF)
+set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use. Set to RP2040 by default.")
+set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
+
 # use directory name for project id
 get_filename_component(PROJECT ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 set(PROJECT ${BOARD}-${PROJECT})
@@ -5,11 +11,6 @@ set(PROJECT ${BOARD}-${PROJECT})
 # TOP is absolute path to root directory of TinyUSB git repo
 set(TOP "./tinyusb")
 get_filename_component(TOP "${TOP}" REALPATH)
-
-option(USE_SYSTEMWIDE_PICOSDK "Use the systemwide Pico SDK instead of relying on the one from a deeply nested Git submodule (OFF by default)" OFF)
-# OPTION: PICO_NO_FLASH: load only into RAM (useful for testing)
-# OPTION: PICO_COPY_TO_RAM: place the code/rodata into RAM at startup (while still stored in flash)
-# TODO: add option for FAMILY and BOARD
 
 # Check for -DFAMILY=
 if(FAMILY STREQUAL "rp2040")
@@ -67,5 +68,5 @@ if(FAMILY STREQUAL "rp2040")
   pico_add_extra_outputs(${PROJECT})
 
 else()
-  message(FATAL_ERROR "Invalid FAMILY specified")
+  message(FATAL_ERROR "Invalid FAMILY '${FAMILY}' specified")
 endif()
