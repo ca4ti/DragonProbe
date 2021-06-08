@@ -32,13 +32,8 @@
 #include "protocfg.h"
 #include "protos.h"
 
-// declare these so other CDC interfaces can use the same buffers, decreasing
-// overall memory usage. however, this means the contents of these buffers
-// can't be relied upon to persist between two cdc_*_task() calls
-extern uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
-extern uint8_t tx_buf[CFG_TUD_CDC_TX_BUFSIZE];
-__attribute__((__weak__)) uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
-__attribute__((__weak__)) uint8_t tx_buf[CFG_TUD_CDC_TX_BUFSIZE];
+static uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
+static uint8_t tx_buf[CFG_TUD_CDC_TX_BUFSIZE];
 
 void cdc_uart_init(void) {
     gpio_set_function(PICOPROBE_UART_TX, GPIO_FUNC_UART);

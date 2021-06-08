@@ -21,13 +21,14 @@ void sp_spi_init(void) {
 
 	spi_init(PROBE_SPI_DEV, 512*1000); // default to 512 kHz
 
-	gpio_init(PROBE_SPI_nCS);
-	gpio_put(PROBE_SPI_nCS, 1);
-	gpio_set_dir(PROBE_SPI_nCS, GPIO_OUT);
-
 	gpio_set_function(PROBE_SPI_MISO, GPIO_FUNC_SPI);
 	gpio_set_function(PROBE_SPI_MOSI, GPIO_FUNC_SPI);
 	gpio_set_function(PROBE_SPI_SCLK, GPIO_FUNC_SPI);
+
+	//gpio_set_function(PROBE_SPI_nCS, GPIO_FUNC_SIO);
+	gpio_init(PROBE_SPI_nCS);
+	gpio_put(PROBE_SPI_nCS, 1);
+	gpio_set_dir(PROBE_SPI_nCS, GPIO_OUT);
 
 	bi_decl(bi_3pins_with_func(PROBE_SPI_MISO, PROBE_SPI_MOSI, PROBE_SPI_SCLK, GPIO_FUNC_SPI));
 	bi_decl(bi_1pin_with_name(PROBE_SPI_nCS, "SPI #CS"));
@@ -49,10 +50,10 @@ void __not_in_flash_func(sp_spi_cs_select)(void) {
 }
 
 void __not_in_flash_func(sp_spi_op_begin)(void) {
-	if (!cs_asserted) sp_spi_cs_select();
+	sp_spi_cs_select();
 }
 void __not_in_flash_func(sp_spi_op_end)(void) {
-	if (cs_asserted) sp_spi_cs_deselect();
+	sp_spi_cs_deselect();
 }
 
 // TODO: use dma?

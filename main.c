@@ -119,6 +119,8 @@ int main(void)
 
   while (1)
   {
+    //printf("hi\n");
+
     tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_UART
     //cdc_uart_task();
