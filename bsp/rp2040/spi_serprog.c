@@ -15,7 +15,7 @@
 static bool cs_asserted;
 
 void sp_spi_init(void) {
-	printf("spi init!\n");
+	//printf("spi init!\n");
 
 	cs_asserted = false;
 
@@ -50,10 +50,20 @@ void __not_in_flash_func(sp_spi_cs_select)(void) {
 }
 
 void __not_in_flash_func(sp_spi_op_begin)(void) {
-	sp_spi_cs_select();
+	//sp_spi_cs_select();
+	if (!cs_asserted) {
+		asm volatile("nop\nnop\nnop"); // idk if this is needed
+		gpio_put(PROBE_SPI_nCS, 0);
+		asm volatile("nop\nnop\nnop"); // idk if this is needed
+	}
 }
 void __not_in_flash_func(sp_spi_op_end)(void) {
-	sp_spi_cs_deselect();
+	//sp_spi_cs_deselect();
+	if (!cs_asserted) { // YES, this condition is the intended one!
+		asm volatile("nop\nnop\nnop"); // idk if this is needed
+		gpio_put(PROBE_SPI_nCS, 1);
+		asm volatile("nop\nnop\nnop"); // idk if this is needed
+	}
 }
 
 // TODO: use dma?

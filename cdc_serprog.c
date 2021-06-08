@@ -70,50 +70,50 @@ static void handle_cmd(void) {
     uint8_t cmd = read_byte();
     switch (cmd) {
     case S_CMD_NOP:
-        printf("nop\n");
+        //printf("nop\n");
         tx_buf[0] = S_ACK;
         nresp = 1;
         break;
     case S_CMD_SYNCNOP:
-        printf("snop\n");
+        //printf("snop\n");
         tx_buf[0] = S_NAK;
         tx_buf[1] = S_ACK;
         nresp = 2;
         break;
     case S_CMD_Q_IFACE:
-        printf("q_if\n");
+        //printf("q_if\n");
         tx_buf[0] = S_ACK;
         tx_buf[1] =  SERPROG_IFACE_VERSION       & 0xff;
         tx_buf[2] = (SERPROG_IFACE_VERSION >> 8) & 0xff;
         nresp = 3;
         break;
     case S_CMD_Q_CMDMAP:
-        printf("q_cmap\n");
+        //printf("q_cmap\n");
         tx_buf[0] = S_ACK;
         memcpy(&tx_buf[1], serprog_cmdmap, sizeof serprog_cmdmap);
         nresp = sizeof(serprog_cmdmap) + 1;
         break;
     case S_CMD_Q_PGMNAME:
-        printf("q_pgm\n");
+        //printf("q_pgm\n");
         tx_buf[0] = S_ACK;
         memcpy(&tx_buf[1], serprog_pgmname, sizeof serprog_pgmname);
         nresp = sizeof(serprog_pgmname) + 1;
         break;
     case S_CMD_Q_SERBUF:
-        printf("q_sbuf\n");
+        //printf("q_sbuf\n");
         tx_buf[0] = S_ACK;
         tx_buf[1] =  sizeof(rx_buf)       & 0xff;
         tx_buf[2] = (sizeof(rx_buf) >> 8) & 0xff;
         nresp = 3;
         break;
     case S_CMD_Q_BUSTYPE:
-        printf("q_btyp\n");
+        //printf("q_btyp\n");
         tx_buf[0] = S_ACK;
         tx_buf[1] = 1<<3; // SPI only
         nresp = 2;
         break;
     case S_CMD_Q_WRNMAXLEN:
-        printf("q_wlen\n");
+        //printf("q_wlen\n");
         tx_buf[0] = S_ACK;
         tx_buf[1] =  (sizeof(tx_buf)-1)       & 0xff;
         tx_buf[2] = ((sizeof(tx_buf)-1) >> 8) & 0xff;
@@ -121,7 +121,7 @@ static void handle_cmd(void) {
         nresp = 4;
         break;
     case S_CMD_Q_RDNMAXLEN:
-        printf("q_rlen\n");
+        //printf("q_rlen\n");
         tx_buf[0] = S_ACK;
         tx_buf[1] =  (sizeof(rx_buf)-1)       & 0xff;
         tx_buf[2] = ((sizeof(rx_buf)-1) >> 8) & 0xff;
@@ -129,7 +129,7 @@ static void handle_cmd(void) {
         nresp = 4;
         break;
     case S_CMD_S_BUSTYPE:
-        printf("s_btyp\n");
+        //printf("s_btyp\n");
 
         if (read_byte()/* bus type to set */ == (1<<3)) {
             tx_buf[0] = S_ACK;
@@ -140,7 +140,7 @@ static void handle_cmd(void) {
         break;
 
     case S_CMD_SPIOP: {
-        printf("spiop\n");
+        //printf("spiop\n");
 
         uint32_t slen, rlen;
         slen  = (uint32_t)read_byte();
@@ -192,7 +192,7 @@ static void handle_cmd(void) {
         }
         break;
     case S_CMD_S_SPI_FREQ: {
-        printf("s_spi_freq\n");
+        //printf("s_spi_freq\n");
         uint32_t freq;
         freq  = (uint32_t)read_byte();
         freq |= (uint32_t)read_byte() <<  8;
@@ -209,7 +209,7 @@ static void handle_cmd(void) {
         }
         break;
     case S_CMD_S_PINSTATE: {
-        printf("s_pins\n");
+        //printf("s_pins\n");
 
         if (read_byte() == 0) sp_spi_cs_deselect();
         else sp_spi_cs_select();
@@ -220,7 +220,7 @@ static void handle_cmd(void) {
         break;
 
     default:
-        printf("ill %d\n", cmd);
+        //printf("ill %d\n", cmd);
         tx_buf[0] = S_NAK;
         nresp = 1;
         break;
@@ -282,7 +282,7 @@ static void handle_cmd(void) {
 //}
 void cdc_serprog_task(void) {
     handle_cmd();
-    printf("d\n");
+    //printf("d\n");
 }
 
 #endif /* DBOARD_HAS_SERPROG */
