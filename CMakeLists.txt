@@ -46,6 +46,7 @@ if(FAMILY STREQUAL "rp2040")
     ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_uart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/spi_serprog.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cdc_serprog.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rtconf.c
   )
 
  # Example include

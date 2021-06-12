@@ -10,6 +10,7 @@
 
 #include "protos.h"
 #include "thread.h"
+#include "rtconf.h"
 
 #include "serprog.h"
 
@@ -26,7 +27,16 @@ static const uint8_t serprog_cmdmap[32] = {
     0x3f, // cmd 00..05 not 0x06 (Q_CHIPSIZE) and 0x07 (Q_OPBUF), as this is a SPI-only device
     0x01, // only cmd 08
     0x1f, // cmd 10..15 supported
-    0,    // rest is 0
+    0, // 18..1f
+    0, // 20..27
+    0, // 28..2f
+    0, // 30..37
+    0, // 38..3f
+    0, // 40..47
+    0, // 48..4f
+    (1<<3), // 50..57: enable 0x53
+    0, // 58..5f
+    0, // rest is 0
 };
 static const char serprog_pgmname[16] = {
     'D','a','p','p','e','r','M','i','m','e','-','J','T','A','G',0 // TODO
@@ -219,6 +229,16 @@ static void handle_cmd(void) {
         }
         break;
 
+    case S_CMD_MAGIC_SETTINGS: {
+        uint8_t a = read_byte();
+        uint8_t b = read_byte();
+
+        tx_buf[0] = S_ACK;
+        tx_buf[1] = rtconf_do(a, b);
+        nresp = 2;
+        }
+        break;
+
     default:
         //printf("ill %d\n", cmd);
         tx_buf[0] = S_NAK;
@@ -232,54 +252,6 @@ static void handle_cmd(void) {
     }
 }
 
-//extern void cdc_uart_task();
-//void cdc_serprog_task(void) {
-//    bool conn = tud_cdc_n_connected(CDC_N_SERPROG),
-//         avail = tud_cdc_n_available(CDC_N_SERPROG);
-//    //printf("hi conn=%c avail=%c\n", conn?'y':'n', avail?'y':'n');
-//    // TODO: this is, apparently, not at all how this works: in practice,
-//    //       bytes seem to be sent one by one, so its probably better to rework
-//    //       this, a lot
-//    if (conn && avail) {
-//        //printf("rbp=%d\n", bufpos);
-//        uint32_t nread = tud_cdc_n_read(CDC_N_SERPROG, &rx_buf[bufpos], sizeof(rx_buf) - bufpos);
-//        printf("got %d\n", nread);
-//        cdc_uart_task();
-//
-//        bufpos = 0;
-//        do {
-//            //printf("hbp=%d\n", /*rx_buf[bufpos],*/ bufpos);
-//            cdc_uart_task();
-//            uint32_t dec = serprog_handle_cmd(&rx_buf[bufpos], nread);
-//            cdc_uart_task();
-//            printf("dec=%d\n", dec);
-//
-//            cdc_uart_task();
-//
-//            // didn't do a decrement => not enough data, wait for the next
-//            // task() call to read it in
-//            if (dec == 0) {
-//                // so we move the leftover data to the start of the buffer,
-//                // and make sure the next call will put the new data right
-//                // after it
-//                //printf("mv %d %d %d ", nread, bufpos, rx_buf[bufpos]);
-//                memmove(rx_buf, &rx_buf[bufpos], nread);
-//                //printf("%d\n", rx_buf[0]);
-//                bufpos = nread;
-//                break;
-//            }
-//
-//            nread -= dec;
-//            bufpos += dec;
-//            // read everything left in the buffer => we're done here
-//            if (nread == 0) {
-//                // and we can start using the full rx buffer again
-//                bufpos = 0;
-//                break;
-//            }
-//        } while (tud_cdc_n_connected(CDC_N_SERPROG) && tud_cdc_n_available(CDC_N_SERPROG));
-//    }
-//}
 void cdc_serprog_task(void) {
     handle_cmd();
     //printf("d\n");

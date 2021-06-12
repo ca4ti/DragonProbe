@@ -125,13 +125,25 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - [x] Flashrom/SPI support using Serprog
   - [ ] Parallel ROM flashing support, too, by having the device switch into a
         separate mode that temporarily disables all other IO protocols
-- [ ] UART with CTS/RTS flow control
-  - Needs configurable stuff as well, as some UART interfaces won't use this.
+- [x] UART with CTS/RTS flow control
+  - [x] Needs configurable stuff as well, as some UART interfaces won't use this.
 - [ ] Debug interface to send printf stuff directly to USB, instead of having
 -     to use the UART interface as a loopback thing.
 - [ ] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - Does SMBus stuff need special treatment here?
+- [ ] Host-side script that is an XVC (or hw_server) cable and communicates
+      with the device to perform the JTAG commands, because Vivado no likey
+      OpenOCD.
+  - CMSIS-DAP interface can be used directly, see CMSIS_5/CMSIS/DoxyGen/DAP/src/dap_USB_cmds.txt
+  - https://github.com/BerkeleyLab/XVC-FTDI-JTAG
+  - https://www.eevblog.com/forum/fpga/xilinx-jtag-and-tcf/
+  - https://git.eclipse.org/c/tcf/org.eclipse.tcf.git/plain/docs/TCF%20Linux%20Agent%20Prototype.html
+  - http://www.eclipse.org/tcf/
+  - https://debugmo.de/2012/02/xvcd-the-xilinx-virtual-cable-daemon/
+  - https://github.com/Xilinx/XilinxVirtualCable/
+  - https://github.com/derekmulcahy/xvcpi
+  - OpenOCD as XVC client??
 - [ ] Maybe use the ADCs for something?
 - [ ] AVR programming (USBavr emulation?)
   - AVR ISP is hardly used anymore
