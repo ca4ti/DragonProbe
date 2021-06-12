@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 
-import serial, struct
+import argparse, serial, struct
 from typing import *
+
+class RTOpt(NamedTuple):
+    type: bool
+    optid: int
+    desc: str
+
+option_table = {
+    'ctsrts': RTOpt(bool, 1, "Enable or disable CTS/RTS flow control (--ctsrts [true|false])")
+}
 
 S_ACK = b'\x06'
 S_NAK = b'\x15'
@@ -13,7 +22,13 @@ S_CMD_Q_PGMNAME = b'\x03'
 S_CMD_SYNCNOP   = b'\x10'
 S_CMD_MAGIC_SETTINGS = b'\x53'
 
-def do_xfer(cmd:int, arg:int, port: str, baudrate:int=115200) -> Optional[int]:
+def val2byte(t, v) -> int:
+    if t == bool:
+        return 1 if v else 0
+
+    assert False, "unimplemented type %s" % str(t)
+
+def do_xfer(args, cmd:int, arg:int, port: str, baudrate:int=115200) -> Optional[int]:
     with serial.Serial(port, baudrate, timeout=1) as ser:
         cmdmap = [0]*32
         syncok = False
@@ -60,7 +75,7 @@ def do_xfer(cmd:int, arg:int, port: str, baudrate:int=115200) -> Optional[int]:
                 print("q_pgmname failed")
             else:
                 name = ser.read(16).decode('utf-8')
-                print("programmer is '%s'" % name)
+                if args.verbose: print("programmer is '%s'" % name)
 
         ser.write(S_CMD_MAGIC_SETTINGS)
         ser.write(bytes([cmd,arg]))
@@ -72,6 +87,36 @@ def do_xfer(cmd:int, arg:int, port: str, baudrate:int=115200) -> Optional[int]:
             print("settings command failed")
             return None
 
-do_xfer(1, 1, "/dev/ttyACM1")
-do_xfer(1, 0, "/dev/ttyACM1")
+def main():
+    parser = argparse.ArgumentParser(prog="dmctl",
+                                     description="Runtime configuration control for DapperMime-JTAG")
+
+    parser.add_argument('tty', type=str, nargs=1, #'?', #default="/dev/ttyACM1",
+                        help="Path to DapperMime-JTAG Serprog UART device"#+\
+                             #" [/dev/ttyACM1]"
+                        )
+
+    parser.add_argument('-v', '--verbose', default=False, action='store_true',
+                        help="Verbose logging (for this utility)")
+
+    for k, v in option_table.items():
+        parser.add_argument('--%s'%k, type=v.type, nargs='?', default=None,
+                            help=v.desc)
+
+    args = parser.parse_args()
+
+    for k, v in option_table.items():
+        if args.__dict__[k] is not None:
+            resp = do_xfer(args, v.optid, val2byte(v.type, args.__dict__[k]), args.tty)
+            if resp is None:
+                return 1
+            if args.verbose: print("-> %d" % resp)
+
+    return 0
+
+#do_xfer(1, 1, "/dev/ttyACM1")
+#do_xfer(1, 0, "/dev/ttyACM1")
+
+if __name__ == '__main__':
+    main()
 

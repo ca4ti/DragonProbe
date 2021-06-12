@@ -81,13 +81,15 @@ The pin mapping for the RP2040 is as follows:
 | &lt;end&gt;| &lt;bottom&gt; | &lt;bottom&gt; | &lt;end&gt;|
 
 On the RP2040, two USB CDC interfaces are exposed: the first is the UART
-interface, the second is for Serprog. If you have no other USB CDC devices,
+interface, the second is for Serprog. If you have no other USB-CDC intefaces,
 these will be `/dev/ttyACM0` and `/dev/ttyACM1`, respectively.
 
 The UART pins are for connecting to the device to be debugged, the data is
 echoed back over the USB CDC interface (typically a `/dev/ttyACMx` device on
-Linux). If you want to get stdio readout on your computer, connect GP0 to GP5,
-and GP1 to GP4.
+Linux). If you want to get stdio readout of this program on your computer,
+connect GP0 to GP5, and GP1 to GP4, or alternatively, use the
+`USE_USBCDC_FOR_STDIO` CMake flag, which adds an extra USB-CDC interface for
+which stdio is used exclusively, while disabling stdio on the UART.
 
 In SWD mode, the pin mapping is entirely as with the standard Picoprobe setup,
 as described in Chapter 5 and Appendix A of [Getting Started with Raspberry Pi
@@ -110,6 +112,34 @@ flashrom -c <flashchip> -p serprog:dev=/dev/ttyACM1:115200 <rest of the read/wri
 Different serial speeds can be used, too. Serprog support is *techincally*
 untested, as in it does output the correct SPI commands as seen by my logic
 analyzer, but I don't have a SPI flash chip to test it on.
+
+### Runtime configuration
+
+Several settings can be applied at runtime, using the `dmctl` Python script.
+Settings are communicated over the Serprog USB serial port.
+
+The currently implemented options are:
+- `ctsrts`: Enable/disable CTS/RTS-based hardware flow control for the UART port
+
+```
+usage: dmctl [-h] [-v] [--ctsrts [CTSRTS]] tty
+
+Runtime configuration control for DapperMime-JTAG
+
+positional arguments:
+  tty                Path to DapperMime-JTAG Serprog UART device
+
+optional arguments:
+  -h, --help         show this help message and exit
+  -v, --verbose      Verbose logging (for this utility)
+  --ctsrts [CTSRTS]  Enable or disable CTS/RTS flow control (--ctsrts [true|false])
+```
+
+example:
+
+```
+$ ./dmctl.py /dev/ttyACM1 --ctsrts true
+```
 
 ## License
 
