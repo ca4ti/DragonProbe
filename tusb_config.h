@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef _TUSB_CONFIG_H_
-#define _TUSB_CONFIG_H_
+#ifndef _TUSB_CONFIG_H__
+#define _TUSB_CONFIG_H__
 
 #ifdef __cplusplus
  extern "C" {
@@ -98,7 +98,12 @@
 #endif
 
 //------------- CLASS -------------//
+#ifdef USE_USBCDC_FOR_STDIO
+#define CFG_TUD_CDC               3
+#else
 #define CFG_TUD_CDC               2
+#endif
+
 #define CFG_TUD_MSC               0
 #define CFG_TUD_HID               1
 #define CFG_TUD_MIDI              0

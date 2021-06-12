@@ -1,6 +1,7 @@
 option(USE_SYSTEMWIDE_PICOSDK "Use the systemwide Pico SDK instead of relying on the one from a deeply nested Git submodule (OFF by default)" OFF)
 option(PICO_NO_FLASH "Disable writing the compiled program to flash, and only load it to RAM. Useful for testing, but not much else (OFF by default)." OFF)
 option(PICO_COPY_TO_RAM "Run all code in RAM, while the program is also stored on flash. On bootup, everything will be copied to RAM (OFF by default)." OFF)
+option(USE_USBCDC_FOR_STDIO "Export an extra USB-CDC interface for stdio, instead of echoing it to a UART port (and requiring UART loopback for receiving stdio output on a host computer)." OFF)
 set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use. Set to RP2040 by default.")
 set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
 
@@ -27,10 +28,14 @@ if(FAMILY STREQUAL "rp2040")
   pico_sdk_init()
   add_executable(${PROJECT})
 
-  include(${TOP}/hw/bsp/${FAMILY}/family.cmake)
-
   # need uart stdio, usb is busy doing other stuff
-  pico_enable_stdio_uart(${PROJECT} 1)
+  if(USE_USBCDC_FOR_STDIO)
+    # we're going to manually implement this case
+    pico_enable_stdio_uart(${PROJECT} 0)
+    target_compile_definitions(${PROJECT} PUBLIC USE_USBCDC_FOR_STDIO=1 PICO_STDIO_USB=1)
+  else()
+    pico_enable_stdio_uart(${PROJECT} 1)
+  endif()
   pico_enable_stdio_usb(${PROJECT} 0)
 
   # Example source
@@ -48,8 +53,7 @@ if(FAMILY STREQUAL "rp2040")
     ${CMAKE_CURRENT_SOURCE_DIR}/cdc_serprog.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rtconf.c
   )
-
- # Example include
+  # Example include
   target_include_directories(${PROJECT} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/libco/
@@ -59,12 +63,33 @@ if(FAMILY STREQUAL "rp2040")
     ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
   )
 
+  # need to do this AFTER the regular includes, so that our bsp folder can
+  # override the tinyusb board.h header
+  include(${TOP}/hw/bsp/${FAMILY}/family.cmake) # tinyusb hardware-specific stuff
+
   # Example defines
-  target_compile_definitions(${PROJECT} PUBLIC
-  )
+  #target_compile_definitions(${PROJECT} PUBLIC
+  #)
 
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
     pico_fix_rp2040_usb_device_enumeration)
+
+  if(USE_USBCDC_FOR_STDIO)
+    target_sources(${PROJECT} PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_stdio.c
+    )
+
+    target_include_directories(${PROJECT} PUBLIC
+      ${PICO_SDK_PATH}/src/rp2_common/pico_stdio_usb/include/
+    )
+
+    # extremely ugly hack to prevent the Pico SDK to declare *its* TinyUSB config
+    target_compile_definitions(${PROJECT} PUBLIC
+      _PICO_STDIO_USB_TUSB_CONFIG_H=1
+    )
+
+    target_link_libraries(${PROJECT} pico_stdio)
+  endif()
 
   pico_add_extra_outputs(${PROJECT})
 

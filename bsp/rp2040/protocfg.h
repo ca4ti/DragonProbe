@@ -11,5 +11,9 @@
 #define CDC_N_UART 0
 #define CDC_N_SERPROG 1
 
+#ifdef USE_USBCDC_FOR_STDIO
+#define CDC_N_STDIO 2
+#endif
+
 #endif
 

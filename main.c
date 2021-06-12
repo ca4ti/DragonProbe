@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "tusb_config.h"
+
 #include "bsp/board.h" /* a tinyusb header */
 #include "tusb.h"
 
@@ -95,7 +97,7 @@ int main(void)
   mainthread = co_active();
 
   // TODO: split this out in a bsp-specific file
-#ifdef PICO_BOARD
+#if defined(PICO_BOARD) && !defined(USE_USBCDC_FOR_STDIO)
   // use hardcoded values from TinyUSB board.h
   bi_decl(bi_2pins_with_func(0, 1, GPIO_FUNC_UART));
 #endif
@@ -116,6 +118,10 @@ int main(void)
 #endif
 
   tusb_init();
+
+#ifdef USE_USBCDC_FOR_STDIO
+  stdio_usb_init();
+#endif
 
   while (1)
   {

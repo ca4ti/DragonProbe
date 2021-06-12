@@ -25,6 +25,8 @@ enum serprog_cmd {
 	S_CMD_SPIOP       = 0x13,
 	S_CMD_S_SPI_FREQ  = 0x14,
 	S_CMD_S_PINSTATE  = 0x15,
+
+	S_CMD_MAGIC_SETTINGS = 0x53
 };
 
 enum serprog_response {

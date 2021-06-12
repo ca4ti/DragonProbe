@@ -115,6 +115,11 @@ enum
   ITF_NUM_CDC_SERPROG_DATA,
 #endif
 
+#ifdef USE_USBCDC_FOR_STDIO
+  ITF_NUM_CDC_STDIO_COM,
+  ITF_NUM_CDC_STDIO_DATA,
+#endif
+
   ITF_NUM_TOTAL
 };
 
@@ -130,6 +135,9 @@ static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
 #ifdef DBOARD_HAS_SERPROG
     + TUD_CDC_DESC_LEN
 #endif
+#ifdef USE_USBCDC_FOR_STDIO
+    + TUD_CDC_DESC_LEN
+#endif
     ;
 
 #define EPNUM_CDC_UART_OUT      0x02 // 2
@@ -139,6 +147,9 @@ static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
 #define EPNUM_CDC_SERPROG_OUT   0x05 // 7
 #define EPNUM_CDC_SERPROG_IN    0x85 // 8
 #define EPNUM_CDC_SERPROG_NOTIF 0x86 // 6
+#define EPNUM_CDC_STDIO_OUT     0x07
+#define EPNUM_CDC_STDIO_IN      0x87
+#define EPNUM_CDC_STDIO_NOTIF   0x88
 
 // NOTE: if you modify this table, don't forget to keep tusb_config.h up to date as well!
 uint8_t const desc_configuration[] =
@@ -159,6 +170,11 @@ uint8_t const desc_configuration[] =
 #ifdef DBOARD_HAS_SERPROG
   // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_SERPROG_COM, 0, EPNUM_CDC_SERPROG_NOTIF, 64, EPNUM_CDC_SERPROG_OUT, EPNUM_CDC_SERPROG_IN, 64),
+#endif
+
+#ifdef USE_USBCDC_FOR_STDIO
+  // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_STDIO_COM, 0, EPNUM_CDC_STDIO_NOTIF, 64, EPNUM_CDC_STDIO_OUT, EPNUM_CDC_STDIO_IN, 64),
 #endif
 };
 
