@@ -60,6 +60,8 @@ This information includes:
 #include <pico/binary_info.h>
 
 #include "picoprobe_config.h"
+#include "protos.h"
+#include "unique.h"
 
 #define PROBE_PIN_SWCLK_MASK (1UL << (PROBE_PIN_SWCLK))
 #define PROBE_PIN_SWDIO_MASK (1UL << (PROBE_PIN_SWDIO))
@@ -156,11 +158,9 @@ This information includes:
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
-  const static char vnd[] = "Raspberry Pi";
-  for (size_t i = 0; i < sizeof(vnd); ++i) str[i] = vnd[i];
-  return sizeof(vnd)-1;
-  //(void)str;
-  //return (0U);
+	const static char vnd[] = INFO_MANUFACTURER;
+	for (size_t i = 0; i < sizeof(vnd); ++i) str[i] = vnd[i];
+	return sizeof(vnd)-1;
 }
 
 /** Get Product ID string.
@@ -168,11 +168,9 @@ __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
-  const static char prd[] = "RP2040 DapperMime-JTAG";
-  for (size_t i = 0; i < sizeof(prd); ++i) str[i] = prd[i];
-  return sizeof(prd)-1;
-  //(void)str;
-  //return (0U);
+	const static char prd[] = INFO_PRODUCT(INFO_BOARDNAME);
+	for (size_t i = 0; i < sizeof(prd); ++i) str[i] = prd[i];
+	return sizeof(prd)-1;
 }
 
 /** Get Serial Number string.
@@ -180,11 +178,7 @@ __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetSerNumString (char *str) {
-  const static char ser[] = "1337";
-  for (size_t i = 0; i < sizeof(ser); ++i) str[i] = ser[i];
-  return sizeof(ser)-1;
-  //(void)str;
-  //return (0U);
+	return get_unique_id_u8(str);
 }
 
 ///@}
@@ -232,66 +226,64 @@ of the same I/O port. The following SWDIO I/O Pin functions are provided:
 Configures the DAP Hardware I/O pins for JTAG mode:
  - TCK, TMS, TDI, nTRST, nRESET to output mode and set to high level.
  - TDO to input mode.
-*/ 
+*/
 __STATIC_INLINE void PORT_JTAG_SETUP (void) {
+	resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
 
-  resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
+	/* set to default high level */
+	sio_hw->gpio_oe_set = PROBE_PIN_TCK_MASK | PROBE_PIN_TMS_MASK | PROBE_PIN_TDI_MASK | PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
+	sio_hw->gpio_set = PROBE_PIN_TCK_MASK | PROBE_PIN_TMS_MASK | PROBE_PIN_TDI_MASK | PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
+	/* TDO needs to be an input */
+	sio_hw->gpio_oe_clr = PROBE_PIN_TDO_MASK;
 
-  /* set to default high level */
-  sio_hw->gpio_oe_set = PROBE_PIN_TCK_MASK | PROBE_PIN_TMS_MASK | PROBE_PIN_TDI_MASK | PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
-  sio_hw->gpio_set = PROBE_PIN_TCK_MASK | PROBE_PIN_TMS_MASK | PROBE_PIN_TDI_MASK | PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
-  /* TDO needs to be an input */
-  sio_hw->gpio_oe_clr = PROBE_PIN_TDO_MASK;
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TCK],
+		  PADS_BANK0_GPIO0_IE_BITS, // bits to set: input enable
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS); // bits to mask out: input enable, output disable
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TMS],
+		  PADS_BANK0_GPIO0_IE_BITS,
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TDI],
+		  PADS_BANK0_GPIO0_IE_BITS,
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TDO],
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS, // TDO needs to have its output disabled
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_nTRST],
+		  PADS_BANK0_GPIO0_IE_BITS,
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_nRESET],
+		  PADS_BANK0_GPIO0_IE_BITS,
+		  PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
 
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TCK],
-          PADS_BANK0_GPIO0_IE_BITS, // bits to set: input enable
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS); // bits to mask out: input enable, output disable
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TMS],
-          PADS_BANK0_GPIO0_IE_BITS,
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TDI],
-          PADS_BANK0_GPIO0_IE_BITS,
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_TDO],
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS, // TDO needs to have its output disabled
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_nTRST],
-          PADS_BANK0_GPIO0_IE_BITS,
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_JTAG_nRESET],
-          PADS_BANK0_GPIO0_IE_BITS,
-          PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	// NOTE: hiZ: ctrl = (ctrl & ~(CTRL_OEOVER_BITS)) | (GPIO_OVERRIDE_LOW << CTRL_OEOVER_LSB);
+	// normal == 0, low == 2
 
-  // NOTE: hiZ: ctrl = (ctrl & ~(CTRL_OEOVER_BITS)) | (GPIO_OVERRIDE_LOW << CTRL_OEOVER_LSB);
-  // normal == 0, low == 2
-
-  // set pin modes to general IO (SIO)
-  iobank0_hw->io[PROBE_PIN_JTAG_TCK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-  iobank0_hw->io[PROBE_PIN_JTAG_TMS].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-  iobank0_hw->io[PROBE_PIN_JTAG_TDI].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-  iobank0_hw->io[PROBE_PIN_JTAG_TDO].ctrl = (GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB)
-                                          /*| (GPIO_OVERRIDE_LOW << IO_BANK0_GPIO0_CTRL_OEOVER_LSB)*/;
-  iobank0_hw->io[PROBE_PIN_JTAG_nTRST].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-  iobank0_hw->io[PROBE_PIN_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	// set pin modes to general IO (SIO)
+	iobank0_hw->io[PROBE_PIN_JTAG_TCK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	iobank0_hw->io[PROBE_PIN_JTAG_TMS].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	iobank0_hw->io[PROBE_PIN_JTAG_TDI].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	iobank0_hw->io[PROBE_PIN_JTAG_TDO].ctrl = (GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB)
+										  /*| (GPIO_OVERRIDE_LOW << IO_BANK0_GPIO0_CTRL_OEOVER_LSB)*/;
+	iobank0_hw->io[PROBE_PIN_JTAG_nTRST].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	iobank0_hw->io[PROBE_PIN_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 }
- 
+
 /** Setup SWD I/O pins: SWCLK, SWDIO, and nRESET.
 Configures the DAP Hardware I/O pins for Serial Wire Debug (SWD) mode:
  - SWCLK, SWDIO, nRESET to output mode and set to default high level.
  - TDI, nTRST to HighZ mode (pins are unused in SWD mode).
-*/ 
+*/
 __STATIC_INLINE void PORT_SWD_SETUP (void) {
+	resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
 
-  resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
+	/* set to default high level */
+	sio_hw->gpio_oe_set = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK;
+	sio_hw->gpio_set = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK;
 
-  /* set to default high level */
-  sio_hw->gpio_oe_set = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK;
-  sio_hw->gpio_set = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK;
-
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_SWCLK], PADS_BANK0_GPIO0_IE_BITS, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  hw_write_masked(&padsbank0_hw->io[PROBE_PIN_SWDIO], PADS_BANK0_GPIO0_IE_BITS, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  iobank0_hw->io[PROBE_PIN_SWCLK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-  iobank0_hw->io[PROBE_PIN_SWDIO].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_SWCLK], PADS_BANK0_GPIO0_IE_BITS, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	hw_write_masked(&padsbank0_hw->io[PROBE_PIN_SWDIO], PADS_BANK0_GPIO0_IE_BITS, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	iobank0_hw->io[PROBE_PIN_SWCLK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	iobank0_hw->io[PROBE_PIN_SWDIO].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 }
 
 /** Disable JTAG/SWD I/O Pins.
@@ -299,9 +291,9 @@ Disables the DAP Hardware I/O pins which configures:
  - TCK/SWCLK, TMS/SWDIO, TDI, TDO, nTRST, nRESET to High-Z mode.
 */
 __STATIC_INLINE void PORT_OFF (void) {
-  sio_hw->gpio_oe_clr = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK
-    | PROBE_PIN_TDI_MASK //| PROBE_PIN_TDO_MASK
-    | PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
+	sio_hw->gpio_oe_clr = PROBE_PIN_SWCLK_MASK | PROBE_PIN_SWDIO_MASK
+		| PROBE_PIN_TDI_MASK //| PROBE_PIN_TDO_MASK
+		| PROBE_PIN_nTRST_MASK | PROBE_PIN_nRESET_MASK;
 }
 
 
@@ -311,21 +303,21 @@ __STATIC_INLINE void PORT_OFF (void) {
 \return Current status of the SWCLK/TCK DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN  (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_SWCLK_MASK) >> PROBE_PIN_SWCLK;
+	return (sio_hw->gpio_in & PROBE_PIN_SWCLK_MASK) >> PROBE_PIN_SWCLK;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to High.
 Set the SWCLK/TCK DAP hardware I/O pin to high level.
 */
 __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_SET (void) {
-  sio_hw->gpio_set = PROBE_PIN_SWCLK_MASK;
+	sio_hw->gpio_set = PROBE_PIN_SWCLK_MASK;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to Low.
 Set the SWCLK/TCK DAP hardware I/O pin to low level.
 */
 __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_CLR (void) {
-  sio_hw->gpio_clr = PROBE_PIN_SWCLK_MASK;
+	sio_hw->gpio_clr = PROBE_PIN_SWCLK_MASK;
 }
 
 
@@ -335,7 +327,7 @@ __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_CLR (void) {
 \return Current status of the SWDIO/TMS DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN  (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_SWDIO_MASK) >> PROBE_PIN_SWDIO;
+	return (sio_hw->gpio_in & PROBE_PIN_SWDIO_MASK) >> PROBE_PIN_SWDIO;
 }
 
 /* PIN_SWDIO_TMS_SET and PIN_SWDIO_TMS_CLR are used by SWJ_Sequence */
@@ -344,31 +336,31 @@ __STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN  (void) {
 Set the SWDIO/TMS DAP hardware I/O pin to high level.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_TMS_SET (void) {
-  sio_hw->gpio_set = PROBE_PIN_SWDIO_MASK;
+	sio_hw->gpio_set = PROBE_PIN_SWDIO_MASK;
 }
 
 /** SWDIO/TMS I/O pin: Set Output to Low.
 Set the SWDIO/TMS DAP hardware I/O pin to low level.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_TMS_CLR (void) {
-  sio_hw->gpio_clr = PROBE_PIN_SWDIO_MASK;
+	sio_hw->gpio_clr = PROBE_PIN_SWDIO_MASK;
 }
 
 /** SWDIO I/O pin: Get Input (used in SWD mode only).
 \return Current status of the SWDIO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN      (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_SWDIO_MASK) ? 1U : 0U;
+	return (sio_hw->gpio_in & PROBE_PIN_SWDIO_MASK) ? 1U : 0U;
 }
 
 /** SWDIO I/O pin: Set Output (used in SWD mode only).
 \param bit Output value for the SWDIO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT     (uint32_t bit) {
-  if (bit & 1)
-    sio_hw->gpio_set = PROBE_PIN_SWDIO_MASK;
-  else
-    sio_hw->gpio_clr = PROBE_PIN_SWDIO_MASK;
+	if (bit & 1)
+		sio_hw->gpio_set = PROBE_PIN_SWDIO_MASK;
+	else
+		sio_hw->gpio_clr = PROBE_PIN_SWDIO_MASK;
 }
 
 /** SWDIO I/O pin: Switch to Output mode (used in SWD mode only).
@@ -376,7 +368,7 @@ Configure the SWDIO DAP hardware I/O pin to output mode. This function is
 called prior \ref PIN_SWDIO_OUT function calls.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_ENABLE  (void) {
-  sio_hw->gpio_oe_set = PROBE_PIN_SWDIO_MASK;
+	sio_hw->gpio_oe_set = PROBE_PIN_SWDIO_MASK;
 }
 
 /** SWDIO I/O pin: Switch to Input mode (used in SWD mode only).
@@ -384,7 +376,7 @@ Configure the SWDIO DAP hardware I/O pin to input mode. This function is
 called prior \ref PIN_SWDIO_IN function calls.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_DISABLE (void) {
-  sio_hw->gpio_oe_clr = PROBE_PIN_SWDIO_MASK;
+	sio_hw->gpio_oe_clr = PROBE_PIN_SWDIO_MASK;
 }
 
 
@@ -394,17 +386,17 @@ __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_DISABLE (void) {
 \return Current status of the TDI DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_TDI_IN  (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_TDI_MASK) >> PROBE_PIN_JTAG_TDI;
+	return (sio_hw->gpio_in & PROBE_PIN_TDI_MASK) >> PROBE_PIN_JTAG_TDI;
 }
 
 /** TDI I/O pin: Set Output.
 \param bit Output value for the TDI DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE void     PIN_TDI_OUT (uint32_t bit) {
-  if (bit & 1)
-    sio_hw->gpio_set = PROBE_PIN_TDI_MASK;
-  else
-    sio_hw->gpio_clr = PROBE_PIN_TDI_MASK;
+	if (bit & 1)
+		sio_hw->gpio_set = PROBE_PIN_TDI_MASK;
+	else
+		sio_hw->gpio_clr = PROBE_PIN_TDI_MASK;
 }
 
 
@@ -414,7 +406,7 @@ __STATIC_FORCEINLINE void     PIN_TDI_OUT (uint32_t bit) {
 \return Current status of the TDO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_TDO_IN  (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_TDO_MASK) >> PROBE_PIN_JTAG_TDO;
+	return (sio_hw->gpio_in & PROBE_PIN_TDO_MASK) >> PROBE_PIN_JTAG_TDO;
 }
 
 
@@ -424,7 +416,7 @@ __STATIC_FORCEINLINE uint32_t PIN_TDO_IN  (void) {
 \return Current status of the nTRST DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_nTRST_IN   (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_nTRST_MASK) >> PROBE_PIN_JTAG_nTRST;
+	return (sio_hw->gpio_in & PROBE_PIN_nTRST_MASK) >> PROBE_PIN_JTAG_nTRST;
 }
 
 /** nTRST I/O pin: Set Output.
@@ -433,10 +425,10 @@ __STATIC_FORCEINLINE uint32_t PIN_nTRST_IN   (void) {
            - 1: release JTAG TRST Test Reset.
 */
 __STATIC_FORCEINLINE void     PIN_nTRST_OUT  (uint32_t bit) {
-  if (bit & 1)
-    sio_hw->gpio_set = PROBE_PIN_nTRST_MASK;
-  else
-    sio_hw->gpio_clr = PROBE_PIN_nTRST_MASK;
+	if (bit & 1)
+		sio_hw->gpio_set = PROBE_PIN_nTRST_MASK;
+	else
+		sio_hw->gpio_clr = PROBE_PIN_nTRST_MASK;
 }
 
 // nRESET Pin I/O------------------------------------------
@@ -445,7 +437,7 @@ __STATIC_FORCEINLINE void     PIN_nTRST_OUT  (uint32_t bit) {
 \return Current status of the nRESET DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN  (void) {
-  return (sio_hw->gpio_in & PROBE_PIN_nRESET_MASK) >> PROBE_PIN_JTAG_nRESET;
+	return (sio_hw->gpio_in & PROBE_PIN_nRESET_MASK) >> PROBE_PIN_JTAG_nRESET;
 }
 
 /** nRESET I/O pin: Set Output.
@@ -454,10 +446,10 @@ __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN  (void) {
            - 1: release device hardware reset.
 */
 __STATIC_FORCEINLINE void     PIN_nRESET_OUT (uint32_t bit) {
-  if (bit & 1)
-    sio_hw->gpio_set = PROBE_PIN_nRESET_MASK;
-  else
-    sio_hw->gpio_clr = PROBE_PIN_nRESET_MASK;
+	if (bit & 1)
+		sio_hw->gpio_set = PROBE_PIN_nRESET_MASK;
+	else
+		sio_hw->gpio_clr = PROBE_PIN_nRESET_MASK;
 }
 
 ///@}
@@ -483,12 +475,12 @@ It is recommended to provide the following LEDs for status indication:
 */
 __STATIC_INLINE void LED_CONNECTED_OUT (uint32_t bit) {
 #if PICOPROBE_LED_CONNECTED
-  if (bit & 1)
-    sio_hw->gpio_set = PICOPROBE_LED_MASK;
-  else
-    sio_hw->gpio_clr = PICOPROBE_LED_MASK;
+	if (bit & 1)
+		sio_hw->gpio_set = PICOPROBE_LED_MASK;
+	else
+		sio_hw->gpio_clr = PICOPROBE_LED_MASK;
 #else
-  (void)bit;
+	(void)bit;
 #endif
 }
 
@@ -499,12 +491,12 @@ __STATIC_INLINE void LED_CONNECTED_OUT (uint32_t bit) {
 */
 __STATIC_INLINE void LED_RUNNING_OUT (uint32_t bit) {
 #if PICOPROBE_LED_RUNNING
-  if (bit & 1)
-    sio_hw->gpio_set = PICOPROBE_LED_MASK;
-  else
-    sio_hw->gpio_clr = PICOPROBE_LED_MASK;
+	if (bit & 1)
+		sio_hw->gpio_set = PICOPROBE_LED_MASK;
+	else
+		sio_hw->gpio_clr = PICOPROBE_LED_MASK;
 #else
-  (void)bit;
+	(void)bit;
 #endif
 }
 
@@ -512,7 +504,7 @@ __STATIC_INLINE void LED_RUNNING_OUT (uint32_t bit) {
 
 
 //**************************************************************************************************
-/** 
+/**
 \defgroup DAP_Config_Timestamp_gr CMSIS-DAP Timestamp
 \ingroup DAP_ConfigIO_gr
 @{
@@ -528,9 +520,9 @@ default, the DWT timer is used.  The frequency of this timer is configured with 
 */
 __STATIC_INLINE uint32_t TIMESTAMP_GET (void) {
 #if TIMESTAMP_CLOCK > 0
-  return (DWT->CYCCNT);
+	return (DWT->CYCCNT);
 #else
-  return 0;
+	return 0;
 #endif
 }
 
@@ -538,7 +530,7 @@ __STATIC_INLINE uint32_t TIMESTAMP_GET (void) {
 
 
 //**************************************************************************************************
-/** 
+/**
 \defgroup DAP_Config_Initialization_gr CMSIS-DAP Initialization
 \ingroup DAP_ConfigIO_gr
 @{
@@ -555,22 +547,22 @@ Status LEDs. In detail the operation of Hardware I/O and LED pins are enabled an
  - LED output pins are enabled and LEDs are turned off.
 */
 __STATIC_INLINE void DAP_SETUP (void) {
-  sio_hw->gpio_oe_set = PICOPROBE_LED_MASK;
-  sio_hw->gpio_clr = PICOPROBE_LED_MASK;
+	sio_hw->gpio_oe_set = PICOPROBE_LED_MASK;
+	sio_hw->gpio_clr = PICOPROBE_LED_MASK;
 
-  hw_write_masked(&padsbank0_hw->io[PICOPROBE_LED], 0, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-  iobank0_hw->io[PICOPROBE_LED].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+	hw_write_masked(&padsbank0_hw->io[PICOPROBE_LED], 0, PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+	iobank0_hw->io[PICOPROBE_LED].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 
-  bi_decl(bi_2pins_with_names(
-    PROBE_PIN_JTAG_TCK, "TCK / SWCLK",
-    PROBE_PIN_JTAG_TMS, "TMS / SWDIO"
-  ));
-  bi_decl(bi_4pins_with_names(
-    PROBE_PIN_JTAG_TDI   , "TDI",
-    PROBE_PIN_JTAG_TDO   , "TDO",
-    PROBE_PIN_JTAG_nTRST , "nTRST",
-    PROBE_PIN_JTAG_nRESET, "nRESET"
-  ));
+	bi_decl(bi_2pins_with_names(
+		PROBE_PIN_JTAG_TCK, "TCK / SWCLK",
+		PROBE_PIN_JTAG_TMS, "TMS / SWDIO"
+	));
+	bi_decl(bi_4pins_with_names(
+		PROBE_PIN_JTAG_TDI   , "TDI",
+		PROBE_PIN_JTAG_TDO   , "TDO",
+		PROBE_PIN_JTAG_nTRST , "nTRST",
+		PROBE_PIN_JTAG_nRESET, "nRESET"
+	));
 }
 
 /** Reset Target Device with custom specific I/O pin or command sequence.
@@ -581,10 +573,9 @@ when a device needs a time-critical unlock sequence that enables the debug port.
         1 = a device specific reset sequence is implemented.
 */
 __STATIC_INLINE uint8_t RESET_TARGET (void) {
-  return (0U);             // change to '1' when a device reset sequence is implemented
+	return (0U);             // change to '1' when a device reset sequence is implemented
 }
 
 ///@}
-
 
 #endif /* __DAP_CONFIG_H__ */

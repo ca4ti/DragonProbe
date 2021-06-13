@@ -6,6 +6,9 @@
 
 #include "protocfg.h"
 
+#define INFO_MANUFACTURER "BLAHAJ CTF"
+#define INFO_PRODUCT(board) "Dragnbus (" board ")"
+
 #ifdef DBOARD_HAS_UART
 void cdc_uart_init(void);
 void cdc_uart_task(void);

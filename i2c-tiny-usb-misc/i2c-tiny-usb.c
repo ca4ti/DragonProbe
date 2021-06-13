@@ -130,7 +130,7 @@ static u32 usb_func(struct i2c_adapter *adapter)
 	/* get functionality from adapter */
 	if (!pfunc || (i=usb_read(adapter, CMD_GET_FUNC, 0, 0, pfunc,
 			       sizeof(*pfunc))) != sizeof(*pfunc)) {
-		dev_err(&adapter->dev, "failure reading functionality: %i\n");
+		dev_err(&adapter->dev, "failure reading functionality: %i\n", i);
 		ret = 0;
 		goto out;
 	}
@@ -160,7 +160,7 @@ static const struct i2c_algorithm usb_algorithm = {
 static const struct usb_device_id i2c_tiny_usb_table[] = {
 	{ USB_DEVICE(0x0403, 0xc631) },   /* FTDI */
 	{ USB_DEVICE(0x1c40, 0x0534) },   /* EZPrototypes */
-	{ USB_DEVICE_INTERFACE_CLASS(0xcafe, 0x4017, 0/*255*/) },   /* TinyUSB DapperMime: we want the Vendor interface */
+	{ USB_DEVICE_INTERFACE_CLASS(0x2e8a, 0x6043, 0/*255*/) },   /* TinyUSB DapperMime: we want the Vendor interface */
 	{ }                               /* Terminating entry */
 };
 
@@ -171,7 +171,6 @@ struct i2c_tiny_usb {
 	struct usb_device *usb_dev; /* the usb device for this device */
 	struct usb_interface *interface; /* the interface for this device */
 	struct i2c_adapter adapter; /* i2c related things */
-	bool is_tusb_dmime;
 };
 
 static int usb_read(struct i2c_adapter *adapter, int cmd,
@@ -179,63 +178,19 @@ static int usb_read(struct i2c_adapter *adapter, int cmd,
 {
 	struct i2c_tiny_usb *dev = (struct i2c_tiny_usb *)adapter->algo_data;
 	uint8_t *dmadata;
-	int ret, actual_len = 0;
+	int ret;
 
-	if (dev->is_tusb_dmime) {
-//		actual_len = len;
-//		if (actual_len < 7) actual_len = 7; /* cmd(1), value(2), index(2), len(2) */
-//
-//		dmadata = (uint8_t*)kzalloc(actual_len, GFP_KERNEL);
-//		if (!dmadata)
-//			return -ENOMEM;
-//
-//		dmadata[0] = cmd;
-//		dmadata[1] = value & 0xff;
-//		dmadata[2] = (value >> 8) & 0xff;
-//		dmadata[3] = index & 0xff;
-//		dmadata[4] = (index >> 8) & 0xff;
-//		dmadata[5] = len & 0xff;
-//		dmadata[6] = (len >> 8) & 0xff;
-//
-//		/* send command */
-//		ret = usb_bulk_msg(dev->usb_dev, usb_sndbulkpipe(dev->usb_dev, 9),
-//				dmadata, 7, &actual_len, 2000);
-//
-//		dev_warn(&dev->usb_dev->dev, "read bulk msg retval=%i\n", ret);
-//
-//		/* command received correctly */
-//		if (ret == 7) {
-//			actual_len = 0;
-//			/* receive reply */
-//			ret = usb_bulk_msg(dev->usb_dev, usb_rcvbulkpipe(dev->usb_dev, 9),
-//					dmadata, len, &actual_len, 2000);
-//
-//			memcpy(data, dmadata, len);
-//		}
-		dmadata = kmalloc(len, GFP_KERNEL);
+	dmadata = kmalloc(len, GFP_KERNEL);
 
-		if (!dmadata)
-			return -ENOMEM;
+	if (!dmadata)
+		return -ENOMEM;
 
-		/* do control transfer */
-		ret = usb_control_msg(dev->usb_dev, usb_rcvctrlpipe(dev->usb_dev, 0),
-				cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE | USB_DIR_IN,
-				value, index, dmadata, len, 2000);
+	/* do control transfer */
+	ret = usb_control_msg(dev->usb_dev, usb_rcvctrlpipe(dev->usb_dev, 0),
+			cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE | USB_DIR_IN,
+			value, index, dmadata, len, 2000);
 
-		memcpy(data, dmadata, len);
-	} else {
-		dmadata = kmalloc(len, GFP_KERNEL);
-
-		if (!dmadata)
-			return -ENOMEM;
-
-		/* do control transfer */
-		ret = usb_control_msg(dev->usb_dev, usb_rcvctrlpipe(dev->usb_dev, 0),
-				cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE | USB_DIR_IN,
-				value, index, dmadata, len, 2000);
-
-		memcpy(data, dmadata, len);
-	}
+	memcpy(data, dmadata, len);
 
 	kfree(dmadata);
 	return ret;
@@ -246,45 +201,16 @@ static int usb_write(struct i2c_adapter *adapter, int cmd,
 {
 	struct i2c_tiny_usb *dev = (struct i2c_tiny_usb *)adapter->algo_data;
 	uint8_t *dmadata;
-	int ret, actual_len = 0;
+	int ret;
 
-	if (dev->is_tusb_dmime) {
-//		dmadata = (uint8_t*)kzalloc(len + 7, GFP_KERNEL); /* cmd(1), value(2), index(2), len(2) */
-//		if (!dmadata)
-//			return -ENOMEM;
-//
-//		dmadata[0] = cmd;
-//		dmadata[1] = value & 0xff;
-//		dmadata[2] = (value >> 8) & 0xff;
-//		dmadata[3] = index & 0xff;
-//		dmadata[4] = (index >> 8) & 0xff;
-//		dmadata[5] = len & 0xff;
-//		dmadata[6] = (len >> 8) & 0xff;
-//
-//		if (data && len)
-//			memcpy(&dmadata[7], data, len);
-//
-//		/* send command data */
-//		ret = usb_bulk_msg(dev->usb_dev, usb_sndbulkpipe(dev->usb_dev, 9),
-//				dmadata, len+7, &actual_len, 2000);
-		dmadata = (uint8_t*)kmemdup(data, len, GFP_KERNEL);
-		if (!dmadata)
-			return -ENOMEM;
+	dmadata = (uint8_t*)kmemdup(data, len, GFP_KERNEL);
+	if (!dmadata)
+		return -ENOMEM;
 
-		/* do control transfer */
-		ret = usb_control_msg(dev->usb_dev, usb_sndctrlpipe(dev->usb_dev, 0),
-				cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
-				value, index, dmadata, len, 2000);
-	} else {
-		dmadata = (uint8_t*)kmemdup(data, len, GFP_KERNEL);
-		if (!dmadata)
-			return -ENOMEM;
-
-		/* do control transfer */
-		ret = usb_control_msg(dev->usb_dev, usb_sndctrlpipe(dev->usb_dev, 0),
-				cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
-				value, index, dmadata, len, 2000);
-	}
+	/* do control transfer */
+	ret = usb_control_msg(dev->usb_dev, usb_sndctrlpipe(dev->usb_dev, 0),
+			cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
+			value, index, dmadata, len, 2000);
 
 	kfree(dmadata);
 	return ret;
@@ -314,10 +240,6 @@ static int i2c_tiny_usb_probe(struct usb_interface *interface,
 
 	dev->usb_dev = usb_get_dev(interface_to_usbdev(interface));
 	dev->interface = interface;
-
-	/* TinyUSB DapperMime needs different treatment because it has MANY endpoints */
-	dev->is_tusb_dmime = le16_to_cpu(dev->usb_dev->descriptor.idVendor ) == 0xcafe
-	                  && le16_to_cpu(dev->usb_dev->descriptor.idProduct) == 0x4017;
 
 	/* save our data pointer in this interface device */
 	usb_set_intfdata(interface, dev);

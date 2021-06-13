@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
@@ -45,34 +45,32 @@
 #include <pico/binary_info.h>
 #endif
 
-static cothread_t mainthread
-#ifdef DBOARD_HAS_UART
-  , uartthread
-#endif
-#ifdef DBOARD_HAS_SERPROG
-  , serprogthread
-#endif
-#ifdef DBOARD_HAS_I2C
-  //, ituthread
-#endif
-;
+static cothread_t mainthread;
 
 void thread_yield(void) {
-  co_switch(mainthread);
+	co_switch(mainthread);
 }
 
+#define DEFAULT_STACK_SIZE 1024
+
 #ifdef DBOARD_HAS_UART
+static cothread_t uartthread;
+static uint8_t uartstack[DEFAULT_STACK_SIZE];
+
 static void uart_thread_fn(void) {
-  cdc_uart_init();
-  thread_yield();
-  while (1) {
-    cdc_uart_task();
-    thread_yield();
-  }
+	cdc_uart_init();
+	thread_yield();
+	while (1) {
+		cdc_uart_task();
+		thread_yield();
+	}
 }
 #endif
 
 #ifdef DBOARD_HAS_SERPROG
+static cothread_t serprogthread;
+static uint8_t serprogstack[DEFAULT_STACK_SIZE];
+
 static void serprog_thread_fn(void) {
   cdc_serprog_init();
   thread_yield();
@@ -83,102 +81,53 @@ static void serprog_thread_fn(void) {
 }
 #endif
 
-#ifdef DBOARD_HAS_I2C
-/*static void itu_thread_fn(void) {
-	itu_init();
-	thread_yield();
-	while (1) {
-		itu_task();
-		thread_yield();
-	}
-}*/
-#endif
-
-#ifdef DBOARD_HAS_UART
-static uint8_t uartstack[4096];
-#endif
-#ifdef DBOARD_HAS_SERPROG
-static uint8_t serprogstack[4096];
-#endif
-#ifdef DBOARD_HAS_I2C
-static uint8_t itustack[4096];
-#endif
-
+// FIXME
 extern uint32_t co_active_buffer[64];
 uint32_t co_active_buffer[64];
 extern cothread_t co_active_handle;
 cothread_t co_active_handle;
 
-extern char msgbuf[256];
-extern volatile bool msgflag;
-static void domsg(void) {
-	if (msgflag) {
-		printf("%s", msgbuf);
-		//msgflag = false;
-	}
-}
+int main(void) {
+	mainthread = co_active();
 
-int main(void)
-{
-  mainthread = co_active();
-
-  // TODO: split this out in a bsp-specific file
+	// TODO: split this out in a bsp-specific file
 #if defined(PICO_BOARD) && !defined(USE_USBCDC_FOR_STDIO)
-  // use hardcoded values from TinyUSB board.h
-  bi_decl(bi_2pins_with_func(0, 1, GPIO_FUNC_UART));
+	// use hardcoded values from TinyUSB board.h
+	bi_decl(bi_2pins_with_func(0, 1, GPIO_FUNC_UART));
 #endif
-  board_init();
+	board_init();
 
 #ifdef DBOARD_HAS_UART
-  uartthread = co_derive(uartstack, sizeof uartstack, uart_thread_fn);
-  co_switch(uartthread); // will call cdc_uart_init() on correct thread
+	uartthread = co_derive(uartstack, sizeof uartstack, uart_thread_fn);
+	co_switch(uartthread); // will call cdc_uart_init() on correct thread
 #endif
 #ifdef DBOARD_HAS_SERPROG
-  serprogthread = co_derive(serprogstack, sizeof serprogstack, serprog_thread_fn);
-  co_switch(serprogthread); // will call cdc_serprog_init() on correct thread
-#endif
-#ifdef DBOARD_HAS_I2C
-  //ituthread = co_derive(itustack, sizeof itustack, itu_thread_fn);
-  //co_switch(ituthread);
+	serprogthread = co_derive(serprogstack, sizeof serprogstack, serprog_thread_fn);
+	co_switch(serprogthread); // will call cdc_serprog_init() on correct thread
 #endif
 #ifdef DBOARD_HAS_CMSISDAP
-  DAP_Setup();
+	DAP_Setup();
 #endif
 
-  tusb_init();
+	tusb_init();
 
 #ifdef USE_USBCDC_FOR_STDIO
-  stdio_usb_init();
+	stdio_usb_init();
 #endif
 
-  while (1)
-  {
-    //printf("hi\n");
-
-    domsg();
-    tud_task(); // tinyusb device task
+	while (1) {
+		tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_UART
-    //cdc_uart_task();
-    co_switch(uartthread);
+		co_switch(uartthread);
 #endif
 
-    domsg();
-    tud_task(); // tinyusb device task
+		tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_SERPROG
-    //cdc_serprog_task();
-    co_switch(serprogthread);
+		co_switch(serprogthread);
 #endif
+	}
 
-    //domsg();
-    //tud_task();
-#ifdef DBOARD_HAS_I2C
-    //co_switch(ituthread);
-#endif
-
-    //printf("hi2\n");
-  }
-
-  return 0;
+	return 0;
 }
 
 //--------------------------------------------------------------------+
@@ -188,31 +137,32 @@ int main(void)
 // Invoked when received GET_REPORT control request
 // Application must fill buffer report's content and return its length.
 // Return zero will cause the stack to STALL request
-uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
-{
-  // TODO not Implemented
-  (void) instance;
-  (void) report_id;
-  (void) report_type;
-  (void) buffer;
-  (void) reqlen;
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id,
+		hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+	// TODO not Implemented
+	(void) instance;
+	(void) report_id;
+	(void) report_type;
+	(void) buffer;
+	(void) reqlen;
 
-  return 0;
+	return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* RxDataBuffer, uint16_t bufsize)
-{
-  static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
-  uint32_t response_size = TU_MIN(CFG_TUD_HID_EP_BUFSIZE, bufsize);
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id,
+		hid_report_type_t report_type, uint8_t const* RxDataBuffer, uint16_t bufsize) {
+	static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
+	uint32_t response_size = TU_MIN(CFG_TUD_HID_EP_BUFSIZE, bufsize);
 
-  // This doesn't use multiple report and report ID
-  (void) instance;
-  (void) report_id;
-  (void) report_type;
+	// This doesn't use multiple report and report ID
+	(void) instance;
+	(void) report_id;
+	(void) report_type;
 
 #ifdef DBOARD_HAS_CMSISDAP
-  DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
+	DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
 #endif
 
-  tud_hid_report(0, TxDataBuffer, response_size);
+	tud_hid_report(0, TxDataBuffer, response_size);
 }
+

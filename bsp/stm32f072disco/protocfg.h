@@ -7,5 +7,11 @@
 /*#define DBOARD_HAS_SERPROG*/
 /*#define DBOARD_HAS_TINYI2C*/
 
+#define USB_VID 0xcafe /* TinyUSB */
+/*#define USB_VID 0x1209*/ /* Generic */
+/*#define USB_VID 0x1d50*/ /* OpenMoko */
+
+#define INFO_BOARDNAME "STM32F072 Disco"
+
 #endif
 

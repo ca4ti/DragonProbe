@@ -28,7 +28,7 @@
 #define BOARD_H_MOD
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 #ifdef PICO_DEFAULT_LED_PIN
@@ -47,7 +47,7 @@
 #endif
 
 #ifdef __cplusplus
- }
+}
 #endif
 
 #endif /* BOARD_H_ */

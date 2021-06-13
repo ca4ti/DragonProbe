@@ -51,6 +51,9 @@ This information includes:
 
 #include <stm32f0xx_hal.h>
 
+#include "protos.h"
+#include "unique.h"
+
 /// Processor Clock of the Cortex-M MCU used in the Debug Unit.
 /// This value is used to calculate the SWD/JTAG clock speed.
 #define CPU_CLOCK               48000000U       ///< Specifies the CPU Clock in Hz.
@@ -134,8 +137,9 @@ This information includes:
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
-  (void)str;
-  return (0U);
+	const static char vnd[] = INFO_MANUFACTURER;
+	for (size_t i = 0; i < sizeof(vnd); ++i) str[i] = vnd[i];
+	return sizeof(vnd)-1;
 }
 
 /** Get Product ID string.
@@ -143,8 +147,9 @@ __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
-  (void)str;
-  return (0U);
+	const static char prd[] = INFO_PRODUCT(INFO_BOARDNAME);
+	for (size_t i = 0; i < sizeof(prd); ++i) str[i] = prd[i];
+	return sizeof(prd)-1;
 }
 
 /** Get Serial Number string.
@@ -152,8 +157,7 @@ __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetSerNumString (char *str) {
-  (void)str;
-  return (0U);
+	return get_unique_id_u8(str);
 }
 
 ///@}
@@ -226,21 +230,21 @@ of the same I/O port. The following SWDIO I/O Pin functions are provided:
 Configures the DAP Hardware I/O pins for JTAG mode:
  - TCK, TMS, TDI, nTRST, nRESET to output mode and set to high level.
  - TDO to input mode.
-*/ 
+*/
 __STATIC_INLINE void PORT_JTAG_SETUP (void) {
-  ;
+	;
 }
  
 /** Setup SWD I/O pins: SWCLK, SWDIO, and nRESET.
 Configures the DAP Hardware I/O pins for Serial Wire Debug (SWD) mode:
  - SWCLK, SWDIO, nRESET to output mode and set to default high level.
  - TDI, nTRST to HighZ mode (pins are unused in SWD mode).
-*/ 
+*/
 __STATIC_INLINE void PORT_SWD_SETUP (void) {
-  CLK_ENABLE;
-  DATA_ENABLE;
-  SWDIO_INIT;
-  CLK_HIGH; DATA_HIGH;
+	CLK_ENABLE;
+	DATA_ENABLE;
+	SWDIO_INIT;
+	CLK_HIGH; DATA_HIGH;
 }
 
 /** Disable JTAG/SWD I/O Pins.
@@ -248,9 +252,9 @@ Disables the DAP Hardware I/O pins which configures:
  - TCK/SWCLK, TMS/SWDIO, TDI, TDO, nTRST, nRESET to High-Z mode.
 */
 __STATIC_INLINE void PORT_OFF (void) {
-  CLK_HIZ;
-  DATA_HIZ;
-  RESET_HIZ;
+	CLK_HIZ;
+	DATA_HIZ;
+	RESET_HIZ;
 }
 
 // SWCLK/TCK I/O pin -------------------------------------
@@ -259,21 +263,21 @@ __STATIC_INLINE void PORT_OFF (void) {
 \return Current status of the SWCLK/TCK DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN  (void) {
-  return (CLK_READ) ? 1 : 0;
+	return (CLK_READ) ? 1 : 0;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to High.
 Set the SWCLK/TCK DAP hardware I/O pin to high level.
 */
 __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_SET (void) {
-  CLK_HIGH;
+	CLK_HIGH;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to Low.
 Set the SWCLK/TCK DAP hardware I/O pin to low level.
 */
 __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_CLR (void) {
-  CLK_LOW;
+	CLK_LOW;
 }
 
 
@@ -283,35 +287,35 @@ __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_CLR (void) {
 \return Current status of the SWDIO/TMS DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN  (void) {
-  return (DATA_READ) ? 1 : 0;
+	return (DATA_READ) ? 1 : 0;
 }
 
 /** SWDIO/TMS I/O pin: Set Output to High.
 Set the SWDIO/TMS DAP hardware I/O pin to high level.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_TMS_SET (void) {
-  DATA_HIGH;
+	DATA_HIGH;
 }
 
 /** SWDIO/TMS I/O pin: Set Output to Low.
 Set the SWDIO/TMS DAP hardware I/O pin to low level.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_TMS_CLR (void) {
-  DATA_LOW;
+	DATA_LOW;
 }
 
 /** SWDIO I/O pin: Get Input (used in SWD mode only).
 \return Current status of the SWDIO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN      (void) {
-  return (DATA_READ) ? 1 : 0;
+	return (DATA_READ) ? 1 : 0;
 }
 
 /** SWDIO I/O pin: Set Output (used in SWD mode only).
 \param bit Output value for the SWDIO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT     (uint32_t bit) {
-  if (bit & 1) { DATA_HIGH; } else { DATA_LOW; }
+	if (bit & 1) { DATA_HIGH; } else { DATA_LOW; }
 }
 
 /** SWDIO I/O pin: Switch to Output mode (used in SWD mode only).
@@ -319,7 +323,7 @@ Configure the SWDIO DAP hardware I/O pin to output mode. This function is
 called prior \ref PIN_SWDIO_OUT function calls.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_ENABLE  (void) {
-  DATA_ENABLE;
+	DATA_ENABLE;
 }
 
 /** SWDIO I/O pin: Switch to Input mode (used in SWD mode only).
@@ -327,7 +331,7 @@ Configure the SWDIO DAP hardware I/O pin to input mode. This function is
 called prior \ref PIN_SWDIO_IN function calls.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_DISABLE (void) {
-  DATA_HIZ;
+	DATA_HIZ;
 }
 
 
@@ -337,14 +341,14 @@ __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_DISABLE (void) {
 \return Current status of the TDI DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_TDI_IN  (void) {
-  return (0U);
+	return (0U);
 }
 
 /** TDI I/O pin: Set Output.
 \param bit Output value for the TDI DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE void     PIN_TDI_OUT (uint32_t bit) {
-  ;
+	;
 }
 
 
@@ -354,7 +358,7 @@ __STATIC_FORCEINLINE void     PIN_TDI_OUT (uint32_t bit) {
 \return Current status of the TDO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_TDO_IN  (void) {
-  return (0U);
+	return (0U);
 }
 
 
@@ -364,7 +368,7 @@ __STATIC_FORCEINLINE uint32_t PIN_TDO_IN  (void) {
 \return Current status of the nTRST DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_nTRST_IN   (void) {
-  return (0U);
+	return (0U);
 }
 
 /** nTRST I/O pin: Set Output.
@@ -373,7 +377,7 @@ __STATIC_FORCEINLINE uint32_t PIN_nTRST_IN   (void) {
            - 1: release JTAG TRST Test Reset.
 */
 __STATIC_FORCEINLINE void     PIN_nTRST_OUT  (uint32_t bit) {
-  (void)bit;
+	(void)bit;
 }
 
 // nRESET Pin I/O------------------------------------------
@@ -382,7 +386,7 @@ __STATIC_FORCEINLINE void     PIN_nTRST_OUT  (uint32_t bit) {
 \return Current status of the nRESET DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN  (void) {
-  return (RESET_READ) ? 1 : 0;
+	return (RESET_READ) ? 1 : 0;
 }
 
 /** nRESET I/O pin: Set Output.
@@ -391,7 +395,7 @@ __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN  (void) {
            - 1: release device hardware reset.
 */
 __STATIC_FORCEINLINE void     PIN_nRESET_OUT (uint32_t bit) {
-  if (bit & 1) { RESET_HIGH; } else { RESET_LOW; }
+	if (bit & 1) { RESET_HIGH; } else { RESET_LOW; }
 }
 
 ///@}
@@ -416,7 +420,7 @@ It is recommended to provide the following LEDs for status indication:
            - 0: Connect LED OFF: debugger is not connected to CMSIS-DAP Debug Unit.
 */
 __STATIC_INLINE void LED_CONNECTED_OUT (uint32_t bit) {
-  (void)bit;
+	(void)bit;
 }
 
 /** Debug Unit: Set status Target Running LED.
@@ -425,7 +429,7 @@ __STATIC_INLINE void LED_CONNECTED_OUT (uint32_t bit) {
            - 0: Target Running LED OFF: program execution in target stopped.
 */
 __STATIC_INLINE void LED_RUNNING_OUT (uint32_t bit) {
-  (void)bit;
+	(void)bit;
 }
 
 ///@}
@@ -448,9 +452,9 @@ default, the DWT timer is used.  The frequency of this timer is configured with 
 */
 __STATIC_INLINE uint32_t TIMESTAMP_GET (void) {
 #if TIMESTAMP_CLOCK > 0
-  return (DWT->CYCCNT);
+	return (DWT->CYCCNT);
 #else
-  return 0;
+	return 0;
 #endif
 }
 
@@ -458,7 +462,7 @@ __STATIC_INLINE uint32_t TIMESTAMP_GET (void) {
 
 
 //**************************************************************************************************
-/** 
+/**
 \defgroup DAP_Config_Initialization_gr CMSIS-DAP Initialization
 \ingroup DAP_ConfigIO_gr
 @{
@@ -475,7 +479,7 @@ Status LEDs. In detail the operation of Hardware I/O and LED pins are enabled an
  - LED output pins are enabled and LEDs are turned off.
 */
 __STATIC_INLINE void DAP_SETUP (void) {
-  ;
+	;
 }
 
 /** Reset Target Device with custom specific I/O pin or command sequence.
@@ -486,7 +490,7 @@ when a device needs a time-critical unlock sequence that enables the debug port.
         1 = a device specific reset sequence is implemented.
 */
 __STATIC_INLINE uint8_t RESET_TARGET (void) {
-  return (0U);             // change to '1' when a device reset sequence is implemented
+	return (0U);             // change to '1' when a device reset sequence is implemented
 }
 
 ///@}

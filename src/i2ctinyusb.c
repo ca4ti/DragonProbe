@@ -81,14 +81,18 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 			case 4: case 5: case 6: case 7: // I2C_IO
 				{
 					if (req->wValue & 1) { // read: we need to return shit
-						printf("read!%c%c%c%c%c\n", ' ', ' ', ' ', ' ', ' ');
+						//printf("read!%c%c%c%c%c\n", ' ', ' ', ' ', ' ', ' ');
 						// so, we'll return some garbage
 						uint8_t buf[req->wLength];
 						return tud_control_xfer(rhport, req, buf, req->wLength);
 					} else {
 						//printf("write!%c%c%c%c%c\n", ' ', ' ', ' ', ' ', ' ');
 						// ????
-						return tud_control_status(rhport, req);
+						uint8_t buf[req->wLength];
+						bool rv = tud_control_xfer(rhport, req, buf, req->wLength);
+						printf("rv %c len %04x buf %02x %02x %02x ...\n",
+								(rv?'t':'f'), req->wLength, buf[0], buf[1], buf[2]);
+						return rv;
 					}
 				}
 		}

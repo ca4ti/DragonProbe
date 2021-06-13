@@ -7,5 +7,7 @@
 /*#define DBOARD_HAS_SERPROG*/
 /*#define DBOARD_HAS_TINYI2C*/
 
+#define INFO_BOARDNAME "unknown"
+
 #endif
 

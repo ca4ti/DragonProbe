@@ -27,7 +27,7 @@
 #define _TUSB_CONFIG_H__
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 //--------------------------------------------------------------------
@@ -115,8 +115,6 @@
 // CDC FIFO size of TX and RX
 #define CFG_TUD_CDC_RX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
 #define CFG_TUD_CDC_TX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
-#define CFG_TUD_VENDOR_RX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
-#define CFG_TUD_VENDOR_TX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
 
 #ifdef __cplusplus
  }
