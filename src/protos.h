@@ -19,9 +19,14 @@ void cdc_serprog_task(void);
 #endif
 
 #ifdef USE_USBCDC_FOR_STDIO
-//#ifndef PICO_BOARD
+//#ifdef PICO_BOARD
 bool stdio_usb_init(void);
 //#endif
+#endif
+
+#ifdef DBOARD_HAS_I2C
+void itu_init(void);
+void itu_task(void);
 #endif
 
 #endif

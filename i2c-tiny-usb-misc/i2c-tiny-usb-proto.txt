@@ -1,0 +1,156 @@
+all multibyte words are little-endian
+
+--
+
+USB interface is a vendor interface, with an in and an out endpoint
+
+--
+
+module:
+	cmd			value	index	len
+kernel:
+	request	reqtype(fix)	value	index	dmalen
+i2c_msg:
+	cmd?	type?		flags	index	len
+CMD_SET_DELAY:
+				delayv	0	0
+CMD_GET_STATUS: data=[status retval]
+				0	0	1
+
+i2c_msg:
+	type: byte
+	cmd: byte
+	flags: ushort
+	addr: ushort
+	len: ushort
+	data: byte[len]
+
+commands:
+	CMD_ECHO = 0
+	CMD_GET_FUNC = 1
+	CMD_SET_DELAY = 2
+	CMD_GET_STATUS = 3
+
+	CMD_I2C_IO = 4
+	CMD_I2C_IO_W_BEGIN = 5 = CMD_I2C_IO | CMD_I2C_IO_BEGIN
+	CMD_I2C_IO_W_END = 6 = CMD_I2C_IO | CMD_I2C_IO_END
+	CMD_I2C_IO_W_BEGINEND = 7 = CMD_I2C_IO | CMD_I2C_IO_BEGIN | CMD_I2C_IO_END
+
+	CMD_I2C_IO_BEGIN = 1<<0 // the beginning of the I2C transaction: do a start cond
+	CMD_I2C_IO_END = 1<<1 // the end of the I2C transaction: do an end cond
+	// if none of the above two: repeated start condition anyway?
+
+statuses:
+	STATUS_IDLE = 0
+	STATUS_ADDRESS_ACK = 1
+	STATUS_DDRESS_NAK = 2
+
+flags: (literally just from the kernel)
+	I2C_M_RD		0x0001	/* guaranteed to be 0x0001! */
+	I2C_M_TEN		0x0010	/* use only if I2C_FUNC_10BIT_ADDR */
+	I2C_M_DMA_SAFE		0x0200	/* use only in kernel space */
+	I2C_M_RECV_LEN		0x0400	/* use only if I2C_FUNC_SMBUS_READ_BLOCK_DATA */
+	I2C_M_NO_RD_ACK		0x0800	/* use only if I2C_FUNC_PROTOCOL_MANGLING */
+	I2C_M_IGNORE_NAK	0x1000	/* use only if I2C_FUNC_PROTOCOL_MANGLING */
+	I2C_M_REV_DIR_ADDR	0x2000	/* use only if I2C_FUNC_PROTOCOL_MANGLING */
+	I2C_M_NOSTART		0x4000	/* use only if I2C_FUNC_NOSTART */
+	I2C_M_STOP		0x8000	/* use only if I2C_FUNC_PROTOCOL_MANGLING */
+
+funcs:
+*	I2C_FUNC_I2C			0x00000001
+	I2C_FUNC_10BIT_ADDR		0x00000002 /* required for I2C_M_TEN */
+	I2C_FUNC_PROTOCOL_MANGLING	0x00000004 /* required for I2C_M_IGNORE_NAK etc. */
+	I2C_FUNC_SMBUS_PEC		0x00000008
+	I2C_FUNC_NOSTART		0x00000010 /* required for I2C_M_NOSTART */
+	I2C_FUNC_SLAVE			0x00000020
+	I2C_FUNC_SMBUS_BLOCK_PROC_CALL	0x00008000 /* SMBus 2.0 or later */
+*	I2C_FUNC_SMBUS_QUICK		0x00010000
+*	I2C_FUNC_SMBUS_READ_BYTE	0x00020000
+*	I2C_FUNC_SMBUS_WRITE_BYTE	0x00040000
+*	I2C_FUNC_SMBUS_READ_BYTE_DATA	0x00080000
+*	I2C_FUNC_SMBUS_WRITE_BYTE_DATA	0x00100000
+*	I2C_FUNC_SMBUS_READ_WORD_DATA	0x00200000
+*	I2C_FUNC_SMBUS_WRITE_WORD_DATA	0x00400000
+*	I2C_FUNC_SMBUS_PROC_CALL	0x00800000
+	I2C_FUNC_SMBUS_READ_BLOCK_DATA	0x01000000 /* required for I2C_M_RECV_LEN */
+*	I2C_FUNC_SMBUS_WRITE_BLOCK_DATA 0x02000000
+*	I2C_FUNC_SMBUS_READ_I2C_BLOCK	0x04000000 /* I2C-like block xfer  */
+*	I2C_FUNC_SMBUS_WRITE_I2C_BLOCK	0x08000000 /* w/ 1-byte reg. addr. */
+	I2C_FUNC_SMBUS_READ_I2C_BLOCK_2	0x10000000 /* I2C-like block xfer */
+	I2C_FUNC_SMBUS_WRITE_I2C_BLOCK_2	0x20000000 /* w/ 2-byte reg. addr. */
+*	I2C_FUNC_SMBUS_READ_BLOCK_DATA_PEC	0x40000000 /* SMBus 2.0 or later */
+*	I2C_FUNC_SMBUS_WRITE_BLOCK_DATA_PEC	0x80000000 /* SMBus 2.0 or later */
+
+*	I2C_FUNC_SMBUS_BYTE		(I2C_FUNC_SMBUS_READ_BYTE | I2C_FUNC_SMBUS_WRITE_BYTE)
+*	I2C_FUNC_SMBUS_BYTE_DATA	(I2C_FUNC_SMBUS_READ_BYTE_DATA | I2C_FUNC_SMBUS_WRITE_BYTE_DATA)
+*	I2C_FUNC_SMBUS_WORD_DATA	(I2C_FUNC_SMBUS_READ_WORD_DATA | I2C_FUNC_SMBUS_WRITE_WORD_DATA)
+	I2C_FUNC_SMBUS_BLOCK_DATA	(I2C_FUNC_SMBUS_READ_BLOCK_DATA | I2C_FUNC_SMBUS_WRITE_BLOCK_DATA)
+*	I2C_FUNC_SMBUS_I2C_BLOCK	(I2C_FUNC_SMBUS_READ_I2C_BLOCK | I2C_FUNC_SMBUS_WRITE_I2C_BLOCK)
+
+*	I2C_FUNC_SMBUS_EMUL		(I2C_FUNC_SMBUS_QUICK | I2C_FUNC_SMBUS_BYTE | \
+					 I2C_FUNC_SMBUS_BYTE_DATA | I2C_FUNC_SMBUS_WORD_DATA | \
+					 I2C_FUNC_SMBUS_PROC_CALL | I2C_FUNC_SMBUS_WRITE_BLOCK_DATA | \
+					 I2C_FUNC_SMBUS_I2C_BLOCK | I2C_FUNC_SMBUS_PEC)
+
+	/* if I2C_M_RECV_LEN is also supported */
+	I2C_FUNC_SMBUS_EMUL_ALL		(I2C_FUNC_SMBUS_EMUL | I2C_FUNC_SMBUS_READ_BLOCK_DATA | \
+					 I2C_FUNC_SMBUS_BLOCK_PROC_CALL)
+
+USB vendor setup:
+	state machine: 3 8-bit registers: status, cmd, len
+	status is STATUS_ADDRESS_IDLE at reset
+	cmd, len are reset to 0
+
+	ECHO command:
+		send back flags bytes
+
+	GET_FUNC command:
+		send back supported functions: 4-byte little-endian of the above flags
+
+	SET_DELAY command:
+		sets clock period, in flags, unit is half a microsecond
+
+	GET_STATUS command:
+		return the status register (1 byte)
+
+
+	I2C_IO command: I2C xfers:
+		actual CMD_I2C_IO stuff:
+			do start cond
+			send (device addr << 1) | (I2C_M_RD?1:0) (aka set device address and read/write mode)
+			if ack bit received from previous step
+				status = STATUS_ADDRESS_ACK
+				save cmd and len in state regs
+				if CMD_I2C_IO_END set in cmd AND len is 0:
+					do end cond
+			else
+				status = STATUS_ADDRESS_NAK
+				do end cond
+
+USB vendor read:
+	if status == STATUS_ADDRESS_ACK:
+		if number of bytes in this block larger than bytes expected:
+			clamp this length, only use the number of expected bytes in the block
+
+		read bytes, decrease len reg by number of bytes read
+			(if last byte read, set NAK in I2C xfer, else ACK)
+		if CMD_I2C_IO_END set in cmd reg AND len reg is 0:
+			do end cond
+		return bytes read over USB
+	else:
+		do nothing, return zeros
+
+USB vendor write:
+	if status == STATUS_ADDRESS_ACK:
+		if number of bytes in this block larger than bytes expected:
+			clamp this length, only use the number of expected bytes in the block
+
+		write bytes, decrease len reg by number of bytes written
+			(if no ack bit returned, maybe set an error state??)
+		if CMD_I2C_IO_END set in cmd reg AND len reg is 0:
+			do end cond
+
+		echo back bytes written
+	else:
+		do nothing, return zeros
+

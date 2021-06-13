@@ -28,6 +28,7 @@
 
 #include "protocfg.h"
 
+// TODO: actually do this properly
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
  *
@@ -103,31 +104,28 @@ uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance)
 
 enum
 {
-#ifdef DBOARD_HAS_CMSISDAP
   ITF_NUM_HID_CMSISDAP,
-#endif
-
-#ifdef DBOARD_HAS_UART
   ITF_NUM_CDC_UART_COM,
   ITF_NUM_CDC_UART_DATA,
-#endif
-
-#ifdef DBOARD_HAS_SERPROG
   ITF_NUM_CDC_SERPROG_COM,
   ITF_NUM_CDC_SERPROG_DATA,
-#endif
-
-#ifdef USE_USBCDC_FOR_STDIO
   ITF_NUM_CDC_STDIO_COM,
   ITF_NUM_CDC_STDIO_DATA,
-#endif
+  ITF_NUM_VND_I2CTINYUSB,
 
   ITF_NUM_TOTAL
 };
 
-/*#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_INOUT_DESC_LEN)*/
+#define TUD_I2CTINYUSB_LEN (9)
+#define TUD_I2CTINYUSB_DESCRIPTOR(_itfnum, _stridx) \
+    9, TUSB_DESC_INTERFACE, _itfnum, 0, 0, 0, 0, 0, _stridx \
 
-static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
+
+/*enum {*/ static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
+#ifdef DBOARD_HAS_I2C
+    + TUD_I2CTINYUSB_LEN
+    //+ TUD_VENDOR_DESC_LEN
+#endif
 #ifdef DBOARD_HAS_UART
     + TUD_CDC_DESC_LEN
 #endif
@@ -140,7 +138,7 @@ static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
 #ifdef USE_USBCDC_FOR_STDIO
     + TUD_CDC_DESC_LEN
 #endif
-    ;
+/*}*/;
 
 #define EPNUM_CDC_UART_OUT      0x02 // 2
 #define EPNUM_CDC_UART_IN       0x82 // 83
@@ -152,21 +150,30 @@ static const int CONFIG_TOTAL_LEN = TUD_CONFIG_DESC_LEN
 #define EPNUM_CDC_STDIO_OUT     0x07
 #define EPNUM_CDC_STDIO_IN      0x87
 #define EPNUM_CDC_STDIO_NOTIF   0x88
+#define EPNUM_VND_I2C_OUT       0x09
+#define EPNUM_VND_I2C_IN        0x89
 
 // NOTE: if you modify this table, don't forget to keep tusb_config.h up to date as well!
+// TODO: maybe add some strings to all these interfaces
 uint8_t const desc_configuration[] =
 {
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
 
-#ifdef DBOARD_HAS_UART
-  // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_UART_COM, 0, EPNUM_CDC_UART_NOTIF, 64, EPNUM_CDC_UART_OUT, EPNUM_CDC_UART_IN, 64),
-#endif
-
 #ifdef DBOARD_HAS_CMSISDAP
   // Interface number, string index, protocol, report descriptor len, EP In & Out address, size & polling interval
   TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID_CMSISDAP, 0, 0/*HID_PROTOCOL_NONE*/, sizeof(desc_hid_report), EPNUM_HID_CMSISDAP, 0x80 | (EPNUM_HID_CMSISDAP+0), CFG_TUD_HID_EP_BUFSIZE, 1),
+#endif
+
+#ifdef DBOARD_HAS_I2C
+  // ???
+  TUD_I2CTINYUSB_DESCRIPTOR(ITF_NUM_VND_I2CTINYUSB, 0),
+  //TUD_VENDOR_DESCRIPTOR(ITF_NUM_VND_I2CTINYUSB, 0, EPNUM_VND_I2C_OUT, EPNUM_VND_I2C_IN, 64),
+#endif
+
+#ifdef DBOARD_HAS_UART
+  // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_UART_COM, 0, EPNUM_CDC_UART_NOTIF, 64, EPNUM_CDC_UART_OUT, EPNUM_CDC_UART_IN, 64),
 #endif
 
 #ifdef DBOARD_HAS_SERPROG

@@ -157,6 +157,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
         separate mode that temporarily disables all other IO protocols
 - [x] UART with CTS/RTS flow control
   - [x] Needs configurable stuff as well, as some UART interfaces won't use this.
+  - [ ] Second UART port for when stdio UART is disabled?
 - [x] Debug interface to send printf stuff directly to USB, instead of having
 -     to use the UART interface as a loopback thing.
 - [ ] I2C support by emulating the I2C Tiny USB
@@ -175,16 +176,16 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://github.com/derekmulcahy/xvcpi
   - OpenOCD as XVC client??
 - [ ] Maybe use the ADCs for something?
+- [ ] SD/MMC/SDIO (will be a pain)
+- [ ] SUMP logic analyzer?????
+  - see also [this](https://github.com/perexg/picoprobe-sump)
 - [ ] AVR programming (USBavr emulation?)
   - AVR ISP is hardly used anymore
   - TPI/UPDI requires 5V levels, Pico doesn't do that :/
   - debugWIRE????
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
-- Maybe steal other features from the Bus Pirate or Glasgow or so
-  - 1-wire? Never seen this one in the wild
-  - MIDI? Feels mostly gimmicky...
-  - PS/2? Hmmmm idk
-  - HD44780 LCD? See MIDI
-  - CAN? If I'd first be able to find a CAN device to test it with, sure
+- Maybe steal other features from the Bus Pirate, [HydraBus](https://github.com/hydrabus/hydrafw) or Glasgow or so
+  - 1-wire and 3-wire? Never seen this one in the wild
+  - CAN? LIN? If I'd first be able to find a CAN device to test it with, sure
 
