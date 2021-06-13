@@ -107,7 +107,7 @@ def main():
 
     for k, v in option_table.items():
         if args.__dict__[k] is not None:
-            resp = do_xfer(args, v.optid, val2byte(v.type, args.__dict__[k]), args.tty)
+            resp = do_xfer(args, v.optid, val2byte(v.type, args.__dict__[k]), args.tty[0])
             if resp is None:
                 return 1
             if args.verbose: print("-> %d" % resp)

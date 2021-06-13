@@ -90,8 +90,10 @@ static uint8_t const desc_hid_report[] =
 // Invoked when received GET HID REPORT DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
-uint8_t const * tud_hid_descriptor_report_cb(void)
+uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance)
 {
+  (void) instance;
+
   return desc_hid_report;
 }
 
@@ -164,7 +166,7 @@ uint8_t const desc_configuration[] =
 
 #ifdef DBOARD_HAS_CMSISDAP
   // Interface number, string index, protocol, report descriptor len, EP In & Out address, size & polling interval
-  TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID_CMSISDAP, 0, HID_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID_CMSISDAP, 0x80 | (EPNUM_HID_CMSISDAP+0), CFG_TUD_HID_EP_BUFSIZE, 1),
+  TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_HID_CMSISDAP, 0, 0/*HID_PROTOCOL_NONE*/, sizeof(desc_hid_report), EPNUM_HID_CMSISDAP, 0x80 | (EPNUM_HID_CMSISDAP+0), CFG_TUD_HID_EP_BUFSIZE, 1),
 #endif
 
 #ifdef DBOARD_HAS_SERPROG

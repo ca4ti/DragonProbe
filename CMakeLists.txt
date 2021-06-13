@@ -18,14 +18,21 @@ if(FAMILY STREQUAL "rp2040")
   cmake_minimum_required(VERSION 3.12)
 
   if (USE_SYSTEMWIDE_PICOSDK)
+    set(TOP "$ENV{PICO_SDK_PATH}/lib/tinyusb")
+    get_filename_component(TOP "${TOP}" REALPATH)
     include(pico_sdk_import.cmake)
   else()
     set(PICO_SDK_PATH ${TOP}/hw/mcu/raspberrypi/pico-sdk)
     include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
   endif()
 
+  include(${TOP}/hw/bsp/${FAMILY}/family.cmake) # tinyusb stuff
+
+  family_get_project_name(PROJECT ${CMAKE_CURRENT_LIST_DIR})
   project(${PROJECT})
-  pico_sdk_init()
+  family_initialize_project(PROJECT ${CMAKE_CURRENT_LIST_DIR}) # calls pico_sdk_init()
+  #pico_sdk_init()
+
   add_executable(${PROJECT})
 
   # need uart stdio, usb is busy doing other stuff
@@ -38,7 +45,6 @@ if(FAMILY STREQUAL "rp2040")
   endif()
   pico_enable_stdio_usb(${PROJECT} 0)
 
-  # Example source
   target_sources(${PROJECT} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/usb_descriptors.c
@@ -53,7 +59,6 @@ if(FAMILY STREQUAL "rp2040")
     ${CMAKE_CURRENT_SOURCE_DIR}/cdc_serprog.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rtconf.c
   )
-  # Example include
   target_include_directories(${PROJECT} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/
     ${CMAKE_CURRENT_SOURCE_DIR}/libco/
@@ -63,16 +68,9 @@ if(FAMILY STREQUAL "rp2040")
     ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
   )
 
-  # need to do this AFTER the regular includes, so that our bsp folder can
-  # override the tinyusb board.h header
-  include(${TOP}/hw/bsp/${FAMILY}/family.cmake) # tinyusb hardware-specific stuff
-
-  # Example defines
-  #target_compile_definitions(${PROJECT} PUBLIC
-  #)
-
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
-    pico_fix_rp2040_usb_device_enumeration)
+    pico_fix_rp2040_usb_device_enumeration
+    tinyusb_device tinyusb_board tinyusb_additions)
 
   if(USE_USBCDC_FOR_STDIO)
     target_sources(${PROJECT} PUBLIC
@@ -84,8 +82,10 @@ if(FAMILY STREQUAL "rp2040")
     )
 
     # extremely ugly hack to prevent the Pico SDK to declare *its* TinyUSB config
+    # and also to modify the tinyusb board.h file a bit
     target_compile_definitions(${PROJECT} PUBLIC
       _PICO_STDIO_USB_TUSB_CONFIG_H=1
+      BOARD_H_=1
     )
 
     target_link_libraries(${PROJECT} pico_stdio)
