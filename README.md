@@ -113,6 +113,13 @@ Different serial speeds can be used, too. Serprog support is *techincally*
 untested, as in it does output the correct SPI commands as seen by my logic
 analyzer, but I don't have a SPI flash chip to test it on.
 
+The I2C-Tiny-USB functionality can be used as follows: first, load the
+`i2c-dev` and `i2c-tiny-usb` modules (for now you need a patched version of the
+latter, can be found in the `i2c-tiny-usb-misc/` folder in this repo). Then you
+can use the I2C USB bridge as any other I2C device on your computer. For
+example, the `i2cdetect`, `i2cget` and `i2cset` tools from `i2c-tools` should
+all work. I2C functionality is currently untested, however.
+
 ### Runtime configuration
 
 Several settings can be applied at runtime, using the `dmctl` Python script.
@@ -160,7 +167,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - [ ] Second UART port for when stdio UART is disabled?
 - [x] Debug interface to send printf stuff directly to USB, instead of having
 -     to use the UART interface as a loopback thing.
-- [ ] I2C support by emulating the I2C Tiny USB
+- [x] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - Does SMBus stuff need special treatment here?
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
