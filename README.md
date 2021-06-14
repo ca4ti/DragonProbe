@@ -44,10 +44,10 @@ the `-DUSE_SYSTEMWIDE_PICOSDK=On` flag to CMake, too.
 
 These microcontrollers support the following protocols:
 
-| MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | AVR programming |
+| MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | Other stuff     |
 |:------ |:---:|:----:|:----:|:-------------- |:--- |:--------------- |
-| RP2040 | X   | X    | X    | X              | Planned | Planned     |
-| STM32F072B Discovery  | X | | X |           |     |                 |
+| RP2040 | X   | X    | X    | X              | X   |     Planned     |
+| STM32F072B Discovery  | X | |   |           |     |                 |
 
 The [original repository](https://github.com/majbthrd/DapperMime/) (Dapper
 Mime) supported only SWD and UART, and worked for these two boards. This fork
