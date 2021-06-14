@@ -25,6 +25,11 @@
 #define PINOUT_SPI_MISO 12
 #define PINOUT_SPI_nCS  13
 
+// I2C config
+#define PINOUT_I2C_DEV i2c0
+#define PINOUT_I2C_SCL 21
+#define PINOUT_I2C_SDA 20
+
 // LED config
 
 // you can change these two as you like

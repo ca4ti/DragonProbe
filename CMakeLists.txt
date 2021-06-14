@@ -56,10 +56,11 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/i2c_tinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/spi_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/cdc_serprog.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/i2ctinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/vnd_i2ctinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/rtconf.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
@@ -80,7 +81,7 @@ target_include_directories(${PROJECT} PUBLIC
 
 if(FAMILY STREQUAL "rp2040")
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
-    pico_fix_rp2040_usb_device_enumeration
+    pico_fix_rp2040_usb_device_enumeration hardware_i2c
     tinyusb_device tinyusb_board tinyusb_additions)
 
   if(USE_USBCDC_FOR_STDIO)

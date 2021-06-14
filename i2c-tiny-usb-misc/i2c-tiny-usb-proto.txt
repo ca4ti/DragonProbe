@@ -11,7 +11,7 @@ module:
 kernel:
 	request	reqtype(fix)	value	index	dmalen
 i2c_msg:
-	cmd?	type?		flags	index	len
+	cmd?	type?		flags	addr	len
 CMD_SET_DELAY:
 				delayv	0	0
 CMD_GET_STATUS: data=[status retval]
@@ -108,7 +108,7 @@ USB vendor setup:
 		send back supported functions: 4-byte little-endian of the above flags
 
 	SET_DELAY command:
-		sets clock period, in flags, unit is half a microsecond
+		sets clock period, in flags, unit is microseconds
 
 	GET_STATUS command:
 		return the status register (1 byte)
