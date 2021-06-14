@@ -52,7 +52,7 @@ This information includes:
 #include "bsp/board.h"
 
 #include "protos.h"
-#include "unique.h"
+#include "util.h"
 
 /// Processor Clock of the Cortex-M MCU used in the Debug Unit.
 /// This value is used to calculate the SWD/JTAG clock speed.

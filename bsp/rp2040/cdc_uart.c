@@ -28,26 +28,25 @@
 
 #include "tusb.h"
 
-#include "picoprobe_config.h"
-#include "protocfg.h"
+#include "pinout.h"
 #include "protos.h"
 
 static uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
 static uint8_t tx_buf[CFG_TUD_CDC_TX_BUFSIZE];
 
 void cdc_uart_init(void) {
-	gpio_set_function(PICOPROBE_UART_TX, GPIO_FUNC_UART);
-	gpio_set_function(PICOPROBE_UART_RX, GPIO_FUNC_UART);
-	uart_init(PICOPROBE_UART_INTERFACE, PICOPROBE_UART_BAUDRATE);
+	gpio_set_function(PINOUT_UART_TX, GPIO_FUNC_UART);
+	gpio_set_function(PINOUT_UART_RX, GPIO_FUNC_UART);
+	uart_init(PINOUT_UART_INTERFACE, PINOUT_UART_BAUDRATE);
 
-	bi_decl(bi_2pins_with_func(PICOPROBE_UART_TX, PICOPROBE_UART_RX, GPIO_FUNC_UART));
+	bi_decl(bi_2pins_with_func(PINOUT_UART_TX, PINOUT_UART_RX, GPIO_FUNC_UART));
 }
 
 void cdc_uart_task(void) {
 	// Consume uart fifo regardless even if not connected
 	uint rx_len = 0;
-	while (uart_is_readable(PICOPROBE_UART_INTERFACE) && (rx_len < sizeof(rx_buf))) {
-		rx_buf[rx_len++] = uart_getc(PICOPROBE_UART_INTERFACE);
+	while (uart_is_readable(PINOUT_UART_INTERFACE) && (rx_len < sizeof(rx_buf))) {
+		rx_buf[rx_len++] = uart_getc(PINOUT_UART_INTERFACE);
 	}
 
 	if (tud_cdc_n_connected(CDC_N_UART)) {
@@ -62,17 +61,17 @@ void cdc_uart_task(void) {
 		if (tud_cdc_n_available(CDC_N_UART)) {
 			// Is there any data from the host for us to tx
 			uint tx_len = tud_cdc_n_read(CDC_N_UART, tx_buf, sizeof(tx_buf));
-			uart_write_blocking(PICOPROBE_UART_INTERFACE, tx_buf, tx_len);
+			uart_write_blocking(PINOUT_UART_INTERFACE, tx_buf, tx_len);
 		}
 	}
 }
 
 void cdc_uart_set_hwflow(bool enable) {
-	uart_set_hw_flow(PICOPROBE_UART_INTERFACE, enable, enable);
+	uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
 }
 
 void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
-	picoprobe_info("New baud rate %d\n", line_coding->bit_rate);
-	uart_init(PICOPROBE_UART_INTERFACE, line_coding->bit_rate);
+	//picoprobe_info("New baud rate %d\n", line_coding->bit_rate);
+	uart_init(PINOUT_UART_INTERFACE, line_coding->bit_rate);
 }
 

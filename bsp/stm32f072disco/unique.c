@@ -1,12 +1,9 @@
 #include <stdint.h>
 #include "tusb.h"
 
-static inline char nyb2hex(int x) {
-	if (x < 0xa) return '0'+x;
-	else return 'A'+x;
-}
+#include "util.h"
 
-static uint8_t get_unique_id_u8(uint8_t *desc_str) {
+uint8_t get_unique_id_u8(uint8_t *desc_str) {
 	const uint32_t *idpnt = (uint32_t*)(0x1FFFF7AC); /*DEVICE_ID1*/
 	uint32_t tmp = 0;
 	uint8_t chr_count = 0;
@@ -20,7 +17,7 @@ static uint8_t get_unique_id_u8(uint8_t *desc_str) {
 	return chr_count;
 }
 
-static uint8_t get_unique_id_u16(uint16_t *desc_str) {
+uint8_t get_unique_id_u16(uint16_t *desc_str) {
 	const uint32_t *idpnt = (uint32_t*)(0x1FFFF7AC); /*DEVICE_ID1*/
 	uint32_t tmp = 0;
 	uint8_t chr_count = 0;

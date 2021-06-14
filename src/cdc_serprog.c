@@ -8,7 +8,7 @@
 #ifdef DBOARD_HAS_SERPROG
 
 #include "protos.h"
-#include "thread.h"
+#include "util.h"
 #include "rtconf.h"
 
 #include "serprog.h"

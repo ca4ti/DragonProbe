@@ -44,40 +44,46 @@ if(FAMILY STREQUAL "rp2040")
     pico_enable_stdio_uart(${PROJECT} 1)
   endif()
   pico_enable_stdio_usb(${PROJECT} 0)
+else()
+  message(FATAL_ERROR "Invalid FAMILY '${FAMILY}' specified")
+endif()
 
+target_sources(${PROJECT} PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/libco/libco.S
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/spi_serprog.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/cdc_serprog.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/i2ctinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/rtconf.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
+)
+if(USE_USBCDC_FOR_STDIO)
   target_sources(${PROJECT} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/libco/libco.S
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_uart.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/spi_serprog.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cdc_serprog.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/i2ctinyusb.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/rtconf.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_stdio.c
   )
-  target_include_directories(${PROJECT} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/
-    ${CMAKE_CURRENT_SOURCE_DIR}/libco/
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
-    ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
-    ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
-    ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
-  )
+endif()
+target_include_directories(${PROJECT} PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/
+  ${CMAKE_CURRENT_SOURCE_DIR}/libco/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
+)
 
+if(FAMILY STREQUAL "rp2040")
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
     pico_fix_rp2040_usb_device_enumeration
     tinyusb_device tinyusb_board tinyusb_additions)
 
   if(USE_USBCDC_FOR_STDIO)
-    target_sources(${PROJECT} PUBLIC
-      ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_stdio.c
-    )
-
     target_include_directories(${PROJECT} PUBLIC
       ${PICO_SDK_PATH}/src/rp2_common/pico_stdio_usb/include/
     )

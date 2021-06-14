@@ -35,11 +35,10 @@
 #include "DAP_config.h" /* ARM code *assumes* this is included prior to DAP.h */
 #include "DAP.h"
 
+#include "util.h"
 #include "protocfg.h"
 #include "protos.h"
-
 #include "libco.h"
-#include "thread.h"
 
 #ifdef PICO_BOARD
 #include <pico/binary_info.h>

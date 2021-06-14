@@ -11,7 +11,6 @@
 #include "device/usbd_pvt.h"
 
 #include "protos.h"
-#include "thread.h"
 
 static uint8_t itf_num;
 

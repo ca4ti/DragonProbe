@@ -8,6 +8,7 @@
 
 #include "tusb.h"
 
+#include "pinout.h"
 #include "protocfg.h"
 
 #ifndef PICO_STDIO_USB_STDOUT_TIMEOUT_US
