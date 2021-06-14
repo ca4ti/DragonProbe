@@ -166,10 +166,12 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - [x] Needs configurable stuff as well, as some UART interfaces won't use this.
   - [ ] Second UART port for when stdio UART is disabled?
 - [x] Debug interface to send printf stuff directly to USB, instead of having
--     to use the UART interface as a loopback thing.
+      to use the UART interface as a loopback thing.
 - [x] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
-  - Does SMBus stuff need special treatment here?
+  - ~~Does SMBus stuff need special treatment here?~~ No.
+  - [ ] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
+        supports 7-bit ones).
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
       with the device to perform the JTAG commands, because Vivado no likey
       OpenOCD.
