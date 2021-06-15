@@ -42,6 +42,8 @@
 
 #ifdef PICO_BOARD
 #include <pico/binary_info.h>
+/*#include <hardware/i2c.h>
+#include "pinout.h"*/
 #endif
 
 static cothread_t mainthread;
@@ -93,6 +95,14 @@ int main(void) {
 #if defined(PICO_BOARD) && !defined(USE_USBCDC_FOR_STDIO)
 	// use hardcoded values from TinyUSB board.h
 	bi_decl(bi_2pins_with_func(0, 1, GPIO_FUNC_UART));
+	/*i2c_init(PINOUT_I2C_DEV, 100*1000);
+
+	gpio_set_function(PINOUT_I2C_SCL, GPIO_FUNC_I2C);
+	gpio_set_function(PINOUT_I2C_SDA, GPIO_FUNC_I2C);
+	gpio_pull_up(PINOUT_I2C_SCL);
+	gpio_pull_up(PINOUT_I2C_SDA);
+
+	bi_decl(bi_2pins_with_func(PINOUT_I2C_SCL, PINOUT_I2C_SDA, GPIO_FUNC_I2C));*/
 #endif
 	board_init();
 
@@ -115,10 +125,15 @@ int main(void) {
 #endif
 
 	while (1) {
+		/*uint8_t val = 0x12;
+		i2c_write_timeout_us(PINOUT_I2C_DEV, 0x13, &val, 1, false, 1000*1000);*/
+
 		tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_UART
 		co_switch(uartthread);
 #endif
+
+		//i2c_write_timeout_us(PINOUT_I2C_DEV, 0x13, &val, 1, false, 1000*1000);
 
 		tud_task(); // tinyusb device task
 #ifdef DBOARD_HAS_SERPROG

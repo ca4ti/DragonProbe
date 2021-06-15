@@ -2,10 +2,224 @@
 #include <pico/stdlib.h>
 #include <pico/binary_info.h>
 #include <hardware/i2c.h>
+#include <hardware/resets.h>
+#include <hardware/clocks.h>
+#include <pico/timeout_helper.h>
 
 #include "protocfg.h"
 #include "pinout.h"
 #include "i2ctinyusb.h"
+
+// replicating/rewriting some SDK functions because they don't do what I want
+// except better this time
+
+static int i2cex_probe_address(uint16_t addr, bool a10bit) {
+	// TODO: bitbang the whole thing because the synopsys stuff sucks
+	return PICO_ERROR_GENERIC;
+}
+
+static void i2cex_abort_xfer(void) {
+	// now do the abort
+	i2c->hw->enable = 1 /*| (1<<2)*/ | (1<<1);
+	// wait for M_TX_ABRT irq
+	do {
+		/*if (timeout_check) {
+			timeout = timeout_check(ts);
+			abort |= timeout;
+		}*/
+		tight_loop_contents();
+	} while (/*!timeout &&*/ !(i2c->hw->raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_ABRT_BITS));
+	// reset irq
+	//if (!timeout)
+		(void)i2c->hw->clr_tx_abrt;
+}
+
+static int i2cex_write_blocking_until(i2c_inst_t* i2c, uint16_t addr, bool a10bit,
+		const uint8_t* src, size_t len, bool nostop, absolute_time_t until) {
+	timeout_state_t ts_;
+	struct timeout_state* ts = &ts_;
+	check_timeout_fn timeout_check = init_single_timeout_until(&ts_, until);
+
+	if ((int)len < 0) return PICO_ERROR_GENERIC;
+	if (a10bit) { // addr too high
+		if (addr & ~(uint16_t)((1<<10)-1)) return PICO_ERROR_GENERIC;
+	} else if (addr & 0x80)
+		return PICO_ERROR_GENERIC;
+
+	if (len == 0) return i2cex_probe_address(addr, a10bit);
+
+	bool abort = false, timeout = false;
+	uint32_t abort_reason = 0;
+	int byte_ctr;
+
+	i2c->hw->enable = 0;
+	// enable 10bit mode if requested
+	hw_write_masked(&i2c->hw->con, I2C_IC_CON_IC_10BITADDR_MASTER_BITS, (a10bit
+			? I2C_IC_CON_IC_10BITADDR_MASTER_VALUE_ADDR_10BITS
+			: I2C_IC_CON_IC_10BITADDR_MASTER_VALUE_ADDR_7BITS ) << I2C_IC_CON_IC_10BITADDR_MASTER_LSB);
+	i2c->hw->tar = addr;
+	i2c->hw->enable = 1;
+
+	for (byte_ctr = 0; byte_ctr < (int)len; ++byte_ctr) {
+		bool first = byte_ctr == 0,
+		     last  = byte_ctr == (int)len - 1;
+
+		i2c->hw->data_cmd =
+			bool_to_bit(first && i2c->restart_on_next) << I2C_IC_DATA_CMD_RESTART_LSB |
+			bool_to_bit(last  && !nostop) << I2C_IC_DATA_CMD_STOP_LSB |
+			*src++;
+
+		do {
+			if (timeout_check) {
+				timeout = timeout_check(ts);
+				abort |= timeout;
+			}
+			tight_loop_contents();
+		} while (!timeout && !(i2c->hw->raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_EMPTY_BITS));
+
+		if (!timeout) {
+			abort_reason = i2c->hw->tx_abrt_source;
+			if (abort_reason) {
+				(void)i2c->hw->clr_tx_abrt;
+				abort = true;
+			}
+
+			if (abort || (last && !nostop)) {
+				do {
+					if (timeout_check) {
+						timeout = timeout_check(ts);
+						abort |= timeout;
+					}
+					tight_loop_contents();
+				} while (!timeout && !(i2c->hw->raw_intr_stat & I2C_IC_RAW_INTR_STAT_STOP_DET_BITS));
+
+				if (!timeout) (void)i2c->hw->clr_stop_det;
+			} else {
+				// if we had a timeout, send an abort request to the hardware,
+				// so that the bus gets released
+				i2cex_abort_xfer();
+			}
+		}
+
+		if (abort) break;
+	}
+
+	int rval;
+
+	if (abort) {
+		const int addr_noack = I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK_BITS
+		                     | I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK_BITS
+		                     | I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR2_NOACK_BITS;
+
+		if (timeout) rval = PICO_ERROR_TIMEOUT;
+		else if (!abort_reason || (abort_reason & addr_noack))
+			rval = PICO_ERROR_GENERIC;
+		else if (abort_reason & I2C_IC_TX_ABRT_SOURCE_ABRT_TXDATA_NOACK_BITS)
+			rval = byte_ctr;
+		else rval = PICO_ERROR_GENERIC;
+	} else rval = byte_ctr;
+
+	i2c->restart_on_next = nostop;
+	return rval;
+}
+static int i2cex_read_blocking_until(i2c_inst_t* i2c, uint16_t addr, bool a10bit,
+		uint8_t* dst, size_t len, bool nostop, absolute_time_t until) {
+	timeout_state_t ts_;
+	struct timeout_state* ts = &ts_;
+	check_timeout_fn timeout_check = init_single_timeout_until(&ts_, until);
+
+	if ((int)len < 0) return PICO_ERROR_GENERIC;
+	if (a10bit) { // addr too high
+		if (addr & ~(uint16_t)((1<<10)-1)) return PICO_ERROR_GENERIC;
+	} else if (addr & 0x80)
+		return PICO_ERROR_GENERIC;
+
+	i2c->hw->enable = 0;
+	// enable 10bit mode if requested
+	hw_write_masked(&i2c->hw->con, I2C_IC_CON_IC_10BITADDR_MASTER_BITS, (a10bit
+			? I2C_IC_CON_IC_10BITADDR_MASTER_VALUE_ADDR_10BITS
+			: I2C_IC_CON_IC_10BITADDR_MASTER_VALUE_ADDR_7BITS ) << I2C_IC_CON_IC_10BITADDR_MASTER_LSB);
+	i2c->hw->tar = addr;
+	i2c->hw->enable = 1;
+
+	if (len == 0) return i2cex_probe_address(addr, a10bit);
+
+	bool abort = false, timeout = false;
+	uint32_t abort_reason = 0;
+	int byte_ctr;
+
+	for (byte_ctr = 0; byte_ctr < (int)len; ++byte_ctr) {
+		bool first = byte_ctr == 0;
+		bool last  = byte_ctr == (int)len - 1;
+
+		while (!i2c_get_write_available(i2c) && !abort) {
+			tight_loop_contents();
+			// ?
+			if (timeout_check) {
+				timeout = timeout_check(ts);
+				abort |= timeout;
+			}
+		}
+
+		if (timeout) {
+			// if we had a timeout, send an abort request to the hardware,
+			// so that the bus gets released
+			i2cex_abort_xfer();
+		}
+		if (abort) break;
+
+		i2c->hw->data_cmd =
+			bool_to_bit(first && i2c->restart_on_next) << I2C_IC_DATA_CMD_RESTART_LSB |
+			bool_to_bit(last  && !nostop) << I2C_IC_DATA_CMD_STOP_LSB |
+			I2C_IC_DATA_CMD_CMD_BITS; // -> 1 for read
+
+		do {
+			abort_reason = i2c->hw->tx_abrt_source;
+			abort = (bool)i2c->hw->clr_tx_abrt;
+
+			if (timeout_check) {
+				timeout = timeout_check(ts);
+				abort |= timeout;
+			}
+			tight_loop_contents(); // ?
+		} while (!abort && !i2c_get_read_available(i2c));
+
+		if (timeout) {
+			// if we had a timeout, send an abort request to the hardware,
+			// so that the bus gets released
+			i2cex_abort_xfer();
+		}
+		if (abort) break;
+
+		*dst++ = (uint8_t)i2c->hw->data_cmd;
+	}
+
+	int rval;
+
+	if (abort) {
+		const int addr_noack = I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK_BITS
+		                     | I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK_BITS
+		                     | I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR2_NOACK_BITS;
+
+		if (timeout) rval = PICO_ERROR_TIMEOUT;
+		else if (!abort_reason || (abort_reason & addr_noack))
+			rval = PICO_ERROR_GENERIC;
+		else rval = PICO_ERROR_GENERIC;
+	} else rval = byte_ctr;
+
+	i2c->restart_on_next = nostop;
+	return rval;
+}
+static inline int i2cex_write_timeout_us(i2c_inst_t* i2c, uint16_t addr, bool a10bit,
+		const uint8_t* src, size_t len, bool nostop, uint32_t timeout_us) {
+	absolute_time_t t = make_timeout_time_us(timeout_us);
+	return i2cex_write_blocking_until(i2c, addr, a10bit, src, len, nostop, t);
+}
+static inline int i2cex_read_timeout_us(i2c_inst_t* i2c, uint16_t addr, bool a10bit,
+		uint8_t* dst, size_t len, bool nostop, uint32_t timeout_us) {
+	absolute_time_t t = make_timeout_time_us(timeout_us);
+	return i2cex_read_blocking_until(i2c, addr, a10bit, dst, len, nostop, t);
+}
 
 __attribute__((__const__))
 enum ki2c_funcs i2ctu_get_func(void) {
@@ -30,14 +244,14 @@ uint32_t i2ctu_set_freq(uint32_t freq) {
 
 enum itu_status i2ctu_write(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, const uint8_t* buf, size_t len) {
-	int rv = i2c_write_timeout_us(PINOUT_I2C_DEV, addr, buf, len,
+	int rv = i2cex_write_timeout_us(PINOUT_I2C_DEV, addr, false, buf, len,
 			!(startstopflags & ITU_CMD_I2C_IO_END), 1000*1000);
 	if (rv < 0) return ITU_STATUS_ADDR_NAK;
 	return ITU_STATUS_ADDR_ACK;
 }
 enum itu_status i2ctu_read(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, uint8_t* buf, size_t len) {
-	int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, buf, len,
+	int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, false, buf, len,
 			!(startstopflags & ITU_CMD_I2C_IO_END), 1000*1000);
 	if (rv < 0) return ITU_STATUS_ADDR_NAK;
 	return ITU_STATUS_ADDR_ACK;

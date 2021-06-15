@@ -12,6 +12,9 @@
 
 #include "i2ctinyusb.h"
 
+#include "pinout.h"
+#include <hardware/i2c.h>
+
 static uint8_t itf_num;
 
 static enum itu_status state;
@@ -71,7 +74,7 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 			}
 			break;
 		case ITU_CMD_GET_FUNC: { // flags unused, addr unused, len=4
-				if (req->wLength != 0) return false;
+				if (req->wLength != 4) return false;
 
 				const uint32_t func = i2ctu_get_func();
 				uint8_t rv[4];
@@ -125,6 +128,9 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				} else { // write
 					bool rv = tud_control_xfer(rhport, req, buf, cmd.len);
 					if (rv) {
+						uint8_t val = cmd.cmd;
+						i2c_write_timeout_us(PINOUT_I2C_DEV, cmd.len, &val, 1, false, 1000*1000);
+
 						state = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 							cmd.addr, buf, sizeof buf);
 					}

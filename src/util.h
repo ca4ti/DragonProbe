@@ -3,8 +3,8 @@
 #define UTIL_H_
 
 static inline char nyb2hex(int x) {
-	if (x < 0xa) return '0'+x;
-	else return 'A'+x;
+	if (x < 0xa) return '0'+(x-0);
+	else return 'A'+(x-0xa);
 }
 
 void thread_yield(void);
