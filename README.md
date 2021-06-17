@@ -46,7 +46,7 @@ These microcontrollers support the following protocols:
 
 | MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | Other stuff     |
 |:------ |:---:|:----:|:----:|:-------------- |:--- |:--------------- |
-| RP2040 | X   | X    | X    | X              | X   |     Planned     |
+| RP2040 | X   | X    | X    | X              | WIP |     Planned     |
 | STM32F072B Discovery  | X | |   |           |     |                 |
 
 The [original repository](https://github.com/majbthrd/DapperMime/) (Dapper
@@ -167,7 +167,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - [ ] Second UART port for when stdio UART is disabled?
 - [x] Debug interface to send printf stuff directly to USB, instead of having
       to use the UART interface as a loopback thing.
-- [x] I2C support by emulating the I2C Tiny USB
+- [ ] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - ~~Does SMBus stuff need special treatment here?~~ No.
   - [ ] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
