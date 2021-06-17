@@ -121,15 +121,23 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				//       does it also get split up into buffers of eg. 64 bytes?
 				uint8_t buf[cmd.len];
 
+				printf("flags=%04x\n", cmd.flags);
 				if (cmd.flags & I2C_M_RD) { // read from I2C device
+					printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
 					state = i2ctu_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 							cmd.addr, buf, sizeof buf);
+					printf("data=%02x %02x...\n", buf[0], buf[1]);
 					return tud_control_xfer(rhport, req, buf, cmd.len);
 				} else { // write
+					printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
 					bool rv = tud_control_xfer(rhport, req, buf, cmd.len);
 					if (rv) {
+						printf("data=%02x %02x...\n", buf[0], buf[1]);
 						state = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 							cmd.addr, buf, sizeof buf);
+					} else {
+						printf("no data :/\n");
+						state = ITU_STATUS_ADDR_NAK;
 					}
 					return rv;
 				}

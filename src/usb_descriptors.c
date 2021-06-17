@@ -34,12 +34,12 @@
  *   [MSB]         HID | MSC | CDC          [LSB]
  */
 #ifdef DBOARD_HAS_I2C
-#define USB_PID_BASE 0x6000
+#define USB_BCD_BASE 0x6000
 #else
-#define USB_PID_BASE 0x4000
+#define USB_BCD_BASE 0x4000
 #endif
 #define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
-#define USB_PID           (USB_PID_BASE | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 3) | _PID_MAP(HID, 6) | \
+#define USB_BCD           (USB_BCD_BASE | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 3) | _PID_MAP(HID, 6) | \
                            _PID_MAP(MIDI, 9) | _PID_MAP(VENDOR, 12) ) \
 
 
@@ -73,7 +73,7 @@ tusb_desc_device_t const desc_device = {
 
 	.idVendor           = USB_VID,
 	.idProduct          = USB_PID,
-	.bcdDevice          = 0x0101, // TODO
+	.bcdDevice          = USB_BCD,
 
 	.iManufacturer      = STRID_MANUFACTURER,
 	.iProduct           = STRID_PRODUCT,
@@ -110,14 +110,24 @@ uint8_t const * tud_hid_descriptor_report_cb(uint8_t instance) {
 //--------------------------------------------------------------------+
 
 enum {
+#ifdef DBOARD_HAS_I2C
+	ITF_NUM_VND_I2CTINYUSB,
+#endif
+#ifdef DBOARD_HAS_CMSISDAP
 	ITF_NUM_HID_CMSISDAP,
+#endif
+#ifdef DBOARD_HAS_UART
 	ITF_NUM_CDC_UART_COM,
 	ITF_NUM_CDC_UART_DATA,
+#endif
+#ifdef DBOARD_HAS_SERPROG
 	ITF_NUM_CDC_SERPROG_COM,
 	ITF_NUM_CDC_SERPROG_DATA,
+#endif
+#ifdef USE_USBCDC_FOR_STDIO
 	ITF_NUM_CDC_STDIO_COM,
 	ITF_NUM_CDC_STDIO_DATA,
-	ITF_NUM_VND_I2CTINYUSB,
+#endif
 
 	ITF_NUM_TOTAL
 };
