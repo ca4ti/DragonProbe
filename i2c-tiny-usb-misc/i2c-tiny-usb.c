@@ -136,7 +136,7 @@ static u32 usb_func(struct i2c_adapter *adapter)
 	}
 
 	ret = le32_to_cpup(pfunc);
-	dev_warn(&adapter->dev, "itu func=%08x\n", ret);
+	//dev_warn(&adapter->dev, "itu func=%08x\n", ret);
 out:
 	kfree(pfunc);
 	return ret;

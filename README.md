@@ -185,6 +185,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://github.com/derekmulcahy/xvcpi
   - OpenOCD as XVC client??
 - [ ] Maybe use the ADCs for something?
+- [ ] General generic manual GPIO mode
 - [ ] SD/MMC/SDIO (will be a pain)
 - [ ] SUMP logic analyzer?????
   - see also [this](https://github.com/perexg/picoprobe-sump)

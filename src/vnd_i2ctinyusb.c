@@ -91,7 +91,7 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				uint32_t us = req->wValue ? req->wValue : 1;
 				uint32_t freq = 1000*1000 / us;
 
-				if (i2ctu_set_freq(freq) != 0) // returned an ok frequency
+				if (i2ctu_set_freq(freq, us) != 0) // returned an ok frequency
 					return tud_control_status(rhport, req);
 				else return false;
 			}
@@ -128,9 +128,6 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				} else { // write
 					bool rv = tud_control_xfer(rhport, req, buf, cmd.len);
 					if (rv) {
-						uint8_t val = cmd.cmd;
-						i2c_write_timeout_us(PINOUT_I2C_DEV, cmd.len, &val, 1, false, 1000*1000);
-
 						state = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 							cmd.addr, buf, sizeof buf);
 					}
