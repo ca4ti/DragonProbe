@@ -17,18 +17,18 @@
 
 static uint8_t itf_num;
 
-static enum itu_status state;
+static enum itu_status status;
 static struct itu_cmd curcmd;
 
 static void iub_init(void) {
-	state = ITU_STATUS_IDLE;
+	status = ITU_STATUS_IDLE;
 	memset(&curcmd, 0, sizeof curcmd);
 
 	i2ctu_init();
 }
 
 static void iub_reset(uint8_t rhport) {
-	state = ITU_STATUS_IDLE;
+	status = ITU_STATUS_IDLE;
 	memset(&curcmd, 0, sizeof curcmd);
 
 	i2ctu_init();
@@ -52,7 +52,7 @@ static uint16_t iub_open(uint8_t rhport, tusb_desc_interface_t const* itf_desc,
 
 static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req) {
 	if (stage == CONTROL_STAGE_DATA) {
-		// TODO: see also the TODO below
+		// TODO: should URB_CONTROL out data be read in this stage????
 		return true;
 	}
 
@@ -91,6 +91,7 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				uint32_t us = req->wValue ? req->wValue : 1;
 				uint32_t freq = 1000*1000 / us;
 
+				//printf("set freq us=%u freq=%u\n", us, freq);
 				if (i2ctu_set_freq(freq, us) != 0) // returned an ok frequency
 					return tud_control_status(rhport, req);
 				else return false;
@@ -99,7 +100,7 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 		case ITU_CMD_GET_STATUS: { // flags unused, addr unused, len=1
 				if (req->wLength != 1) return false;
 
-				uint8_t rv = state;
+				uint8_t rv = status;
 				return tud_control_xfer(rhport, req, &rv, 1);
 			}
 			break;
@@ -108,36 +109,37 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 		case ITU_CMD_I2C_IO_BEGIN:      // addr: I2C address
 		case ITU_CMD_I2C_IO_END:        // len: transfer size
 		case ITU_CMD_I2C_IO_BEGINEND: { // (transfer dir is in flags)
-				struct itu_cmd cmd;
+				/*struct itu_cmd cmd;
 				cmd.cmd   = req->bRequest;
 				cmd.flags = req->wValue;
 				cmd.addr  = req->wIndex;
 				cmd.len   = req->wLength;
-				curcmd = cmd;
+				curcmd = cmd;*/
 
 				// TODO: what's the max value of wLength? does this need
 				//       to be handled separately in the data stage as well?
 				//       will the entire thing be read into one big chunk, or
 				//       does it also get split up into buffers of eg. 64 bytes?
-				uint8_t buf[cmd.len];
+				uint8_t buf[req->wLength];
 
-				printf("flags=%04x\n", cmd.flags);
-				if (cmd.flags & I2C_M_RD) { // read from I2C device
-					printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
-					state = i2ctu_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
-							cmd.addr, buf, sizeof buf);
+				//printf("flags=%04x\n", req->wValue);
+				if (req->wValue & I2C_M_RD) { // read from I2C device
+					printf("read addr=%04hx len=%04hx ", req->wIndex, req->wLength);
+					status = i2ctu_read(req->wValue, req->bRequest & ITU_CMD_I2C_IO_DIR_MASK,
+							req->wIndex, buf, sizeof buf);
 					printf("data=%02x %02x...\n", buf[0], buf[1]);
-					return tud_control_xfer(rhport, req, buf, cmd.len);
+					return tud_control_xfer(rhport, req, buf, req->wLength);
 				} else { // write
-					printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
-					bool rv = tud_control_xfer(rhport, req, buf, cmd.len);
+					printf("write addr=%04hx len=%04hx ", req->wIndex, req->wLength);
+					// FIXME: THIS NO WORKY! STUFF IN BUFFER IS NONSENSE
+					bool rv = tud_control_xfer(rhport, req, buf, req->wLength);
 					if (rv) {
 						printf("data=%02x %02x...\n", buf[0], buf[1]);
-						state = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
-							cmd.addr, buf, sizeof buf);
+						status = i2ctu_write(req->wValue, req->bRequest & ITU_CMD_I2C_IO_DIR_MASK,
+							req->wIndex, buf, sizeof buf);
 					} else {
 						printf("no data :/\n");
-						state = ITU_STATUS_ADDR_NAK;
+						status = ITU_STATUS_ADDR_NAK;
 					}
 					return rv;
 				}

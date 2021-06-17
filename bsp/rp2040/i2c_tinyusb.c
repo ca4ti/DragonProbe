@@ -376,7 +376,7 @@ uint32_t i2ctu_set_freq(uint32_t freq, uint32_t us) {
 	return i2c_set_baudrate(PINOUT_I2C_DEV, freq);
 }
 
-// TODO: FIX START AND STOP COND HANDLING
+// TODO: FIX START AND STOP COND HANDLING. MAYBE. BUG IN vnd_i2ctinyusb.c MORE SERIOUS
 enum itu_status i2ctu_write(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, const uint8_t* buf, size_t len) {
 	if (len == 0) {
