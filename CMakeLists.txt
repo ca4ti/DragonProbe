@@ -5,7 +5,7 @@ option(USE_USBCDC_FOR_STDIO "Export an extra USB-CDC interface for stdio, instea
 set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use. Set to RP2040 by default.")
 set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
 
-# use directory name for project id
+# use directory name for project id # FIXME: use fixed project name
 get_filename_component(PROJECT ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 set(PROJECT ${BOARD}-${PROJECT})
 
@@ -32,6 +32,9 @@ if(FAMILY STREQUAL "rp2040")
   project(${PROJECT})
   family_initialize_project(PROJECT ${CMAKE_CURRENT_LIST_DIR}) # calls pico_sdk_init()
   #pico_sdk_init()
+
+  pico_set_program_name(PROJECT "${PROJECT}")
+  pico_set_program_version(PROJECT "0.1")
 
   add_executable(${PROJECT})
 

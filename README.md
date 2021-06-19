@@ -169,7 +169,8 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
       to use the UART interface as a loopback thing.
 - [ ] I2C support by emulating the I2C Tiny USB
   - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
-  - ~~Does SMBus stuff need special treatment here?~~ No.
+  - ~~Does SMBus stuff need special treatment here?~~ ~~No.~~  Actually, some
+    parts do, but, laziness.
   - [ ] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
@@ -184,11 +185,12 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://github.com/Xilinx/XilinxVirtualCable/
   - https://github.com/derekmulcahy/xvcpi
   - OpenOCD as XVC client??
+- [ ] SUMP logic analyzer?
+  - see also [this](https://github.com/perexg/picoprobe-sump)
+- [ ] Segger RTT?
 - [ ] Maybe use the ADCs for something?
 - [ ] General generic manual GPIO mode
 - [ ] SD/MMC/SDIO (will be a pain)
-- [ ] SUMP logic analyzer?????
-  - see also [this](https://github.com/perexg/picoprobe-sump)
 - [ ] AVR programming (USBavr emulation?)
   - AVR ISP is hardly used anymore
   - TPI/UPDI requires 5V levels, Pico doesn't do that :/

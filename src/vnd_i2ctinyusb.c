@@ -51,10 +51,33 @@ static uint16_t iub_open(uint8_t rhport, tusb_desc_interface_t const* itf_desc,
 }
 
 static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req) {
-	if (stage == CONTROL_STAGE_DATA) {
-		// TODO: should URB_CONTROL out data be read in this stage????
-		return true;
-	}
+//	if (stage == CONTROL_STAGE_DATA && req->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR) {
+//		// TODO: should URB_CONTROL out data be read in this stage????
+//		// FIXME: cond ^ has false-positives!
+//		// FIXME: handle 0-byte writes in SETUP stage
+//		// FIXME: use curcmd var for eliminating false-positives
+//		// FIXME: other stuff???
+//		if (req->bRequest >= ITU_CMD_I2C_IO && req->bRequest <= ITU_CMD_I2C_IO_BEGINEND
+//				/*&& curcmd.cmd == req->bRequest && curcmd.flags == req->wValue
+//				&& curcmd.addr == req->wIndex && curcmd.len == req->wLength*/) {
+//			uint8_t buf[req->wLength];
+//			bool rv = tud_control_xfer(rhport, req, buf, req->wLength);
+//			printf("write addr=%04hx len=%04hx ", req->wIndex, req->wLength);
+//			if (rv) {
+//				printf("data=%02x %02x...\n", buf[0], buf[1]);
+//				status = i2ctu_write(req->wValue, req->bRequest & ITU_CMD_I2C_IO_DIR_MASK,
+//					req->wIndex, buf, sizeof buf);
+//			} else {
+//				printf("no data :/\n");
+//				status = ITU_STATUS_ADDR_NAK;
+//			}
+//			return rv;
+//		} else {
+//			//printf("I2C-Tiny-USB: bad command in DATA stage\n");
+//			//return false;
+//		}
+//		return true;
+//	}
 
 	if (stage != CONTROL_STAGE_SETUP) return true;
 
@@ -130,8 +153,8 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 					printf("data=%02x %02x...\n", buf[0], buf[1]);
 					return tud_control_xfer(rhport, req, buf, req->wLength);
 				} else { // write
-					printf("write addr=%04hx len=%04hx ", req->wIndex, req->wLength);
-					// FIXME: THIS NO WORKY! STUFF IN BUFFER IS NONSENSE
+					return true; // handled in DATA stage
+					/*// FIXME: THIS NO WORKY! STUFF IN BUFFER IS NONSENSE
 					bool rv = tud_control_xfer(rhport, req, buf, req->wLength);
 					if (rv) {
 						printf("data=%02x %02x...\n", buf[0], buf[1]);
@@ -141,7 +164,7 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 						printf("no data :/\n");
 						status = ITU_STATUS_ADDR_NAK;
 					}
-					return rv;
+					return rv;*/
 				}
 			}
 			break;

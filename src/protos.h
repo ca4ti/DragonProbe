@@ -7,6 +7,7 @@
 #include "protocfg.h"
 
 #define INFO_MANUFACTURER "BLAHAJ CTF"
+#define INFO_PRODUCT_BARE   "Dragnbus"
 #define INFO_PRODUCT(board) "Dragnbus (" board ")"
 
 #ifdef DBOARD_HAS_UART

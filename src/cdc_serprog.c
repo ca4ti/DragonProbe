@@ -37,9 +37,7 @@ static const uint8_t serprog_cmdmap[32] = {
 	0, // 58..5f
 	0, // rest is 0
 };
-static const char serprog_pgmname[16] = {
-	'D','a','p','p','e','r','M','i','m','e','-','J','T','A','G',0 // TODO
-};
+static const char serprog_pgmname[16] = INFO_PRODUCT_BARE;
 
 static uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
 static uint8_t tx_buf[CFG_TUD_CDC_TX_BUFSIZE];
