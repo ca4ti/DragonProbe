@@ -57,6 +57,7 @@ enum {
 	STRID_IF_CDC_UART,
 	STRID_IF_CDC_SERPROG,
 	STRID_IF_CDC_STDIO,
+	STRID_IF_CDC_DYNEXEC,
 };
 
 //--------------------------------------------------------------------+
@@ -124,6 +125,8 @@ enum {
 	ITF_NUM_CDC_SERPROG_COM,
 	ITF_NUM_CDC_SERPROG_DATA,
 #endif
+	ITF_NUM_CDC_DYNEXEC_COM,
+	ITF_NUM_CDC_DYNEXEC_DATA,
 #ifdef USE_USBCDC_FOR_STDIO
 	ITF_NUM_CDC_STDIO_COM,
 	ITF_NUM_CDC_STDIO_DATA,
@@ -154,6 +157,7 @@ enum {
 #ifdef USE_USBCDC_FOR_STDIO
 		+ TUD_CDC_DESC_LEN
 #endif
+		+ TUD_CDC_DESC_LEN
 };
 
 #define EPNUM_CDC_UART_OUT      0x02
@@ -163,9 +167,12 @@ enum {
 #define EPNUM_CDC_SERPROG_OUT   0x05
 #define EPNUM_CDC_SERPROG_IN    0x85
 #define EPNUM_CDC_SERPROG_NOTIF 0x86
-#define EPNUM_CDC_STDIO_OUT     0x07
-#define EPNUM_CDC_STDIO_IN      0x87
-#define EPNUM_CDC_STDIO_NOTIF   0x88
+#define EPNUM_CDC_DYNEXEC_OUT     0x07
+#define EPNUM_CDC_DYNEXEC_IN      0x87
+#define EPNUM_CDC_DYNEXEC_NOTIF   0x88
+#define EPNUM_CDC_STDIO_OUT     0x09
+#define EPNUM_CDC_STDIO_IN      0x89
+#define EPNUM_CDC_STDIO_NOTIF   0x8a
 
 // NOTE: if you modify this table, don't forget to keep tusb_config.h up to date as well!
 // TODO: maybe add some strings to all these interfaces
@@ -187,6 +194,8 @@ uint8_t const desc_configuration[] = {
 #ifdef DBOARD_HAS_SERPROG
 	TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_SERPROG_COM, STRID_IF_CDC_SERPROG, EPNUM_CDC_SERPROG_NOTIF, 64, EPNUM_CDC_SERPROG_OUT, EPNUM_CDC_SERPROG_IN, 64),
 #endif
+
+	TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_DYNEXEC_COM, STRID_IF_CDC_DYNEXEC, EPNUM_CDC_DYNEXEC_NOTIF, 64, EPNUM_CDC_DYNEXEC_OUT, EPNUM_CDC_DYNEXEC_IN, 64),
 
 #ifdef USE_USBCDC_FOR_STDIO
 	TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_STDIO_COM, STRID_IF_CDC_STDIO, EPNUM_CDC_STDIO_NOTIF, 64, EPNUM_CDC_STDIO_OUT, EPNUM_CDC_STDIO_IN, 64),
@@ -218,6 +227,7 @@ char const* string_desc_arr [] = {
 	[STRID_IF_CDC_UART]       = "UART CDC interface",
 	[STRID_IF_CDC_SERPROG]    = "Serprog CDC interface",
 	[STRID_IF_CDC_STDIO]      = "stdio CDC interface (debug)",
+	[STRID_IF_CDC_DYNEXEC]    = "Dynamic execution CDC itf",
 };
 
 // Invoked when received GET STRING DESCRIPTOR request

@@ -143,6 +143,14 @@ def main():
 #do_xfer(1, 1, "/dev/ttyACM1")
 #do_xfer(1, 0, "/dev/ttyACM1")
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 
+with serial.Serial('/dev/ttyACM2', 115200, timeout=1) as ser:
+    regs = [x+0x18 for x in range(8)]
+    ops = [0x1889] # adds r1, r2
+    olen = len(ops)
+
+    ser.write(struct.pack('<IIIIIIII', *regs))
+    ser.write(struct.pack('<I', olen))
+    ser.write(struct.pack('<'+('H'*olen), *ops))

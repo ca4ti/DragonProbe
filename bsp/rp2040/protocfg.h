@@ -19,6 +19,7 @@ enum {
 #ifdef USE_USBCDC_FOR_STDIO
 	CDC_N_STDIO,
 #endif
+	CDC_N_DYNEXEC
 
 	CDC_N__NITF
 };
@@ -28,9 +29,9 @@ enum {
 
 #define CFG_TUD_HID 1
 #ifdef USE_USBCDC_FOR_STDIO
-#define CFG_TUD_CDC 3
+#define CFG_TUD_CDC 4
 #else
-#define CFG_TUD_CDC 2
+#define CFG_TUD_CDC 3
 #endif
 #define CFG_TUD_VENDOR 0
 

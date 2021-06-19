@@ -33,5 +33,8 @@ void itu_init(void);
 void itu_task(void);
 #endif
 
+void dynexec_init(void);
+void dynexec_task(void);
+
 #endif
 

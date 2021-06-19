@@ -82,6 +82,18 @@ static void serprog_thread_fn(void) {
 }
 #endif
 
+static cothread_t dynexecthread;
+static uint8_t dynexecstack[DEFAULT_STACK_SIZE];
+
+static void dynexec_thread_fn(void) {
+	cdc_dynexec_init();
+	thread_yield();
+	while (1) {
+		cdc_dynexec_task();
+		thread_yield();
+	}
+}
+
 // FIXME
 extern uint32_t co_active_buffer[64];
 uint32_t co_active_buffer[64];
@@ -114,6 +126,8 @@ int main(void) {
 	serprogthread = co_derive(serprogstack, sizeof serprogstack, serprog_thread_fn);
 	co_switch(serprogthread); // will call cdc_serprog_init() on correct thread
 #endif
+	dynexecthread = co_derive(dynexecstack, sizeof dynexecstack, dynexec_thread_fn);
+	co_switch(dynexecthread);
 #ifdef DBOARD_HAS_CMSISDAP
 	DAP_Setup();
 #endif
@@ -139,6 +153,9 @@ int main(void) {
 #ifdef DBOARD_HAS_SERPROG
 		co_switch(serprogthread);
 #endif
+
+		tud_task();
+		co_switch(dynexecthread);
 	}
 
 	return 0;

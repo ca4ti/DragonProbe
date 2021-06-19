@@ -33,8 +33,8 @@ if(FAMILY STREQUAL "rp2040")
   family_initialize_project(PROJECT ${CMAKE_CURRENT_LIST_DIR}) # calls pico_sdk_init()
   #pico_sdk_init()
 
-  #pico_set_program_name(${PROJECT} "${PROJECT}")
-  #pico_set_program_version(${PROJECT} "0.1")
+  #pico_set_program_name(PROJECT "${PROJECT}")
+  #pico_set_program_version(PROJECT "0.1")
 
   add_executable(${PROJECT})
 
@@ -64,6 +64,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/tempsensor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/cdc_serprog.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/cdc_dynexec.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/dynexec.S
   ${CMAKE_CURRENT_SOURCE_DIR}/src/vnd_i2ctinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/rtconf.c
