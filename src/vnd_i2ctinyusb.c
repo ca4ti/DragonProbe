@@ -69,9 +69,9 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 		if (req->bRequest >= ITU_CMD_I2C_IO && req->bRequest <= ITU_CMD_I2C_IO_BEGINEND
 				&& cmd.cmd == req->bRequest && cmd.flags == req->wValue
 				&& cmd.addr == req->wIndex && cmd.len == req->wLength) {
-			printf("WDATA a=%04hx l=%04hx ", cmd.addr, cmd.len);
+			//printf("WDATA a=%04hx l=%04hx ", cmd.addr, cmd.len);
 
-			printf("data=%02x %02x...\n", rxbuf[0], rxbuf[1]);
+			//printf("data=%02x %02x...\n", rxbuf[0], rxbuf[1]);
 			status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 				cmd.addr, rxbuf, cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len);
 
@@ -132,19 +132,19 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				cmd.cmd   = req->bRequest;
 
 				if (cmd.flags & I2C_M_RD) { // read from I2C device
-					printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
+					//printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
 					status = i2ctu_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 							cmd.addr, txbuf, cmd.len);
-					printf("data=%02x %02x...\n", txbuf[0], txbuf[1]);
+					//printf("data=%02x %02x...\n", txbuf[0], txbuf[1]);
 					return tud_control_xfer(rhport, req, txbuf,
 							cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len);
 				} else { // write
-					printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
+					//printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
 					if (cmd.len == 0) { // address probe -> do this here
 						uint8_t bleh = 0;
 						status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 								cmd.addr, &bleh, 0);
-						printf("probe -> %d\n", status);
+						//printf("probe -> %d\n", status);
 						return tud_control_status(rhport, req);
 					} else {
 						// handled in DATA stage!
@@ -157,7 +157,7 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 			}
 			break;
 		default:
-			printf("I2C-Tiny-USB: unknown command %02x\n", req->bRequest);
+			//printf("I2C-Tiny-USB: unknown command %02x\n", req->bRequest);
 			return false;
 		}
 	} else return true; // other stage...

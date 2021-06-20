@@ -69,7 +69,7 @@ static bool __no_inline_not_in_flash_func(i2cio_write7)(uint8_t v) { // return v
 	i2cio_set_sda(true);
 	i2cio_set_scl(true);
 
-	bool ack = i2cio_get_sda();
+	bool ack = !i2cio_get_sda();
 	i2cio_set_scl(false);
 
 	return ack;
@@ -83,7 +83,7 @@ static bool __no_inline_not_in_flash_func(i2cio_write8)(uint8_t v) { // return v
 	i2cio_set_sda(true);
 	i2cio_set_scl(true);
 
-	bool ack = i2cio_get_sda();
+	bool ack = !i2cio_get_sda();
 	i2cio_set_scl(false);
 
 	return ack;
@@ -141,7 +141,11 @@ static int __no_inline_not_in_flash_func(i2cex_probe_address)(uint16_t addr, boo
 	return rv;
 }
 
-static void i2cex_abort_xfer(i2c_inst_t* i2c) {
+inline static void i2cex_abort_xfer(i2c_inst_t* i2c) {
+#if 1
+	// may be bugged??? so doesnt do anything for now
+	return;
+#else
 	// now do the abort
 	i2c->hw->enable = 1 /*| (1<<2)*/ | (1<<1);
 	// wait for M_TX_ABRT irq
@@ -155,6 +159,7 @@ static void i2cex_abort_xfer(i2c_inst_t* i2c) {
 	// reset irq
 	//if (!timeout)
 		(void)i2c->hw->clr_tx_abrt;
+#endif
 }
 
 static int i2cex_write_blocking_until(i2c_inst_t* i2c, uint16_t addr, bool a10bit,
@@ -315,22 +320,22 @@ static int i2cex_read_blocking_until(i2c_inst_t* i2c, uint16_t addr, bool a10bit
 		if (abort) break;
 
 		uint8_t v = (uint8_t)i2c->hw->data_cmd;
-		printf("\ngot read %02x\n", v);
+		//printf("\ngot read %02x\n", v);
 		*dst++ = v;
 	}
 
 	int rval;
 
 	if (abort) {
-		printf("\ngot abrt: ");
+		//printf("\ngot abrt: ");
 		const int addr_noack = I2C_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK_BITS
 		                     | I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR1_NOACK_BITS
 		                     | I2C_IC_TX_ABRT_SOURCE_ABRT_10ADDR2_NOACK_BITS;
 
-		if (timeout) { printf("timeout\n"); rval = PICO_ERROR_TIMEOUT; }
-		else if (!abort_reason || (abort_reason & addr_noack)) {printf("disconn\n");
+		if (timeout) { /*printf("timeout\n");*/ rval = PICO_ERROR_TIMEOUT; }
+		else if (!abort_reason || (abort_reason & addr_noack)) {//printf("disconn\n");
 			rval = PICO_ERROR_GENERIC; }
-		else {printf("unk\n"); rval = PICO_ERROR_GENERIC;}
+		else {/*printf("unk\n");*/ rval = PICO_ERROR_GENERIC;}
 	} else rval = byte_ctr;
 
 	i2c->restart_on_next = nostop;
@@ -349,10 +354,9 @@ static inline int i2cex_read_timeout_us(i2c_inst_t* i2c, uint16_t addr, bool a10
 
 __attribute__((__const__))
 enum ki2c_funcs i2ctu_get_func(void) {
-	// TODO: 10bit addresses
 	// TODO: SMBUS_EMUL_ALL => I2C_M_RECV_LEN
 	// TODO: maybe also PROTOCOL_MANGLING, NOSTART
-	return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL;
+	return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL | I2C_FUNC_10BIT_ADDR;
 }
 
 void i2ctu_init(void) {
@@ -376,22 +380,21 @@ uint32_t i2ctu_set_freq(uint32_t freq, uint32_t us) {
 	return i2c_set_baudrate(PINOUT_I2C_DEV, freq);
 }
 
-// TODO: FIX START AND STOP COND HANDLING. MAYBE. BUG IN vnd_i2ctinyusb.c MORE SERIOUS
-// ALSO TODO: i2cex routines seem to mess with the I2C bus when a timeout (=> abort) happens?
 enum itu_status i2ctu_write(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, const uint8_t* buf, size_t len) {
 	bool nostop = !(startstopflags & ITU_CMD_I2C_IO_END);
-	printf("nostop=%c ", nostop?'t':'f');
+	//printf("nostop=%c ", nostop?'t':'f');
+	bool bit10 = flags & I2C_M_TEN;
 
-	if (len == 0) {
+	/*if (len == 0) {
 		// do a read, that's less hazardous
 		uint8_t stuff = 0;
-		int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ &stuff, 1,
+		int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, bit10, &stuff, 1,
 				nostop, 1000*1000);
 		if (rv < 0) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
-	} else {
-		int rv = i2c_write_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ buf, len,
+	} else*/ {
+		int rv = i2cex_write_timeout_us(PINOUT_I2C_DEV, addr, bit10, buf, len,
 				nostop, 1000*1000);
 		if (rv < 0 || (size_t)rv < len) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
@@ -400,18 +403,19 @@ enum itu_status i2ctu_write(enum ki2c_flags flags, enum itu_command startstopfla
 enum itu_status i2ctu_read(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, uint8_t* buf, size_t len) {
 	bool nostop = !(startstopflags & ITU_CMD_I2C_IO_END);
-	printf("nostop=%c ", nostop?'t':'f');
+	//printf("nostop=%c ", nostop?'t':'f');
+	bool bit10 = flags & I2C_M_TEN;
 
-	if (len == 0) {
+	/*if (len == 0) {
 		uint8_t stuff = 0;
-		int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ &stuff, 1,
+		int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, bit10, &stuff, 1,
 				nostop, 1000*1000);
 		if (rv < 0) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
-	} else {
-		int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ buf, len,
+	} else*/ {
+		int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, bit10, buf, len,
 				nostop, 1000*1000);
-		printf("p le rv=%d buf=%02x ", rv, buf[0]);
+		//printf("p le rv=%d buf=%02x ", rv, buf[0]);
 		if (rv < 0 || (size_t)rv < len) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
 	}
