@@ -33,8 +33,8 @@ if(FAMILY STREQUAL "rp2040")
   family_initialize_project(PROJECT ${CMAKE_CURRENT_LIST_DIR}) # calls pico_sdk_init()
   #pico_sdk_init()
 
-  pico_set_program_name(PROJECT "${PROJECT}")
-  pico_set_program_version(PROJECT "0.1")
+  #pico_set_program_name(${PROJECT} "${PROJECT}")
+  #pico_set_program_version(${PROJECT} "0.1")
 
   add_executable(${PROJECT})
 

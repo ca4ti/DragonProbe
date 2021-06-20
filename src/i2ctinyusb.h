@@ -84,11 +84,12 @@ enum ki2c_funcs {
 					 I2C_FUNC_SMBUS_BLOCK_PROC_CALL),
 };
 
+__attribute__((__packed__))
 struct itu_cmd {
-	uint8_t cmd;
 	uint16_t flags;
 	uint16_t addr;
 	uint16_t len;
+	uint8_t cmd;
 };
 
 #ifdef DBOARD_HAS_I2C

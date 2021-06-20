@@ -377,33 +377,40 @@ uint32_t i2ctu_set_freq(uint32_t freq, uint32_t us) {
 }
 
 // TODO: FIX START AND STOP COND HANDLING. MAYBE. BUG IN vnd_i2ctinyusb.c MORE SERIOUS
+// ALSO TODO: i2cex routines seem to mess with the I2C bus when a timeout (=> abort) happens?
 enum itu_status i2ctu_write(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, const uint8_t* buf, size_t len) {
+	bool nostop = !(startstopflags & ITU_CMD_I2C_IO_END);
+	printf("nostop=%c ", nostop?'t':'f');
+
 	if (len == 0) {
 		// do a read, that's less hazardous
 		uint8_t stuff = 0;
-		int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, false, &stuff, 1,
-				!(startstopflags & ITU_CMD_I2C_IO_END), 1000*1000);
+		int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ &stuff, 1,
+				nostop, 1000*1000);
 		if (rv < 0) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
 	} else {
-		int rv = i2cex_write_timeout_us(PINOUT_I2C_DEV, addr, false, buf, len,
-				!(startstopflags & ITU_CMD_I2C_IO_END), 1000*1000);
+		int rv = i2c_write_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ buf, len,
+				nostop, 1000*1000);
 		if (rv < 0 || (size_t)rv < len) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
 	}
 }
 enum itu_status i2ctu_read(enum ki2c_flags flags, enum itu_command startstopflags,
 		uint16_t addr, uint8_t* buf, size_t len) {
+	bool nostop = !(startstopflags & ITU_CMD_I2C_IO_END);
+	printf("nostop=%c ", nostop?'t':'f');
+
 	if (len == 0) {
 		uint8_t stuff = 0;
-		int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, false, &stuff, 1,
-				!(startstopflags & ITU_CMD_I2C_IO_END), 1000*1000);
+		int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ &stuff, 1,
+				nostop, 1000*1000);
 		if (rv < 0) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;
 	} else {
-		int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, false, buf, len,
-				!(startstopflags & ITU_CMD_I2C_IO_END), 1000*1000);
+		int rv = i2c_read_timeout_us(PINOUT_I2C_DEV, addr, /*false,*/ buf, len,
+				nostop, 1000*1000);
 		printf("p le rv=%d buf=%02x ", rv, buf[0]);
 		if (rv < 0 || (size_t)rv < len) return ITU_STATUS_ADDR_NAK;
 		return ITU_STATUS_ADDR_ACK;

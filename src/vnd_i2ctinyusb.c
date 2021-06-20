@@ -20,6 +20,9 @@ static uint8_t itf_num;
 static enum itu_status status;
 static struct itu_cmd curcmd;
 
+static uint8_t rxbuf[128];
+static uint8_t txbuf[128];
+
 static void iub_init(void) {
 	status = ITU_STATUS_IDLE;
 	memset(&curcmd, 0, sizeof curcmd);
@@ -51,41 +54,32 @@ static uint16_t iub_open(uint8_t rhport, tusb_desc_interface_t const* itf_desc,
 }
 
 static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req) {
-//	if (stage == CONTROL_STAGE_DATA && req->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR) {
-//		// TODO: should URB_CONTROL out data be read in this stage????
-//		// FIXME: cond ^ has false-positives!
-//		// FIXME: handle 0-byte writes in SETUP stage
-//		// FIXME: use curcmd var for eliminating false-positives
-//		// FIXME: other stuff???
-//		if (req->bRequest >= ITU_CMD_I2C_IO && req->bRequest <= ITU_CMD_I2C_IO_BEGINEND
-//				/*&& curcmd.cmd == req->bRequest && curcmd.flags == req->wValue
-//				&& curcmd.addr == req->wIndex && curcmd.len == req->wLength*/) {
-//			uint8_t buf[req->wLength];
-//			bool rv = tud_control_xfer(rhport, req, buf, req->wLength);
-//			printf("write addr=%04hx len=%04hx ", req->wIndex, req->wLength);
-//			if (rv) {
-//				printf("data=%02x %02x...\n", buf[0], buf[1]);
-//				status = i2ctu_write(req->wValue, req->bRequest & ITU_CMD_I2C_IO_DIR_MASK,
-//					req->wIndex, buf, sizeof buf);
-//			} else {
-//				printf("no data :/\n");
-//				status = ITU_STATUS_ADDR_NAK;
-//			}
-//			return rv;
-//		} else {
-//			//printf("I2C-Tiny-USB: bad command in DATA stage\n");
-//			//return false;
-//		}
-//		return true;
-//	}
+	static char* stages[]={"SETUP","DATA","ACK"};
+	static char* types[]={"STD","CLS","VND","INV"};
 
-	if (stage != CONTROL_STAGE_SETUP) return true;
+	/*printf("ctl req stage=%s rt=%s, wIndex=%04x, bReq=%02x, wValue=%04x wLength=%04x\n",
+		stages[stage], types[req->bmRequestType_bit.type],
+		req->wIndex, req->bRequest, req->wValue, req->wLength);*/
 
-	/*printf("ctl req rhport=%02x, stage=%02x, wIndex=%04x, bReq=%02x, wValue=%04x\n",
-		rhport, stage,
-		req->wIndex, req->bRequest, req->wValue);*/
+	if (req->bmRequestType_bit.type != TUSB_REQ_TYPE_VENDOR) return true;
 
-	if (req->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR) {
+	if (stage == CONTROL_STAGE_DATA) {
+		struct itu_cmd cmd = curcmd;
+
+		if (req->bRequest >= ITU_CMD_I2C_IO && req->bRequest <= ITU_CMD_I2C_IO_BEGINEND
+				&& cmd.cmd == req->bRequest && cmd.flags == req->wValue
+				&& cmd.addr == req->wIndex && cmd.len == req->wLength) {
+			printf("WDATA a=%04hx l=%04hx ", cmd.addr, cmd.len);
+
+			printf("data=%02x %02x...\n", rxbuf[0], rxbuf[1]);
+			status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
+				cmd.addr, rxbuf, cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len);
+
+			// cancel curcmd
+			curcmd.cmd = 0xff;
+		}
+		return true;
+	} else if (stage == CONTROL_STAGE_SETUP) {
 		switch (req->bRequest) {
 		case ITU_CMD_ECHO: { // flags to be echoed back, addr unused, len=2
 				if (req->wLength != 2) return false; // bad length -> let's stall
@@ -100,12 +94,11 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 				if (req->wLength != 4) return false;
 
 				const uint32_t func = i2ctu_get_func();
-				uint8_t rv[4];
-				rv[0]=func&0xff;
-				rv[1]=(func>>8)&0xff;
-				rv[2]=(func>>16)&0xff;
-				rv[3]=(func>>24)&0xff;
-				return tud_control_xfer(rhport, req, rv, sizeof rv);
+				txbuf[0]=func&0xff;
+				txbuf[1]=(func>>8)&0xff;
+				txbuf[2]=(func>>16)&0xff;
+				txbuf[3]=(func>>24)&0xff;
+				return tud_control_xfer(rhport, req, txbuf, 4);
 			}
 			break;
 		case ITU_CMD_SET_DELAY: { // flags=delay, addr unused, len=0
@@ -132,50 +125,42 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 		case ITU_CMD_I2C_IO_BEGIN:      // addr: I2C address
 		case ITU_CMD_I2C_IO_END:        // len: transfer size
 		case ITU_CMD_I2C_IO_BEGINEND: { // (transfer dir is in flags)
-				/*struct itu_cmd cmd;
-				cmd.cmd   = req->bRequest;
+				struct itu_cmd cmd;
 				cmd.flags = req->wValue;
 				cmd.addr  = req->wIndex;
 				cmd.len   = req->wLength;
-				curcmd = cmd;*/
+				cmd.cmd   = req->bRequest;
 
-				// TODO: what's the max value of wLength? does this need
-				//       to be handled separately in the data stage as well?
-				//       will the entire thing be read into one big chunk, or
-				//       does it also get split up into buffers of eg. 64 bytes?
-				uint8_t buf[req->wLength];
-
-				//printf("flags=%04x\n", req->wValue);
-				if (req->wValue & I2C_M_RD) { // read from I2C device
-					printf("read addr=%04hx len=%04hx ", req->wIndex, req->wLength);
-					status = i2ctu_read(req->wValue, req->bRequest & ITU_CMD_I2C_IO_DIR_MASK,
-							req->wIndex, buf, sizeof buf);
-					printf("data=%02x %02x...\n", buf[0], buf[1]);
-					return tud_control_xfer(rhport, req, buf, req->wLength);
+				if (cmd.flags & I2C_M_RD) { // read from I2C device
+					printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
+					status = i2ctu_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
+							cmd.addr, txbuf, cmd.len);
+					printf("data=%02x %02x...\n", txbuf[0], txbuf[1]);
+					return tud_control_xfer(rhport, req, txbuf,
+							cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len);
 				} else { // write
-					return true; // handled in DATA stage
-					/*// FIXME: THIS NO WORKY! STUFF IN BUFFER IS NONSENSE
-					bool rv = tud_control_xfer(rhport, req, buf, req->wLength);
-					if (rv) {
-						printf("data=%02x %02x...\n", buf[0], buf[1]);
-						status = i2ctu_write(req->wValue, req->bRequest & ITU_CMD_I2C_IO_DIR_MASK,
-							req->wIndex, buf, sizeof buf);
+					printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
+					if (cmd.len == 0) { // address probe -> do this here
+						uint8_t bleh = 0;
+						status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
+								cmd.addr, &bleh, 0);
+						printf("probe -> %d\n", status);
+						return tud_control_status(rhport, req);
 					} else {
-						printf("no data :/\n");
-						status = ITU_STATUS_ADDR_NAK;
+						// handled in DATA stage!
+						curcmd = cmd;
+						bool rv = tud_control_xfer(rhport, req, rxbuf,
+								cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len);
+						return rv;
 					}
-					return rv;*/
 				}
 			}
 			break;
 		default:
 			printf("I2C-Tiny-USB: unknown command %02x\n", req->bRequest);
-			return false; // unknown!
+			return false;
 		}
-	} else {
-		printf("I2C-Tiny-USB: bad request type %02x\n", req->bmRequestType);
-		return false; // not a vendor command? no clue what to do with it!
-	}
+	} else return true; // other stage...
 }
 
 // never actually called fsr

@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+#include "protocfg.h"
+
 //--------------------------------------------------------------------
 // COMMON CONFIGURATION
 //--------------------------------------------------------------------
@@ -98,17 +100,10 @@ extern "C" {
 #endif
 
 //------------- CLASS -------------//
-#ifdef USE_USBCDC_FOR_STDIO
-#define CFG_TUD_CDC               3
-#else
-#define CFG_TUD_CDC               2
-#endif
-
 #define CFG_TUD_MSC               0
-#define CFG_TUD_HID               1
 #define CFG_TUD_MIDI              0
-#define CFG_TUD_VENDOR            0
 #define CFG_TUD_NET               0
+// see also: bsp/<family>/protocfg.h
 
 #define CFG_TUD_HID_EP_BUFSIZE    64
 

@@ -7,14 +7,31 @@
 #define DBOARD_HAS_SERPROG
 #define DBOARD_HAS_I2C
 
-#define HID_N_CMSISDAP 0
-#define CDC_N_UART 0
-#define CDC_N_SERPROG 1
-#define VND_N_I2CTINYUSB 0
+enum {
+	HID_N_CMSISDAP = 0,
 
+	HID_N__NITF
+};
+enum {
+	CDC_N_UART = 0,
+	CDC_N_SERPROG,
 #ifdef USE_USBCDC_FOR_STDIO
-#define CDC_N_STDIO 2
+	CDC_N_STDIO,
 #endif
+
+	CDC_N__NITF
+};
+enum {
+	VND_N__NITF = 0
+};
+
+#define CFG_TUD_HID 1
+#ifdef USE_USBCDC_FOR_STDIO
+#define CFG_TUD_CDC 3
+#else
+#define CFG_TUD_CDC 2
+#endif
+#define CFG_TUD_VENDOR 0
 
 /*#define USB_VID 0x2e8a*/ /* Raspberry Pi */
 #define USB_VID 0xcafe /* TinyUSB */
