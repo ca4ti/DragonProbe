@@ -270,4 +270,5 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - Maybe steal other features from the Bus Pirate, [HydraBus](https://github.com/hydrabus/hydrafw) or Glasgow or so
   - 1-wire and 3-wire? Never seen this one in the wild
   - CAN? LIN? If I'd first be able to find a CAN device to test it with, sure
+- Dynamic pin assignment
 
