@@ -4,7 +4,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifndef VERY_FAKE
 #include "protocfg.h"
+#define printf(fmt, ...) do{}while(0)
+#endif
 
 #ifdef DBOARD_HAS_TEMPSENSOR
 
@@ -17,7 +20,8 @@ static size_t index;
 static bool instartstop, hasreg;
 
 enum regid {
-	config = 1,
+	cap = 0,
+	config,
 	t_upper,
 	t_lower,
 	t_crit,
@@ -36,6 +40,13 @@ struct {
 	uint8_t reso;
 } mcp9808;
 
+#define float2fix(x) (int)((x)*(1<<4))
+__attribute__((__const__))
+inline static int16_t trunc_8fix4(int fix) {
+	if (fix >  4095) fix =  4095;
+	if (fix < -4096) fix = -4096;
+	return fix;
+}
 void tempsense_init(void) {
 	active = false;
 	addr = 0xff;
@@ -45,6 +56,10 @@ void tempsense_init(void) {
 	hasreg = false;
 
 	tempsense_dev_init();
+
+	mcp9808.t_lower = tempsense_dev_get_lower();
+	mcp9808.t_upper = tempsense_dev_get_upper();
+	mcp9808.t_crit  = tempsense_dev_get_crit ();
 }
 
 bool tempsense_get_active(void) { return active; }
@@ -57,16 +72,20 @@ void tempsense_set_addr(uint8_t a) {
 }
 
 void tempsense_do_start(void) {
+	printf("ts start\n");
 	//reg = 0;
 	index = 0;
 	instartstop = true;
 	hasreg = false;
 }
 void tempsense_do_stop(void) {
+	printf("ts stop\n");
 	instartstop = false;
 }
 
 int tempsense_do_read(int length, uint8_t* buf) {
+	printf("read l=%d reg=%02x ", length, reg);
+
 	if (!instartstop || length < 0) return -1; // nak
 	if (length == 0) return 0; // ack
 	//if (!hasreg) return -1; // nak
@@ -75,22 +94,29 @@ int tempsense_do_read(int length, uint8_t* buf) {
 	for (i = 0; i < length; ++i, ++index) {
 		switch (reg) {
 			// TODO: big or little endian? seems to be big
+		case cap:
+			buf[index] = 0;
+			break;
 		case config:
 			if (index == 0) buf[0] = (mcp9808.config >> 8) & 0xff;
 			else if (index == 1) buf[1] = (mcp9808.config >> 0) & 0xff;
 			else return index;
+			break;
 		case t_upper:
 			if (index == 0) buf[0] = (mcp9808.t_upper >> 8) & 0xff;
 			else if (index == 1) buf[1] = (mcp9808.t_upper >> 0) & 0xff;
 			else return index;
+			break;
 		case t_lower:
 			if (index == 0) buf[0] = (mcp9808.t_lower >> 8) & 0xff;
 			else if (index == 1) buf[1] = (mcp9808.t_lower >> 0) & 0xff;
 			else return index;
+			break;
 		case t_crit:
 			if (index == 0) buf[0] = (mcp9808.t_crit >> 8) & 0xff;
 			else if (index == 1) buf[1] = (mcp9808.t_crit >> 0) & 0xff;
 			else return index;
+			break;
 		case t_a: {
 				static uint16_t temp;
 				if (index == 0) {
@@ -113,17 +139,21 @@ int tempsense_do_read(int length, uint8_t* buf) {
 				} else if (index == 1) buf[1] = (temp>>0) & 0xff;
 				else return index;
 			}
+			break;
 		case manuf_id:
 			if (index == 0) buf[0] = (MANUF_ID >> 8) & 0xff;
 			else if (index == 1) buf[1] = (MANUF_ID>>0)&0xff;
 			else return index;
+			break;
 		case dev_idrev:
 			if (index == 0) buf[0] = (DEV_IDREV >> 8) & 0xff;
 			else if (index == 1) buf[1] = (DEV_IDREV>>0)&0xff;
 			else return index;
+			break;
 		case reso:
 			if (index == 0) buf[0] = mcp9808.reso;
 			else return index;
+			break;
 		default: return -1;
 		}
 	}
@@ -131,10 +161,14 @@ int tempsense_do_read(int length, uint8_t* buf) {
 	return i;
 }
 int tempsense_do_write(int length, const uint8_t* buf) {
+	printf("write l=%d reg=%02x iss=%c ", length, reg, instartstop?'t':'f');
+
 	if (!instartstop || length < 0) return -1; // nak
 	if (length == 0) return 0; // ack
 
 	if (!hasreg) {
+		printf("get reg %02x ", reg);
+
 		reg = *buf & 0xf;
 		++buf;
 		--length;
@@ -152,27 +186,34 @@ int tempsense_do_write(int length, const uint8_t* buf) {
 			}  else if (index == 1) {
 				mcp9808.config = (mcp9808.config & 0xff00) | ((uint16_t)buf[1] << 0);
 			} else return index;
+			break;
 		case t_upper:
 			if (index == 0) {
 				mcp9808.t_upper = (mcp9808.t_upper & 0x00ff) | ((uint16_t)buf[0] << 8);
 			} else if (index == 1) {
 				mcp9808.t_upper = (mcp9808.t_upper & 0xff00) | ((uint16_t)buf[1] << 0);
 			} else return index;
+			break;
 		case t_lower:
 			if (index == 0) {
 				mcp9808.t_lower = (mcp9808.t_lower & 0x00ff) | ((uint16_t)buf[0] << 8);
 			} else if (index == 1) {
 				mcp9808.t_lower = (mcp9808.t_lower & 0xff00) | ((uint16_t)buf[1] << 0);
 			} else return index;
+			break;
 		case t_crit:
 			if (index == 0) {
 				mcp9808.t_crit = (mcp9808.t_crit & 0x00ff) | ((uint16_t)buf[0] << 8);
 			} else if (index == 1) {
 				mcp9808.t_crit = (mcp9808.t_crit & 0xff00) | ((uint16_t)buf[1] << 0);
 			} else return index;
+			break;
 		case reso:
 			mcp9808.reso = buf[index];
-		default: return -1;
+			break;
+		default:
+			printf("unk reg\n");
+			return -1;
 		}
 	}
 

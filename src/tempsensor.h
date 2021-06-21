@@ -21,6 +21,10 @@ void tempsense_do_stop(void); // stop cond
 void tempsense_dev_init(void);
 // 8.4
 int16_t tempsense_dev_get_temp(void);
+
+int16_t tempsense_dev_get_lower(void);
+int16_t tempsense_dev_get_upper(void);
+int16_t tempsense_dev_get_crit (void);
 #endif
 
 #endif

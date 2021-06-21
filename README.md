@@ -138,12 +138,19 @@ sensor (the exact sensor emulated is the Microchip MCP9808). To have it show
 up in `sensors`, do the following (with `BUSNUM` the number from the above
 `i2cdetect -l` output):
 ```
+$ ./dmctl.py /dev/ttyACM1 --i2ctemp 0x18     # need to give it an address first
 $ sudo modprobe jc42
+$ # now tell the jc42 module that the device can be found at this address
 $ echo "jc42 0x18" | sudo tee /sys/bus/i2c/device/i2c-BUSNUM/new_device
-$ sudo sensors
+$ sudo sensors                               # it should show up now:
+jc42-i2c-BUSNUM-18
+Adapter: i2c-tiny-usb at bus 001 device 032
+temp1:        +23.1°C  (low  = -20.0°C)
+                       (high = +75.0°C, hyst = +75.0°C)
+                       (crit = +80.0°C, hyst = +80.0°C)
 ```
 
-Temperature readout is currently not really working.
+Temperature readout may be a bit higher than the ambient temperature.
 
 ### Runtime configuration
 
@@ -156,6 +163,7 @@ The currently implemented options are:
 - `i2ctemp`: Get or set the I2C address of the fake I2C device of the temperature
              sensor. Use 0 for getting the value, 0xff for disabling, and any
              other for setting the address. The I2C device emulated is an MCP9808.
+             When setting a value, the old value is printed.
 
 ```
 usage: dmctl [-h] [-v] [--ctsrts [CTSRTS]] tty
@@ -201,7 +209,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
       to use the UART interface as a loopback thing.
   - [ ] Second UART port for when stdio UART is disabled?
 - [x] I2C support by emulating the I2C Tiny USB
-  - [ ] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
+  - [x] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - [ ] ~~Does SMBus stuff need special treatment here?~~ ~~No.~~  Actually, some
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only

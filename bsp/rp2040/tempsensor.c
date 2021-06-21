@@ -28,9 +28,20 @@ void tempsense_dev_init(void) {
 int16_t tempsense_dev_get_temp(void) {
 	adc_select_input(4); // select temp sensor
 	uint16_t result = adc_read();
-	int temperature = float2fix(T_OFF - T_BIAS / T_SLOPE)
-		+ (int)result * float2fix(V_MAX / (D_RANGE * T_SLOPE));
 
-	return trunc_8fix4(temperature);
+	float voltage = result * (V_MAX / D_RANGE);
+
+	float tempf = T_OFF + (voltage - T_BIAS) / T_SLOPE;
+
+	// FIXME: use fixed point instead! but something's wrong with the formula below
+	/*int temperature = float2fix(T_OFF - T_BIAS / T_SLOPE)
+		+ (int)result * float2fix(V_MAX / (D_RANGE * T_SLOPE));*/
+
+	return trunc_8fix4(/*temperature*/float2fix(tempf));
 }
+
+// RP2040 absolute min/max are -20/85
+int16_t tempsense_dev_get_lower(void) { return trunc_8fix4(float2fix(-15)); }
+int16_t tempsense_dev_get_upper(void) { return trunc_8fix4(float2fix( 75)); }
+int16_t tempsense_dev_get_crit (void) { return trunc_8fix4(float2fix( 80)); }
 

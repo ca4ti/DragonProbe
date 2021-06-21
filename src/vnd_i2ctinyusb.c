@@ -85,7 +85,10 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 #ifdef DBOARD_HAS_TEMPSENSOR
 			if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
 				if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
-				status = tempsense_do_write(cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len, rxbuf);
+				// FIXME: fix status handling
+				int rv = tempsense_do_write(cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len, rxbuf);
+				if (rv < 0 || rv != cmd.len) status = ITU_STATUS_ADDR_NAK;
+				else status = ITU_STATUS_ADDR_ACK;
 				if (cmd.cmd & ITU_CMD_I2C_IO_END_F  ) tempsense_do_stop ();
 			} else
 #endif
@@ -155,7 +158,9 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 #ifdef DBOARD_HAS_TEMPSENSOR
 					if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
 						if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
-						status = tempsense_do_read(cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len, txbuf);
+						int rv = tempsense_do_read(cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len, txbuf);
+						if (rv < 0 || rv != cmd.len) status = ITU_STATUS_ADDR_NAK;
+						else status = ITU_STATUS_ADDR_ACK;
 						if (cmd.cmd & ITU_CMD_I2C_IO_END_F  ) tempsense_do_stop ();
 					} else
 #endif
@@ -173,7 +178,9 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 #ifdef DBOARD_HAS_TEMPSENSOR
 						if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
 							if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
-							status = tempsense_do_write(0, &bleh);
+							int rv = tempsense_do_write(0, &bleh);
+							if (rv < 0 || rv != cmd.len) status = ITU_STATUS_ADDR_NAK;
+							else status = ITU_STATUS_ADDR_ACK;
 							if (cmd.cmd & ITU_CMD_I2C_IO_END_F  ) tempsense_do_stop ();
 						} else
 #endif
