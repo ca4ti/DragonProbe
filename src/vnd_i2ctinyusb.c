@@ -7,13 +7,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include <hardware/i2c.h>
+
 #include "tusb.h"
 #include "device/usbd_pvt.h"
 
+#include "protocfg.h"
+#include "pinout.h"
+
 #include "i2ctinyusb.h"
 
-#include "pinout.h"
-#include <hardware/i2c.h>
+#include "tempsensor.h"
 
 static uint8_t itf_num;
 
@@ -28,6 +32,9 @@ static void iub_init(void) {
 	memset(&curcmd, 0, sizeof curcmd);
 
 	i2ctu_init();
+#ifdef DBOARD_HAS_TEMPSENSOR
+	tempsense_init();
+#endif
 }
 
 static void iub_reset(uint8_t rhport) {
@@ -35,6 +42,9 @@ static void iub_reset(uint8_t rhport) {
 	memset(&curcmd, 0, sizeof curcmd);
 
 	i2ctu_init();
+#ifdef DBOARD_HAS_TEMPSENSOR
+	tempsense_init();
+#endif
 
 	itf_num = 0;
 }
@@ -54,10 +64,10 @@ static uint16_t iub_open(uint8_t rhport, tusb_desc_interface_t const* itf_desc,
 }
 
 static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req) {
-	static char* stages[]={"SETUP","DATA","ACK"};
+	/*static char* stages[]={"SETUP","DATA","ACK"};
 	static char* types[]={"STD","CLS","VND","INV"};
 
-	/*printf("ctl req stage=%s rt=%s, wIndex=%04x, bReq=%02x, wValue=%04x wLength=%04x\n",
+	printf("ctl req stage=%s rt=%s, wIndex=%04x, bReq=%02x, wValue=%04x wLength=%04x\n",
 		stages[stage], types[req->bmRequestType_bit.type],
 		req->wIndex, req->bRequest, req->wValue, req->wLength);*/
 
@@ -72,8 +82,17 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 			//printf("WDATA a=%04hx l=%04hx ", cmd.addr, cmd.len);
 
 			//printf("data=%02x %02x...\n", rxbuf[0], rxbuf[1]);
-			status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
-				cmd.addr, rxbuf, cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len);
+#ifdef DBOARD_HAS_TEMPSENSOR
+			if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
+				if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
+				status = tempsense_do_write(cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len, rxbuf);
+				if (cmd.cmd & ITU_CMD_I2C_IO_END_F  ) tempsense_do_stop ();
+			} else
+#endif
+			{
+				status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
+					cmd.addr, rxbuf, cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len);
+			}
 
 			// cancel curcmd
 			curcmd.cmd = 0xff;
@@ -133,8 +152,17 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 
 				if (cmd.flags & I2C_M_RD) { // read from I2C device
 					//printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
-					status = i2ctu_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
-							cmd.addr, txbuf, cmd.len);
+#ifdef DBOARD_HAS_TEMPSENSOR
+					if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
+						if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
+						status = tempsense_do_read(cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len, txbuf);
+						if (cmd.cmd & ITU_CMD_I2C_IO_END_F  ) tempsense_do_stop ();
+					} else
+#endif
+					{
+						status = i2ctu_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
+							cmd.addr, txbuf, cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len);
+					}
 					//printf("data=%02x %02x...\n", txbuf[0], txbuf[1]);
 					return tud_control_xfer(rhport, req, txbuf,
 							cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len);
@@ -142,8 +170,17 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 					//printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
 					if (cmd.len == 0) { // address probe -> do this here
 						uint8_t bleh = 0;
-						status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
+#ifdef DBOARD_HAS_TEMPSENSOR
+						if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
+							if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
+							status = tempsense_do_write(0, &bleh);
+							if (cmd.cmd & ITU_CMD_I2C_IO_END_F  ) tempsense_do_stop ();
+						} else
+#endif
+						{
+							status = i2ctu_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
 								cmd.addr, &bleh, 0);
+						}
 						//printf("probe -> %d\n", status);
 						return tud_control_status(rhport, req);
 					} else {

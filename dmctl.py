@@ -3,13 +3,27 @@
 import argparse, serial, struct
 from typing import *
 
+def auto_int(x):
+    return int(x, 0)
+
 class RTOpt(NamedTuple):
     type: bool
     optid: int
     desc: str
 
+supportmap = {
+    1: "CMSIS-DAP",
+    2: "UART",
+    4: "I2C-Tiny-USB",
+    8: "Temperature sensor",
+
+    0x80: "stdio USB-CDC debug interface"
+}
+
 option_table = {
-    'ctsrts': RTOpt(bool, 1, "Enable or disable CTS/RTS flow control (--ctsrts [true|false])")
+    'ctsrts': RTOpt(bool, 1, "Enable or disable CTS/RTS flow control (--ctsrts [true|false])"),
+    'i2ctemp': RTOpt(auto_int, 2, "Control the builtin I2C temperature controller: get (0), disable (-1/0xff) or set/enable (other) the current status and I2C bus address"),
+    'support': RTOpt(str, 0xff, "Get list of supported/implemented functionality"),
 }
 
 S_ACK = b'\x06'
@@ -25,6 +39,10 @@ S_CMD_MAGIC_SETTINGS = b'\x53'
 def val2byte(t, v) -> int:
     if t == bool:
         return 1 if v else 0
+    if t == int or t == auto_int:
+        return 0xff if v < 0 else (v & 0xff)
+    if t == str:
+        return 0
 
     assert False, "unimplemented type %s" % str(t)
 
@@ -100,8 +118,12 @@ def main():
                         help="Verbose logging (for this utility)")
 
     for k, v in option_table.items():
-        parser.add_argument('--%s'%k, type=v.type, nargs='?', default=None,
-                            help=v.desc)
+        if k == "support":
+            parser.add_argument('--%s'%k, default=None, action='store_true',
+                                help=v.desc)
+        else:
+            parser.add_argument('--%s'%k, type=v.type, nargs='?', default=None,
+                                help=v.desc)
 
     args = parser.parse_args()
 
@@ -110,7 +132,11 @@ def main():
             resp = do_xfer(args, v.optid, val2byte(v.type, args.__dict__[k]), args.tty[0])
             if resp is None:
                 return 1
-            if args.verbose: print("-> %d" % resp)
+            if k == "support":
+                print(", ".join(kvp[1] for kvp in supportmap.items() if (kvp[0] & resp) != 0))
+            else:
+                #if args.verbose:
+                print("-> %d" % resp)
 
     return 0
 

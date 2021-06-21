@@ -181,7 +181,7 @@ __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetSerNumString (char *str) {
-	return get_unique_id_u8(str);
+	return get_unique_id_u8((uint8_t*)str);
 }
 
 ///@}
