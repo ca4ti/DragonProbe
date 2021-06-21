@@ -21,18 +21,6 @@ Adding support for another MCU is a matter of adding another subfolder in the
 sending commands to the hardware, protocol parsing is done by shared code),
 and handling it in the `CMakeFiles.txt` file.
 
-## Variants
-
-Most [TinyUSB supported MCUs](https://github.com/hathach/tinyusb/blob/master/docs/boards.md) can run this code; a subdirectory under bsp needs to be added for the "BOARD" name with a DAP_config.h to control the SWD/JTAG GPIOs and a unique.h to provide unique serial number (if any) and prefix to the USB product name.
-
-Already added BOARD variants include:
-
-For BOARD=raspberry_pi_pico, this project results in a standards-based CMSIS-DAP alternative to the approaches suggested in Chapter 5 and Appendix A of [Getting Started with Raspberry Pi Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf).  This uses two RP2040 boards (see wiring loom shown in Figure 34 of Appendix A) where one RP2040 is the debugger and the other RP2040 is being debugged.  The instructions in Chapter 5 apply, except no Raspberry Pi is needed.
-
-Alternatively, a special one RP2040 “Raspberry Pi Pico” variant is [available here](https://github.com/majbthrd/pico-debug).
-
-For BOARD=stm32f072disco, the inexpensive [32F072BDISCOVERY evaluation board](https://www.st.com/en/evaluation-tools/32f072bdiscovery.html) can be used as a CMSIS-DAP SWD debugger.
-
 ## Building
 
 After initially downloading this project's code, issue the following command to download TinyUSB and CMSIS 5 code:
@@ -110,7 +98,8 @@ The pin mapping for the RP2040 is as follows:
 
 On the RP2040, two USB CDC interfaces are exposed: the first is the UART
 interface, the second is for Serprog. If you have no other USB-CDC intefaces,
-these will be `/dev/ttyACM0` and `/dev/ttyACM1`, respectively.
+these will be `/dev/ttyACM0` and `/dev/ttyACM1`, respectively. If you have
+enabled the `USE_USBCDC_FOR_STDIO` option, there will be a third device file.
 
 ### UART
 
@@ -121,7 +110,7 @@ connect GP0 to GP5, and GP1 to GP4, or alternatively, use the
 `USE_USBCDC_FOR_STDIO` CMake flag, which adds an extra USB-CDC interface for
 which stdio is used exclusively, while disabling stdio on the UART.
 
-### SWD and JTAG debuggin
+### SWD and JTAG debugging
 
 In SWD mode, the pin mapping is entirely as with the standard Picoprobe setup,
 as described in Chapter 5 and Appendix A of [Getting Started with Raspberry Pi
