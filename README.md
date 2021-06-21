@@ -118,7 +118,32 @@ The I2C-Tiny-USB functionality can be used as follows: first, load the
 latter, can be found in the `i2c-tiny-usb-misc/` folder in this repo). Then you
 can use the I2C USB bridge as any other I2C device on your computer. For
 example, the `i2cdetect`, `i2cget` and `i2cset` tools from `i2c-tools` should
-all work. I2C functionality is currently untested, however.
+all work. You can find which I2C device corresponds to the I2C-Tiny-USB, by
+running `i2cdetect -l`:
+
+```
+$ sudo i2cdetect -l
+[...]
+i2c-1	i2c       	i915 gmbus dpb                  	I2C adapter
+i2c-8	i2c       	Radeon i2c bit bus 0x95         	I2C adapter
+i2c-15	i2c       	i2c-tiny-usb at bus 001 device 011	I2C adapter  # <---- !
+i2c-6	i2c       	Radeon i2c bit bus 0x93         	I2C adapter
+i2c-13	i2c       	AUX C/DDI C/PHY C               	I2C adapter
+[...]
+```
+
+If the board/MCU has a builtin temperature sensor, a fake I2C device on the bus
+can optionally be enabled to use it as a Jedec JC42.2-compliant temperature
+sensor (the exact sensor emulated is the Microchip MCP9808). To have it show
+up in `sensors`, do the following (with `BUSNUM` the number from the above
+`i2cdetect -l` output):
+```
+$ sudo modprobe jc42
+$ echo "jc42 0x18" | sudo tee /sys/bus/i2c/device/i2c-BUSNUM/new_device
+$ sudo sensors
+```
+
+Temperature readout is currently not really working.
 
 ### Runtime configuration
 
@@ -126,7 +151,11 @@ Several settings can be applied at runtime, using the `dmctl` Python script.
 Settings are communicated over the Serprog USB serial port.
 
 The currently implemented options are:
+- `support`: tells you which features this implementation/board supports
 - `ctsrts`: Enable/disable CTS/RTS-based hardware flow control for the UART port
+- `i2ctemp`: Get or set the I2C address of the fake I2C device of the temperature
+             sensor. Use 0 for getting the value, 0xff for disabling, and any
+             other for setting the address. The I2C device emulated is an MCP9808.
 
 ```
 usage: dmctl [-h] [-v] [--ctsrts [CTSRTS]] tty
@@ -137,9 +166,13 @@ positional arguments:
   tty                Path to DapperMime-JTAG Serprog UART device
 
 optional arguments:
-  -h, --help         show this help message and exit
-  -v, --verbose      Verbose logging (for this utility)
-  --ctsrts [CTSRTS]  Enable or disable CTS/RTS flow control (--ctsrts [true|false])
+  -h, --help           show this help message and exit
+  -v, --verbose        Verbose logging (for this utility)
+  --ctsrts [CTSRTS]    Enable or disable CTS/RTS flow control (--ctsrts [true|false])
+  --i2ctemp [I2CTEMP]  Control the builtin I2C temperature controller: get (0),
+                       disable (-1/0xff) or set/enable (other) the current
+                       status and I2C bus address
+  --support            Get list of supported/implemented functionality
 ```
 
 example:
