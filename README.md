@@ -258,6 +258,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - [ ] Segger RTT?
 - [ ] Maybe use the ADCs for something?
 - [ ] General generic manual GPIO mode
+  - Isn't this just FT2232 emulation?
 - [ ] SD/MMC/SDIO (will be a pain)
 - [ ] AVR programming (USBavr emulation?)
   - AVR ISP is hardly used anymore
