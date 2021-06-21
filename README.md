@@ -39,7 +39,7 @@ cmake -DBOARD=raspberry_pi_pico -DFAMILIY=rp2040 -DCMAKE_BUILD_TYPE=RelWithDebIn
 `BOARD` and `FAMILY` should correspond to those used in the TinyUSB `hw` folder,
 and with the folders used in `./bsp` as well.
 
-Possible BOARD/FAMILY combinations are:
+A non-exhaustive list of possible BOARD/FAMILY combinations:
 
 | `FAMILY` | `BOARD` | description |
 |:------- |:-------- |:----------- |
