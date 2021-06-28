@@ -22,7 +22,9 @@ supportmap = {
 
 option_table = {
     'ctsrts': RTOpt(bool, 1, "Enable or disable CTS/RTS flow control (--ctsrts [true|false])"),
-    'i2ctemp': RTOpt(auto_int, 2, "Control the builtin I2C temperature controller: get (0), disable (-1/0xff) or set/enable (other) the current status and I2C bus address"),
+    'i2ctemp': RTOpt(auto_int, 2,
+                     "Control the builtin I2C temperature controller: get (0), disable (-1/0xff) "
+                     "or set/enable (other) the current status and I2C bus address"),
     'support': RTOpt(str, 0xff, "Get list of supported/implemented functionality"),
 }
 
@@ -36,6 +38,7 @@ S_CMD_Q_PGMNAME = b'\x03'
 S_CMD_SYNCNOP   = b'\x10'
 S_CMD_MAGIC_SETTINGS = b'\x53'
 
+
 def val2byte(t, v) -> int:
     if t == bool:
         return 1 if v else 0
@@ -45,6 +48,7 @@ def val2byte(t, v) -> int:
         return 0
 
     assert False, "unimplemented type %s" % str(t)
+
 
 def do_xfer(args, cmd:int, arg:int, port: str, baudrate:int=115200) -> Optional[int]:
     with serial.Serial(port, baudrate, timeout=1) as ser:
@@ -105,14 +109,14 @@ def do_xfer(args, cmd:int, arg:int, port: str, baudrate:int=115200) -> Optional[
             print("settings command failed")
             return None
 
-def main():
-    parser = argparse.ArgumentParser(prog="dmctl",
-                                     description="Runtime configuration control for DapperMime-JTAG")
 
-    parser.add_argument('tty', type=str, nargs=1, #'?', #default="/dev/ttyACM1",
-                        help="Path to DapperMime-JTAG Serprog UART device"#+\
-                             #" [/dev/ttyACM1]"
-                        )
+def main():
+    parser = argparse.ArgumentParser(
+        prog="dbctl",
+        description="Runtime configuration control for DapperMime-JTAG")
+
+    parser.add_argument('tty', type=str, nargs='?', default="/dev/dragnbus-serprog",
+                        help="Path to DapperMime-JTAG Serprog UART device [/dev/dragnbus-serprog]")
 
     parser.add_argument('-v', '--verbose', default=False, action='store_true',
                         help="Verbose logging (for this utility)")
@@ -129,7 +133,7 @@ def main():
 
     for k, v in option_table.items():
         if args.__dict__[k] is not None:
-            resp = do_xfer(args, v.optid, val2byte(v.type, args.__dict__[k]), args.tty[0])
+            resp = do_xfer(args, v.optid, val2byte(v.type, args.__dict__[k]), args.tty)
             if resp is None:
                 return 1
             if k == "support":
@@ -140,9 +144,6 @@ def main():
 
     return 0
 
-#do_xfer(1, 1, "/dev/ttyACM1")
-#do_xfer(1, 0, "/dev/ttyACM1")
 
 if __name__ == '__main__':
     main()
-

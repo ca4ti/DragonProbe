@@ -1,0 +1,32 @@
+# Maintainer haskal <haskal@awoo.systems>
+_pkgbase=dragnbus
+pkgname=$_pkgbase-git
+pkgver=0.0.1
+pkgrel=1
+pkgdesc="dragnbus host tools"
+arch=("any")
+url="https://git.lain.faith/sys64738/DapperMime-JTAG"
+license=("GPL")
+depends=("udev" "python" "python-pyserial")
+makedepends=()
+source=("file://$PWD/../10-dragnbus.rules"
+        "file://$PWD/../dbctl.py")
+sha256sums=(SKIP SKIP)
+
+build() {
+    python -m compileall dbctl.py
+    python -m compileall -o 2 dbctl.py
+}
+
+package() {
+    install -dm755 "$pkgdir/usr/share/licenses/dragnbus/"
+    install -dm755 "$pkgdir/usr/bin/"
+    ln -s /usr/share/licenses/common/GPL3/license.txt \
+        "$pkgdir/usr/share/licenses/dragnbus/license.txt"
+
+    install -Dm755 dbctl.py "$pkgdir/usr/lib/dragnbus/dbctl.py"
+    install -Dm644 -t "$pkgdir/usr/lib/dragnbus/__pycache__/" __pycache__/*
+    ln -s "/usr/lib/dragnbus/dbctl.py" "$pkgdir/usr/bin/dbctl"
+
+    install -Dm644 10-dragnbus.rules "$pkgdir/usr/lib/udev/rules.d/10-dragnbus.rules"
+}

@@ -1,0 +1,7 @@
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="1312", MODE:="0666", ENV{IS_DRAGNBUS}:="yes"
+ENV{IS_DRAGNBUS}=="yes", ATTRS{interface}=="stdio CDC interface (debug)", ENV{DRAGNBUS_INTERFACE_TYPE}:="debug"
+ENV{IS_DRAGNBUS}=="yes", ATTRS{interface}=="Serprog CDC interface", ENV{DRAGNBUS_INTERFACE_TYPE}:="serprog"
+ENV{IS_DRAGNBUS}=="yes", ATTRS{interface}=="CMSIS-DAP HID interface", ENV{DRAGNBUS_INTERFACE_TYPE}:="dap"
+ENV{DRAGNBUS_INTERFACE_TYPE}=="debug", SUBSYSTEM=="tty", SYMLINK+="dragnbus-dbg"
+ENV{DRAGNBUS_INTERFACE_TYPE}=="serprog", SUBSYSTEM=="tty", SYMLINK+="dragnbus-serprog"
+ENV{DRAGNBUS_INTERFACE_TYPE}=="dap", SUBSYSTEM=="usbmisc", SYMLINK+="dragnbus-dap"

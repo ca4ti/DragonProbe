@@ -1,0 +1,8 @@
+arch/*
+!arch/PKGBUILD
+i2c-tiny-usb-misc/*.o
+i2c-tiny-usb-misc/*.ko
+i2c-tiny-usb-misc/*.order
+i2c-tiny-usb-misc/*.cmd
+i2c-tiny-usb-misc/*.mod*
+i2c-tiny-usb-misc/*.symvers
