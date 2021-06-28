@@ -7,7 +7,7 @@ def auto_int(x):
     return int(x, 0)
 
 class RTOpt(NamedTuple):
-    type: bool
+    type: Callable[[Any], Any]
     optid: int
     desc: str
 

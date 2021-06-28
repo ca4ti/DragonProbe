@@ -33,7 +33,7 @@ Compilation is done using CMake:
 
 ```
 mkdir cmake-build && cd cmake-build
-cmake -DBOARD=raspberry_pi_pico -DFAMILIY=rp2040 -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+cmake -DBOARD=raspberry_pi_pico -DFAMILY=rp2040 -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 ```
 
 `BOARD` and `FAMILY` should correspond to those used in the TinyUSB `hw` folder,
@@ -54,7 +54,7 @@ the `-DUSE_SYSTEMWIDE_PICOSDK=On` flag to CMake, too.
 Other options are:
 * `-DPICO_NO_FLASH=[On|Off]`: store the binary in RAM only, useful for development.
 * `-DPICO_COPY_TO_RAM=[On|Off]`: write to flash, but always run from RAM
-* `-DUSE_USBCDC_FOR_STDIO=[On|Off]`: export an extra USB-CDC interface for debuggin
+* `-DUSE_USBCDC_FOR_STDIO=[On|Off]`: export an extra USB-CDC interface for debugging
 
 ## Usage
 
@@ -231,8 +231,9 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 
 - [x] CMSIS-DAP JTAG implementation
 - [x] Flashrom/SPI support using Serprog
-  - [ ] Parallel ROM flashing support, too, by having the device switch into a
-        separate mode that temporarily disables all other IO protocols
+  - Parallel ROM flashing support, too, by having the device switch into a
+    separate mode that temporarily disables all other IO protocols
+    - Not enough IO, rip.
 - [x] UART with CTS/RTS flow control
   - [x] Needs configurable stuff as well, as some UART interfaces won't use this.
 - [x] Debug interface to send printf stuff directly to USB, instead of having

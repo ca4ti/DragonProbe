@@ -84,8 +84,11 @@ target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+
+add_custom_target(fix_db ALL WORKING_DIRECTORY ${OUTPUT_DIR}
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/fix_clang_db.py")
 
 if(FAMILY STREQUAL "rp2040")
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
