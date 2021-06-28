@@ -229,6 +229,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 
 ## TODO
 
+- [ ] A name
 - [x] CMSIS-DAP JTAG implementation
 - [x] Flashrom/SPI support using Serprog
   - Parallel ROM flashing support, too, by having the device switch into a
@@ -245,14 +246,10 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
+- [ ] A proper interface for sending commands etc. instead of shoehorning it
+      into Serprog.
 - [ ] JTAG pinout detector
   - https://github.com/cyphunk/JTAGenum
-- [ ] Dynamic pin assignment
-- [ ] SUMP logic analyzer mode?
-  - see also [this](https://github.com/perexg/picoprobe-sump)
-- [ ] FT2232 emulation mode?
-- [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????
-  - Maybe also with code that auto-reacts to stuff from the environment?
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
       with the device to perform the JTAG commands, because Vivado no likey
       OpenOCD.
@@ -265,6 +262,11 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://github.com/Xilinx/XilinxVirtualCable/
   - https://github.com/derekmulcahy/xvcpi
   - OpenOCD as XVC client??
+- [ ] SUMP logic analyzer mode?
+  - see also [this](https://github.com/perexg/picoprobe-sump)
+- [ ] FT2232 emulation mode?
+- [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????
+  - Maybe also with code that auto-reacts to stuff from the environment?
 - [ ] Maybe use the ADCs for something?
 - [ ] SD/MMC/SDIO (will be a pain)
 - [ ] AVR programming (USBavr emulation?)
