@@ -70,8 +70,11 @@ void cdc_uart_set_hwflow(bool enable) {
 	uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
 }
 
+/* TODO: properly dispatch to others? */
 void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
-	//picoprobe_info("New baud rate %d\n", line_coding->bit_rate);
-	uart_init(PINOUT_UART_INTERFACE, line_coding->bit_rate);
+	if (itf == CDC_N_UART) {
+		//picoprobe_info("New baud rate %d\n", line_coding->bit_rate);
+		uart_init(PINOUT_UART_INTERFACE, line_coding->bit_rate);
+	}
 }
 

@@ -106,6 +106,8 @@ static uint8_t __no_inline_not_in_flash_func(i2cio_read8)(bool last) {
 
 	i2cio_scl_toggle();
 	i2cio_set_sda(true);
+
+	return rv;
 }
 
 // replicating/rewriting some SDK functions because they don't do what I want
@@ -144,6 +146,7 @@ static int __no_inline_not_in_flash_func(i2cex_probe_address)(uint16_t addr, boo
 inline static void i2cex_abort_xfer(i2c_inst_t* i2c) {
 #if 1
 	// may be bugged??? so doesnt do anything for now
+	(void)i2c;
 	return;
 #else
 	// now do the abort

@@ -9,6 +9,8 @@ set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. D
 get_filename_component(PROJECT ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 set(PROJECT ${BOARD}-${PROJECT})
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # TOP is absolute path to root directory of TinyUSB git repo
 set(TOP "./tinyusb")
 get_filename_component(TOP "${TOP}" REALPATH)

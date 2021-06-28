@@ -38,6 +38,8 @@ static void iub_init(void) {
 }
 
 static void iub_reset(uint8_t rhport) {
+	(void)rhport;
+
 	status = ITU_STATUS_IDLE;
 	memset(&curcmd, 0, sizeof curcmd);
 
@@ -51,6 +53,8 @@ static void iub_reset(uint8_t rhport) {
 
 static uint16_t iub_open(uint8_t rhport, tusb_desc_interface_t const* itf_desc,
 		uint16_t max_len) {
+	(void)rhport;
+
 	TU_VERIFY(itf_desc->bInterfaceClass == 0
 	       && itf_desc->bInterfaceSubClass == 0
 	       && itf_desc->bInterfaceProtocol == 0, 0);
@@ -64,6 +68,8 @@ static uint16_t iub_open(uint8_t rhport, tusb_desc_interface_t const* itf_desc,
 }
 
 static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req) {
+	(void)rhport;
+
 	/*static char* stages[]={"SETUP","DATA","ACK"};
 	static char* types[]={"STD","CLS","VND","INV"};
 
@@ -209,6 +215,11 @@ static bool iub_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t co
 
 // never actually called fsr
 static bool iub_xfer(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes) {
+	(void)rhport;
+	(void)ep_addr;
+	(void)result;
+	(void)xferred_bytes;
+
 	return true;
 }
 

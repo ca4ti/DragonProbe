@@ -14,3 +14,4 @@ for i in range(len(data)):
 
 with open("compile_commands.json", "w") as f:
     json.dump(data, f)
+

@@ -140,6 +140,27 @@ This information includes:
 /// SWO Streaming Trace.
 #define SWO_STREAM              0               ///< SWO Streaming Trace: 1 = available, 0 = not available.
 
+/// Indicate that UART Communication Port is available.
+/// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
+#define DAP_UART                0               ///< DAP UART:  1 = available, 0 = not available.
+
+/// USART Driver instance number for the UART Communication Port.
+#define DAP_UART_DRIVER         1               ///< USART Driver instance number (Driver_USART#).
+
+/// UART Receive Buffer Size.
+#define DAP_UART_RX_BUFFER_SIZE   64U           ///< Uart Receive Buffer Size in bytes (must be 2^n).
+
+/// UART Transmit Buffer Size.
+#define DAP_UART_TX_BUFFER_SIZE   64U           ///< Uart Transmit Buffer Size in bytes (must be 2^n).
+
+/// Indicate that UART Communication via USB COM Port is available.
+/// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
+#ifdef USE_USBCDC_FOR_STDIO
+#define DAP_UART_USB_COM_PORT   1               ///< USB COM Port:  1 = available, 0 = not available.
+#else
+#define DAP_UART_USB_COM_PORT   0
+#endif
+
 /// Clock frequency of the Test Domain Timer. Timer value is returned with \ref TIMESTAMP_GET.
 #define TIMESTAMP_CLOCK         0U              ///< Timestamp clock in Hz (0 = timestamps not supported).
 
@@ -161,7 +182,7 @@ This information includes:
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
-	const static char vnd[] = INFO_MANUFACTURER;
+	static const char vnd[] = INFO_MANUFACTURER;
 	for (size_t i = 0; i < sizeof(vnd); ++i) str[i] = vnd[i];
 	return sizeof(vnd)-1;
 }
@@ -171,7 +192,7 @@ __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
-	const static char prd[] = INFO_PRODUCT(INFO_BOARDNAME);
+	static const char prd[] = INFO_PRODUCT(INFO_BOARDNAME);
 	for (size_t i = 0; i < sizeof(prd); ++i) str[i] = prd[i];
 	return sizeof(prd)-1;
 }
@@ -183,6 +204,37 @@ __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
 __STATIC_INLINE uint8_t DAP_GetSerNumString (char *str) {
 	return get_unique_id_u8((uint8_t*)str);
 }
+
+/** Get Target Device Vendor string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetDeviceVendorString (char *str) { (void)str; return 0; }
+
+/** Get Target Device Name string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetDeviceNameString (char *str) { (void)str; return 0; }
+
+/** Get Target Board Vendor string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetBoardVendorString (char *str) { (void)str; return 0; }
+
+/** Get Target Board Name string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetBoardNameString (char *str) { (void)str; return 0; }
+
+/* TODO! */
+/** Get Product Firmware Version string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetProductFirmwareVersionString (char *str) { (void)str; return 0; }
 
 ///@}
 

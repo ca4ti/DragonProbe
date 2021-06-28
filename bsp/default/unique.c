@@ -8,7 +8,7 @@
 __attribute__((__weak__)) uint8_t get_unique_id_u8(uint8_t *desc_str) {
 	static const char canned[] = "123456";
 
-	for (int i=0; i<TU_ARRAY_SIZE(canned); i++) {
+	for (size_t i=0; i<TU_ARRAY_SIZE(canned); i++) {
 		desc_str[i] = canned[i];
 	}
 
@@ -18,7 +18,7 @@ __attribute__((__weak__)) uint8_t get_unique_id_u8(uint8_t *desc_str) {
 __attribute__((__weak__)) uint8_t get_unique_id_u16(uint16_t *desc_str) {
 	static const char canned[] = "123456";
 
-	for (int i=0; i<TU_ARRAY_SIZE(canned); i++) {
+	for (size_t i=0; i<TU_ARRAY_SIZE(canned); i++) {
 		desc_str[i] = canned[i];
 	}
 
