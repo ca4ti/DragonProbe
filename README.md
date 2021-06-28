@@ -157,6 +157,9 @@ i2c-13	i2c       	AUX C/DDI C/PHY C               	I2C adapter
 [...]
 ```
 
+**NOTE**: I2C functionality sometimes breaks with certain USB hubs. If this is
+the case, try unplugging and replugging the entire hub.
+
 #### I2C temperature sensor emulation
 
 If the board/MCU has a builtin temperature sensor, a fake I2C device on the bus
@@ -168,7 +171,7 @@ up in `sensors`, do the following (with `BUSNUM` the number from the above
 $ ./dmctl.py /dev/ttyACM1 --i2ctemp 0x18     # need to give it an address first
 $ sudo modprobe jc42
 $ # now tell the jc42 module that the device can be found at this address
-$ echo "jc42 0x18" | sudo tee /sys/bus/i2c/device/i2c-BUSNUM/new_device
+$ echo "jc42 0x18" | sudo tee /sys/bus/i2c/devices/i2c-BUSNUM/new_device
 $ sudo sensors                               # it should show up now:
 jc42-i2c-BUSNUM-18
 Adapter: i2c-tiny-usb at bus 001 device 032
@@ -241,6 +244,14 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
+- [ ] JTAG pinout detector
+  - https://github.com/cyphunk/JTAGenum
+- [ ] Dynamic pin assignment
+- [ ] SUMP logic analyzer mode?
+  - see also [this](https://github.com/perexg/picoprobe-sump)
+- [ ] FT2232 emulation mode?
+- [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????
+  - Maybe also with code that auto-reacts to stuff from the environment?
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
       with the device to perform the JTAG commands, because Vivado no likey
       OpenOCD.
@@ -253,22 +264,16 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://github.com/Xilinx/XilinxVirtualCable/
   - https://github.com/derekmulcahy/xvcpi
   - OpenOCD as XVC client??
-- [ ] SUMP logic analyzer?
-  - see also [this](https://github.com/perexg/picoprobe-sump)
-- [ ] Segger RTT?
 - [ ] Maybe use the ADCs for something?
-- [ ] General generic manual GPIO mode
-  - Isn't this just FT2232 emulation?
 - [ ] SD/MMC/SDIO (will be a pain)
 - [ ] AVR programming (USBavr emulation?)
   - AVR ISP is hardly used anymore
   - TPI/UPDI requires 5V levels, Pico doesn't do that :/
   - debugWIRE????
-- [ ] FT2232 emulation mode?
+- iCE40 programming??
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
 - Maybe steal other features from the Bus Pirate, [HydraBus](https://github.com/hydrabus/hydrafw) or Glasgow or so
   - 1-wire and 3-wire? Never seen this one in the wild
-  - CAN? LIN? If I'd first be able to find a CAN device to test it with, sure
-- Dynamic pin assignment
+  - CAN? LIN? MOD? If I'd first be able to find a CAN device to test it with, sure
 
