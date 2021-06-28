@@ -1,0 +1,38 @@
+The below copyright and permission notice applies to portions of the following files, which have
+been modified from their original versions in <https://github.com/majbthrd/DapperMime>
+(the "DapperMime repository")
+
+ - src/tusb_config.h
+ - src/usb_descriptors.c
+ - bsp/rp2040/DAP_config.h
+ - bsp/rp2040/cdc_uart.c
+ - bsp/rp2040/board.h
+ - src/main.c
+
+The below notice does not apply to any modifications made to the above files since the versions
+present in the DapperMime repository, nor to any files not present in the DapperMime repository.
+
+
+
+
+The MIT License (MIT)
+
+Copyright (c) 2019 Ha Thach (tinyusb.org)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
