@@ -1,3 +1,4 @@
+// vim: set et:
 
 #ifndef PROTOCFG_H_
 #define PROTOCFG_H_
@@ -9,21 +10,21 @@
 #define DBOARD_HAS_TEMPSENSOR
 
 enum {
-	HID_N_CMSISDAP = 0,
+    HID_N_CMSISDAP = 0,
 
-	HID_N__NITF
+    HID_N__NITF
 };
 enum {
-	CDC_N_UART = 0,
-	CDC_N_SERPROG,
+    CDC_N_UART = 0,
+    CDC_N_SERPROG,
 #ifdef USE_USBCDC_FOR_STDIO
-	CDC_N_STDIO,
+    CDC_N_STDIO,
 #endif
 
-	CDC_N__NITF
+    CDC_N__NITF
 };
 enum {
-	VND_N__NITF = 0
+    VND_N__NITF = 0
 };
 
 #define CFG_TUD_HID 1
@@ -35,7 +36,7 @@ enum {
 #define CFG_TUD_VENDOR 0
 
 /*#define USB_VID 0x2e8a*/ /* Raspberry Pi */
-#define USB_VID 0xcafe /* TinyUSB */
+#define USB_VID 0xcafe     /* TinyUSB */
 /*#define USB_VID 0x1209*/ /* Generic */
 /*#define USB_VID 0x1d50*/ /* OpenMoko */
 #define USB_PID 0x1312

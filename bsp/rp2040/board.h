@@ -1,4 +1,5 @@
-/* 
+// vim: set et:
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2021, Ha Thach (tinyusb.org)
@@ -32,18 +33,19 @@ extern "C" {
 #endif
 
 #ifdef PICO_DEFAULT_LED_PIN
-#define LED_PIN               PICO_DEFAULT_LED_PIN
-#define LED_STATE_ON          (!(PICO_DEFAULT_LED_PIN_INVERTED))
+#define LED_PIN      PICO_DEFAULT_LED_PIN
+#define LED_STATE_ON (!(PICO_DEFAULT_LED_PIN_INVERTED))
 #endif
 
 // Button pin is BOOTSEL which is flash CS pin
 #define BUTTON_BOOTSEL
-#define BUTTON_STATE_ACTIVE   0
+#define BUTTON_STATE_ACTIVE 0
 
-#if !defined(USE_USBCDC_FOR_STDIO) && defined(PICO_DEFAULT_UART_TX_PIN) && defined(PICO_DEFAULT_UART_RX_PIN) && defined(PICO_DEFAULT_UART)
-#define UART_DEV              PICO_DEFAULT_UART
-#define UART_TX_PIN           PICO_DEFAULT_UART_TX_PIN
-#define UART_RX_PIN           PICO_DEFAULT_UART_RX_PIN
+#if !defined(USE_USBCDC_FOR_STDIO) && defined(PICO_DEFAULT_UART_TX_PIN) && \
+    defined(PICO_DEFAULT_UART_RX_PIN) && defined(PICO_DEFAULT_UART)
+#define UART_DEV    PICO_DEFAULT_UART
+#define UART_TX_PIN PICO_DEFAULT_UART_TX_PIN
+#define UART_RX_PIN PICO_DEFAULT_UART_RX_PIN
 #endif
 
 #ifdef __cplusplus

@@ -1,3 +1,5 @@
+// vim: set et:
+
 #include <stdint.h>
 
 #include "util.h"

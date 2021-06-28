@@ -1,3 +1,4 @@
+// vim: set et:
 
 #ifndef PROTOS_H_
 #define PROTOS_H_
@@ -6,7 +7,7 @@
 
 #include "protocfg.h"
 
-#define INFO_MANUFACTURER "BLAHAJ CTF"
+#define INFO_MANUFACTURER   "BLAHAJ CTF"
 #define INFO_PRODUCT_BARE   "Dragnbus"
 #define INFO_PRODUCT(board) "Dragnbus (" board ")"
 

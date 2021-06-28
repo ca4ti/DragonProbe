@@ -1,3 +1,4 @@
+// vim: set et:
 
 /* derived from libco v20, by byuu (ISC) */
 

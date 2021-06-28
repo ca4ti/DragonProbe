@@ -1,0 +1,29 @@
+---
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+---
+Language: Cpp
+DerivePointerAlignment: false
+PointerAlignment: Left
+AlignConsecutiveAssignments: AcrossComments
+AlignConsecutiveBitFields: AcrossComments
+AlignConsecutiveDeclarations: AcrossComments
+AlignConsecutiveMacros: AcrossComments
+AlignOperands: AlignAfterOperator
+AlignAfterOpenBracket: DontAlign
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowAllConstructorInitializersOnNextLine: true
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: true
+#AllowShortIfStatementsOnASingleLine: OnlyFirstIf
+AllowShortLoopsOnASingleLine: true
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeTernaryOperators: true
+ContinuationIndentWidth: 8
+SpaceInEmptyBlock: true
+...
