@@ -1,27 +1,34 @@
 #include <stdint.h>
-#include "tusb.h"
 
 #include "util.h"
 
-/* in the absence of the board-specific directory providing a unique ID, we provide a canned one */
+static const char uniqueid[] = "00000000"; /* placeholder */
 
-__attribute__((__weak__)) uint8_t get_unique_id_u8(uint8_t *desc_str) {
-	static const char canned[] = "123456";
+uint8_t get_unique_id_u8(uint8_t *desc_str) {
+	uint8_t chr_count = 0;
 
-	for (size_t i=0; i<TU_ARRAY_SIZE(canned); i++) {
-		desc_str[i] = canned[i];
+	for (size_t byte = 0; byte < TU_ARRAY_SIZE(uniqueid); byte++) {
+		uint8_t tmp = uniqueid[byte];
+		for (int digit = 0; digit < 2; digit++) {
+			desc_str[chr_count++] = nyb2hex(tmp & 0xf);
+			tmp >>= 4;
+		}
 	}
 
-	return i;
+	return chr_count;
 }
 
-__attribute__((__weak__)) uint8_t get_unique_id_u16(uint16_t *desc_str) {
-	static const char canned[] = "123456";
+uint8_t get_unique_id_u16(uint16_t *desc_str) {
+	uint8_t chr_count = 0;
 
-	for (size_t i=0; i<TU_ARRAY_SIZE(canned); i++) {
-		desc_str[i] = canned[i];
+	for (size_t byte = 0; byte < TU_ARRAY_SIZE(uniqueid); byte++) {
+		uint8_t tmp = uniqueid[byte];
+		for (int digit = 0; digit < 2; digit++) {
+			desc_str[chr_count++] = nyb2hex(tmp & 0xf);
+			tmp >>= 4;
+		}
 	}
 
-	return i;
+	return chr_count;
 }
 

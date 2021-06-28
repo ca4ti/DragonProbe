@@ -1,6 +1,3 @@
-option(USE_SYSTEMWIDE_PICOSDK "Use the systemwide Pico SDK instead of relying on the one from a deeply nested Git submodule (OFF by default)" OFF)
-option(PICO_NO_FLASH "Disable writing the compiled program to flash, and only load it to RAM. Useful for testing, but not much else (OFF by default)." OFF)
-option(PICO_COPY_TO_RAM "Run all code in RAM, while the program is also stored on flash. On bootup, everything will be copied to RAM (OFF by default)." OFF)
 option(USE_USBCDC_FOR_STDIO "Export an extra USB-CDC interface for stdio, instead of echoing it to a UART port (and requiring UART loopback for receiving stdio output on a host computer)." OFF)
 set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use. Set to RP2040 by default.")
 set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
@@ -18,6 +15,10 @@ get_filename_component(TOP "${TOP}" REALPATH)
 # Check for -DFAMILY=
 if(FAMILY STREQUAL "rp2040")
   cmake_minimum_required(VERSION 3.12)
+
+  option(USE_SYSTEMWIDE_PICOSDK "Use the systemwide Pico SDK instead of relying on the one from a deeply nested Git submodule (OFF by default)" OFF)
+  option(PICO_NO_FLASH "Disable writing the compiled program to flash, and only load it to RAM. Useful for testing, but not much else (OFF by default)." OFF)
+  option(PICO_COPY_TO_RAM "Run all code in RAM, while the program is also stored on flash. On bootup, everything will be copied to RAM (OFF by default)." OFF)
 
   if (USE_SYSTEMWIDE_PICOSDK)
     set(TOP "$ENV{PICO_SDK_PATH}/lib/tinyusb")

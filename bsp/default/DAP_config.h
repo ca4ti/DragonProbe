@@ -1,42 +1,38 @@
 /*
-This is *NOT* a valid CMSIS-DAP configuration; it is merely a fallback default to compile.
-*/
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021 Peter Lawrence
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 
 /*
- * Copyright (c) 2013-2017 ARM Limited. All rights reserved.
- *
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the License); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * ----------------------------------------------------------------------
- *
- * $Date:        1. December 2017
- * $Revision:    V2.0.0
- *
- * Project:      CMSIS-DAP Configuration
- * Title:        DAP_config.h CMSIS-DAP Configuration File (Template)
- *
- *---------------------------------------------------------------------------*/
+This DAP_config provides a CMSIS-DAP alternative to picoprobe and raspberrypi-swd.cfg
+*/
 
 #ifndef __DAP_CONFIG_H__
 #define __DAP_CONFIG_H__
 
-
 //**************************************************************************************************
-/** 
+/**
 \defgroup DAP_Config_Debug_gr CMSIS-DAP Debug Unit Information
-\ingroup DAP_ConfigIO_gr 
+\ingroup DAP_ConfigIO_gr
 @{
 Provides definitions about the hardware and configuration of the Debug Unit.
 
@@ -49,14 +45,12 @@ This information includes:
 */
 
 #include "cmsis_compiler.h"
-#include "bsp/board.h"
 
-#include "protos.h"
 #include "util.h"
 
 /// Processor Clock of the Cortex-M MCU used in the Debug Unit.
 /// This value is used to calculate the SWD/JTAG clock speed.
-#define CPU_CLOCK               100000000U      ///< Specifies the CPU Clock in Hz.
+#define CPU_CLOCK               48000000U       ///< Specifies the CPU Clock in Hz.
 
 /// Number of processor cycles for I/O Port write operations.
 /// This value is used to calculate the SWD/JTAG clock speed that is generated with I/O
@@ -80,7 +74,7 @@ This information includes:
 
 /// Default communication mode on the Debug Access Port.
 /// Used for the command \ref DAP_Connect when Port Default mode is selected.
-#define DAP_DEFAULT_PORT        1U              ///< Default JTAG/SWJ Port Mode: 1 = SWD, 2 = JTAG.
+#define DAP_DEFAULT_PORT        2U              ///< Default JTAG/SWJ Port Mode: 1 = SWD, 2 = JTAG.
 
 /// Default communication speed on the Debug Access Port for SWD and JTAG mode.
 /// Used to initialize the default SWD/JTAG clock frequency.
@@ -116,6 +110,27 @@ This information includes:
 /// SWO Streaming Trace.
 #define SWO_STREAM              0               ///< SWO Streaming Trace: 1 = available, 0 = not available.
 
+/// Indicate that UART Communication Port is available.
+/// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
+#define DAP_UART                0               ///< DAP UART:  1 = available, 0 = not available.
+
+/// USART Driver instance number for the UART Communication Port.
+#define DAP_UART_DRIVER         1               ///< USART Driver instance number (Driver_USART#).
+
+/// UART Receive Buffer Size.
+#define DAP_UART_RX_BUFFER_SIZE   64U           ///< Uart Receive Buffer Size in bytes (must be 2^n).
+
+/// UART Transmit Buffer Size.
+#define DAP_UART_TX_BUFFER_SIZE   64U           ///< Uart Transmit Buffer Size in bytes (must be 2^n).
+
+/// Indicate that UART Communication via USB COM Port is available.
+/// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
+#ifdef USE_USBCDC_FOR_STDIO
+#define DAP_UART_USB_COM_PORT   1               ///< USB COM Port:  1 = available, 0 = not available.
+#else
+#define DAP_UART_USB_COM_PORT   0
+#endif
+
 /// Clock frequency of the Test Domain Timer. Timer value is returned with \ref TIMESTAMP_GET.
 #define TIMESTAMP_CLOCK         0U              ///< Timestamp clock in Hz (0 = timestamps not supported).
 
@@ -125,17 +140,14 @@ This information includes:
 /// may be used by the debugger or IDE to configure device parameters.
 #define TARGET_DEVICE_FIXED     0               ///< Target Device: 1 = known, 0 = unknown;
 
-#if TARGET_DEVICE_FIXED
-#define TARGET_DEVICE_VENDOR    "ARM"           ///< String indicating the Silicon Vendor
-#define TARGET_DEVICE_NAME      "Cortex-M4"     ///< String indicating the Target Device
-#endif
+#include "DAP.h"
 
 /** Get Vendor ID string.
 \param str Pointer to buffer to store the string.
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
-	const static char vnd[] = INFO_MANUFACTURER;
+	static const char vnd[] = INFO_MANUFACTURER;
 	for (size_t i = 0; i < sizeof(vnd); ++i) str[i] = vnd[i];
 	return sizeof(vnd)-1;
 }
@@ -145,7 +157,7 @@ __STATIC_INLINE uint8_t DAP_GetVendorString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
-	const static char prd[] = INFO_PRODUCT(INFO_BOARDNAME);
+	static const char prd[] = INFO_PRODUCT(INFO_BOARDNAME);
 	for (size_t i = 0; i < sizeof(prd); ++i) str[i] = prd[i];
 	return sizeof(prd)-1;
 }
@@ -155,8 +167,39 @@ __STATIC_INLINE uint8_t DAP_GetProductString (char *str) {
 \return String length.
 */
 __STATIC_INLINE uint8_t DAP_GetSerNumString (char *str) {
-	return get_unique_id_u8(str);
+	return get_unique_id_u8((uint8_t*)str);
 }
+
+/** Get Target Device Vendor string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetDeviceVendorString (char *str) { (void)str; return 0; }
+
+/** Get Target Device Name string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetDeviceNameString (char *str) { (void)str; return 0; }
+
+/** Get Target Board Vendor string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetBoardVendorString (char *str) { (void)str; return 0; }
+
+/** Get Target Board Name string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetTargetBoardNameString (char *str) { (void)str; return 0; }
+
+/* TODO! */
+/** Get Product Firmware Version string.
+\param str Pointer to buffer to store the string (max 60 characters).
+\return String length (including terminating NULL character) or 0 (no string).
+*/
+__STATIC_INLINE uint8_t DAP_GetProductFirmwareVersionString (char *str) { (void)str; return 0; }
 
 ///@}
 
@@ -205,16 +248,14 @@ Configures the DAP Hardware I/O pins for JTAG mode:
  - TDO to input mode.
 */
 __STATIC_INLINE void PORT_JTAG_SETUP (void) {
-	;
 }
- 
+
 /** Setup SWD I/O pins: SWCLK, SWDIO, and nRESET.
 Configures the DAP Hardware I/O pins for Serial Wire Debug (SWD) mode:
  - SWCLK, SWDIO, nRESET to output mode and set to default high level.
  - TDI, nTRST to HighZ mode (pins are unused in SWD mode).
 */
 __STATIC_INLINE void PORT_SWD_SETUP (void) {
-	;
 }
 
 /** Disable JTAG/SWD I/O Pins.
@@ -222,7 +263,6 @@ Disables the DAP Hardware I/O pins which configures:
  - TCK/SWCLK, TMS/SWDIO, TDI, TDO, nTRST, nRESET to High-Z mode.
 */
 __STATIC_INLINE void PORT_OFF (void) {
-	;
 }
 
 
@@ -232,21 +272,19 @@ __STATIC_INLINE void PORT_OFF (void) {
 \return Current status of the SWCLK/TCK DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN  (void) {
-	return (0U);
+	return 0;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to High.
 Set the SWCLK/TCK DAP hardware I/O pin to high level.
 */
 __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_SET (void) {
-	;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to Low.
 Set the SWCLK/TCK DAP hardware I/O pin to low level.
 */
 __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_CLR (void) {
-	;
 }
 
 
@@ -256,28 +294,28 @@ __STATIC_FORCEINLINE void     PIN_SWCLK_TCK_CLR (void) {
 \return Current status of the SWDIO/TMS DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN  (void) {
-	return (0U);
+	return 0;
 }
+
+/* PIN_SWDIO_TMS_SET and PIN_SWDIO_TMS_CLR are used by SWJ_Sequence */
 
 /** SWDIO/TMS I/O pin: Set Output to High.
 Set the SWDIO/TMS DAP hardware I/O pin to high level.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_TMS_SET (void) {
-	;
 }
 
 /** SWDIO/TMS I/O pin: Set Output to Low.
 Set the SWDIO/TMS DAP hardware I/O pin to low level.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_TMS_CLR (void) {
-	;
 }
 
 /** SWDIO I/O pin: Get Input (used in SWD mode only).
 \return Current status of the SWDIO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN      (void) {
-	return (board_millis() & 1); /* pacify GCC warning */
+	return 0;
 }
 
 /** SWDIO I/O pin: Set Output (used in SWD mode only).
@@ -292,7 +330,6 @@ Configure the SWDIO DAP hardware I/O pin to output mode. This function is
 called prior \ref PIN_SWDIO_OUT function calls.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_ENABLE  (void) {
-	;
 }
 
 /** SWDIO I/O pin: Switch to Input mode (used in SWD mode only).
@@ -300,7 +337,6 @@ Configure the SWDIO DAP hardware I/O pin to input mode. This function is
 called prior \ref PIN_SWDIO_IN function calls.
 */
 __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_DISABLE (void) {
-	;
 }
 
 
@@ -310,7 +346,7 @@ __STATIC_FORCEINLINE void     PIN_SWDIO_OUT_DISABLE (void) {
 \return Current status of the TDI DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_TDI_IN  (void) {
-	return (0U);
+	return 0;
 }
 
 /** TDI I/O pin: Set Output.
@@ -327,7 +363,7 @@ __STATIC_FORCEINLINE void     PIN_TDI_OUT (uint32_t bit) {
 \return Current status of the TDO DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_TDO_IN  (void) {
-	return (board_millis() & 1); /* pacify GCC warning */
+	return 0;
 }
 
 
@@ -337,7 +373,7 @@ __STATIC_FORCEINLINE uint32_t PIN_TDO_IN  (void) {
 \return Current status of the nTRST DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_nTRST_IN   (void) {
-	return (0U);
+	return 0;
 }
 
 /** nTRST I/O pin: Set Output.
@@ -355,7 +391,7 @@ __STATIC_FORCEINLINE void     PIN_nTRST_OUT  (uint32_t bit) {
 \return Current status of the nRESET DAP hardware I/O pin.
 */
 __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN  (void) {
-	return (0U);
+	return 0;
 }
 
 /** nRESET I/O pin: Set Output.
@@ -405,7 +441,7 @@ __STATIC_INLINE void LED_RUNNING_OUT (uint32_t bit) {
 
 
 //**************************************************************************************************
-/** 
+/**
 \defgroup DAP_Config_Timestamp_gr CMSIS-DAP Timestamp
 \ingroup DAP_ConfigIO_gr
 @{
@@ -431,7 +467,7 @@ __STATIC_INLINE uint32_t TIMESTAMP_GET (void) {
 
 
 //**************************************************************************************************
-/** 
+/**
 \defgroup DAP_Config_Initialization_gr CMSIS-DAP Initialization
 \ingroup DAP_ConfigIO_gr
 @{
@@ -448,7 +484,6 @@ Status LEDs. In detail the operation of Hardware I/O and LED pins are enabled an
  - LED output pins are enabled and LEDs are turned off.
 */
 __STATIC_INLINE void DAP_SETUP (void) {
-	;
 }
 
 /** Reset Target Device with custom specific I/O pin or command sequence.
@@ -463,6 +498,5 @@ __STATIC_INLINE uint8_t RESET_TARGET (void) {
 }
 
 ///@}
-
 
 #endif /* __DAP_CONFIG_H__ */

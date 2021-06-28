@@ -41,10 +41,11 @@ and with the folders used in `./bsp` as well.
 
 A non-exhaustive list of possible BOARD/FAMILY combinations:
 
-| `FAMILY` | `BOARD` | description |
-|:------- |:-------- |:----------- |
-| `rp2040`|`raspberry_pi_pico`|Raspberry Pi Pico |
-| `stm32f072disco`|`stm32f072disco`| STM 32072B "Discovery" |
+| `FAMILY` | `BOARD`            | description       | notes   |
+|:-------- |:------------------ |:----------------- |:------- |
+| `rp2040` |`raspberry_pi_pico` | Raspberry Pi Pico | default |
+
+### Notes on compiling for the RP2040 Pico
 
 If you have the Pico SDK installed on your system, and the `PICO_SDK_PATH`
 environment variable is specified properly, you can omit the `--recursive` flag
@@ -63,12 +64,11 @@ These microcontrollers support the following protocols:
 | MCU    | SWD | JTAG | UART | SPI (flashrom) | I2C | Other stuff     |
 |:------ |:---:|:----:|:----:|:-------------- |:--- |:--------------- |
 | RP2040 | X   | X    | X    | X              | X   |     Planned     |
-| STM32F072B Discovery  | X | |   |           |     |                 |
 
 The [original repository]() (Dapper
-Mime) supported only SWD and UART, and worked for these two boards. This fork
-focusses on adding more protocols, but the author of this fork only has a
-Raspberry Pi Pico.
+Mime) supported only SWD and UART, and worked for the RP2040 Pico and the
+STM32F072 Discovery. This fork focusses on adding more protocols, but the
+author of this fork only has a Raspberry Pi Pico.
 
 The pin mapping for the RP2040 is as follows:
 
