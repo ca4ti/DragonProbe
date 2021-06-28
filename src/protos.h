@@ -15,6 +15,7 @@ void cdc_uart_init(void);
 void cdc_uart_task(void);
 
 void cdc_uart_set_hwflow(bool enable);
+void cdc_uart_set_baudrate(uint32_t brate);
 #endif
 
 #ifdef DBOARD_HAS_SERPROG

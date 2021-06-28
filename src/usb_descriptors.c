@@ -258,3 +258,9 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 	return _desc_str;
 }
 
+void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
+	if (itf == CDC_N_UART) {
+		cdc_uart_set_baudrate(line_coding->bit_rate);
+	}
+}
+
