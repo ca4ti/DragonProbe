@@ -246,8 +246,17 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
+- [ ] Better USB interface stuff, because I2C-Tiny-USB sucks and serprog can only
+      do flash chips instead of being a real spidev. General idea can probably be
+      taken from the DLN2 Linux drivers, except better (dynamic interface
+      signalled in the protocol (eg. does the device actually have I2C/SPI/..?),
+      dynamic I2C and SPI capabilities, add 1wire stuff, maybe yeet the GPIO bc
+      it'll be used for other stuff anyway, etc.). Means a custom Linux driver but
+      oh well, I2C-Tiny-USB needs patching either way.
+- [ ] 1-wire using ↑
 - [ ] A proper interface for sending commands etc. instead of shoehorning it
       into Serprog.
+  - Can probably be included in the "Better USB interface stuff".
 - [ ] JTAG pinout detector
   - https://github.com/cyphunk/JTAGenum
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
@@ -267,6 +276,8 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - [ ] FT2232 emulation mode?
 - [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????
   - Maybe also with code that auto-reacts to stuff from the environment?
+- [ ] Facedancer implementation by connecting two picos via GPIO, one doing host
+      stuff, the other device, commands being sent over GPIO to do stuff
 - [ ] Maybe use the ADCs for something?
 - [ ] SD/MMC/SDIO (will be a pain)
 - [ ] AVR programming (USBavr emulation?)
@@ -277,6 +288,6 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
 - Maybe steal other features from the Bus Pirate, [HydraBus](https://github.com/hydrabus/hydrafw) or Glasgow or so
-  - 1-wire and 3-wire? Never seen this one in the wild
+  - 3-wire? Never seen this one in the wild
   - CAN? LIN? MOD? If I'd first be able to find a CAN device to test it with, sure
 
