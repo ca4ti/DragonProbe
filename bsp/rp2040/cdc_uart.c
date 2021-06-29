@@ -66,7 +66,7 @@ void cdc_uart_task(void) {
 
 void cdc_uart_set_hwflow(bool enable) { uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable); }
 
-void cdc_uart_set_baud_rate(uint32_t brate) {
-    uart_init(PINOUT_UART_INTERFACE, line_coding->bit_rate);
+void cdc_uart_set_baudrate(uint32_t brate) {
+    uart_init(PINOUT_UART_INTERFACE, brate);
 }
 

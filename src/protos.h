@@ -4,6 +4,7 @@
 #define PROTOS_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "protocfg.h"
 
