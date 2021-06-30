@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, serial, struct
+import argparse, serial, struct, os
 from typing import *
 
 def auto_int(x):
@@ -121,6 +121,9 @@ def main():
     parser.add_argument('-v', '--verbose', default=False, action='store_true',
                         help="Verbose logging (for this utility)")
 
+    parser.add_argument('-f', '--flash', default=False, action='store_true',
+                        help="Flash firmware to attached pico")
+
     for k, v in option_table.items():
         if k == "support":
             parser.add_argument('--%s'%k, default=None, action='store_true',
@@ -130,6 +133,10 @@ def main():
                                 help=v.desc)
 
     args = parser.parse_args()
+
+    if args.flash:
+        os.system("picotool load -x /usr/share/dragnbus/dragnbus.uf2")
+        return
 
     for k, v in option_table.items():
         if args.__dict__[k] is not None:
