@@ -24,6 +24,7 @@ static void handle_cmd_cb(uint8_t cmd) {
 
     switch (cmd) {
     case mode_cmd_get_features:
+        resp = 0x42;
         vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
         break;
     default:
@@ -120,7 +121,7 @@ static const uint8_t desc_configuration[] = {
 static const char* string_desc_arr[] = {
     [STRID_LANGID] = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
     [STRID_MANUFACTURER] = "BLAHAJ CTF",     // Manufacturer
-    [STRID_PRODUCT]      = "Dragnbus (RP2040 Pico)",  // Product
+    [STRID_PRODUCT]      = "Dragnbus (hi mum)",  // Product
 
     [STRID_CONFIG]            = "Configuration descriptor",
     // max string length check:  |||||||||||||||||||||||||||||||
@@ -229,12 +230,12 @@ static const uint16_t* descriptor_string_cb(uint8_t index, uint16_t langid) {
 }
 
 
-extern struct mode m_01_default;
+extern struct mode m_02_default2;
 // clang-format off
-struct mode m_01_default = {
-    .name = "Default mode with misc features",
+struct mode m_02_default2 = {
+    .name = "Default mode but betterer!",
     .usb_desc = desc_configuration,
-    .version = 0x0010,
+    .version = 0x0020,
 
     .enter = enter_cb,
     .leave = leave_cb,

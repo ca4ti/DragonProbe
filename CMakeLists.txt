@@ -68,6 +68,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tusb_plt.S
   ${CMAKE_CURRENT_SOURCE_DIR}/src/vnd_cfg.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/0def.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default2/0def.c
 )
 if(USE_USBCDC_FOR_STDIO)
   target_sources(${PROJECT} PUBLIC

@@ -2,12 +2,13 @@
 
 #include "mode.h"
 
-extern struct mode m_01_default;
+extern struct mode m_01_default, m_02_default2;
 
 // clang-format off
 const struct mode* mode_list[16] = {
     NULL, // dummy 0 entry
     &m_01_default,
+    &m_02_default2,
     NULL, // terminating entry
 
 };
@@ -105,7 +106,8 @@ void modes_switch(uint8_t newmode) {
 
     // and reconnect
     tud_connect();
-    while (!tud_mounted()) sleep_ms(5);
+    sleep_ms(750);
+    //while (!tud_mounted()) sleep_ms(5);
 
     if (mode_current) mode_current->enter();
 }

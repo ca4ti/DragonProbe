@@ -111,11 +111,15 @@ void vnd_cfg_task(void) {
             break;
         case cfg_cmd_get_modes:
             verbuf[0] = 0x01;
+            verbuf[1] = 0;
             for (size_t i = 1; i < 16; ++i) {
-                if (mode_list[i] != NULL) verbuf[0] |= 1 << i;
+                if (mode_list[i] != NULL) {
+                    if (i < 8) verbuf[0] |= 1 << i;
+                    else verbuf[1] |= 1 << i;
+                }
             }
 
-            vnd_cfg_write_resp(cfg_resp_ok, 1, verbuf);
+            vnd_cfg_write_resp(cfg_resp_ok, 2, verbuf);
             break;
         case cfg_cmd_get_cur_mode:
             verbuf[0] = mode_current_id;
