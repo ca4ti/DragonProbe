@@ -10,8 +10,6 @@ static inline char nyb2hex(int x) {
         return 'A' + (x - 0xa);
 }
 
-void thread_yield(void);
-
 // clang-format off
 uint8_t get_unique_id_u8 (uint8_t * desc_str);
 uint8_t get_unique_id_u16(uint16_t* desc_str);

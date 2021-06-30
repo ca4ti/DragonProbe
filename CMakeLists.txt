@@ -56,22 +56,18 @@ endif()
 
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/libco.S
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_uart.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/i2c_tinyusb.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/spi_serprog.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/tempsensor.c
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/cdc_serprog.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/vnd_i2ctinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/rtconf.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/tempsensor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/modeset.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/thread.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/tusb_plt.S
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/vnd_cfg.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/0def.c
 )
 if(USE_USBCDC_FOR_STDIO)
   target_sources(${PROJECT} PUBLIC
@@ -81,8 +77,8 @@ endif()
 target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
+# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
 )

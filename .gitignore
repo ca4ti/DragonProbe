@@ -2,3 +2,4 @@ cmake-build/
 build/
 ex/
 compile_commands.json
+_old/

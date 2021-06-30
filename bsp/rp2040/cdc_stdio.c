@@ -7,8 +7,8 @@
 #include <pico/stdio/driver.h>
 #include <pico/time.h>
 
-#include "pinout.h"
-#include "protocfg.h"
+//#include "pinout.h"
+//#include "protocfg.h"
 #include "tusb.h"
 
 #ifndef PICO_STDIO_USB_STDOUT_TIMEOUT_US
@@ -18,6 +18,7 @@
 // *mostly* the same as the SDK code, *except* we have to explicitely pass the
 // CDC interface number to the tusb functions, making the SDK code itself very
 // non-reusable >__>
+#define CDC_N_STDIO 0
 
 static mutex_t stdio_usb_mutex;
 

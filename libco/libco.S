@@ -84,6 +84,7 @@ co_switch:@(cothread_t handle r0)
 	ldmia r0!, {r4-r7}
 
 	ldr  r2, [r0, #(0x28-0x10)] @ pc
+	@ldr  r0, [r0, #(0x2c-0x10)] @ ud/r0 / retval
 	mov  pc, r2
 
 	bx   lr
@@ -94,8 +95,10 @@ co_switch:@(cothread_t handle r0)
 .type co_derive, %function
 .thumb_func
 .global co_derive
-co_derive:@(void* memory r0, unsigned int size r1, void(*entrypoint)(void) r2)
+co_derive:@(void* memory r0, unsigned int size r1, void(*entrypoint)(void*) r2, void* ud r3)
 	push {r4}
+
+	@mov r12, r3 @ save ud for later
 
 	@ if (!co_active_handle) co_active_handle = &co_active_buffer
 	ldr r3, =co_active_handle
@@ -117,8 +120,9 @@ co_derive:@(void* memory r0, unsigned int size r1, void(*entrypoint)(void) r2)
 	@ p(r3) = handle(r0) + offset(r3)
 	add r3, r0
 	@ initialize stack, entrypoint
-	str r3, [r0, #( 9*4)]
-	str r2, [r0, #(10*4)]
+	@str r12, [r0, #(11*4)] @ init r0: user argument
+	str r3 , [r0, #( 9*4)] @ init sp/r13
+	str r2 , [r0, #(10*4)] @ init pc/r15
 
 .Lret:
 	pop  {r4}
