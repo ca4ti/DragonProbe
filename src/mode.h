@@ -34,10 +34,10 @@ struct mode {
 #if CFG_TUD_CDC > 0
     void (*tud_cdc_line_coding_cb)(uint8_t itf, cdc_line_coding_t const* line_coding);
 #endif
-#if CFG_TUD_VENDOR > 0
+//#if CFG_TUD_VENDOR > 0
     bool (*tud_vendor_control_xfer_cb)(uint8_t rhport, uint8_t ep_addr,
             tusb_control_request_t const* req);
-#endif
+//#endif
 
     uint8_t const* (*tud_hid_descriptor_report_cb)(uint8_t instance);
     uint8_t const* (*tud_descriptor_device_cb)(void);
@@ -70,10 +70,10 @@ void mode_std_hid_set_report_cb(uint8_t instance, uint8_t report_id,
 #if CFG_TUD_CDC > 0
 void mode_std_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding);
 #endif
-#if CFG_TUD_VENDOR > 0
+//#if CFG_TUD_VENDOR > 0
 bool mode_std_vendor_control_xfer_cb(uint8_t rhport, uint8_t ep_addr,
         tusb_control_request_t const* req);
-#endif
+//#endif
 
 // Invoked when received GET HID REPORT DESCRIPTOR
 // Application return pointer to descriptor

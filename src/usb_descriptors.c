@@ -3,9 +3,8 @@
 #include "tusb_config.h"
 #include <tusb.h>
 
+#include "info.h"
 #include "mode.h"
-
-#include "protocfg.h"
 #include "util.h"
 
 #define USB_BCD_BASE 0x8000
@@ -22,22 +21,41 @@ enum {
 
     STRID_CONFIG,
 
+#if CFG_TUD_VENDOR > 0
     STRID_IF_VND_CFG,
+#endif
+#ifdef USE_USBCDC_FOR_STDIO
+    STRID_IF_CDC_STDIO,
+#endif
 };
 
 enum {
+#if CFG_TUD_VENDOR > 0
     ITF_NUM_VND_CFG,
+#endif
+#ifdef USE_USBCDC_FOR_STDIO
+    ITF_NUM_CDC_STDIO_COM,
+    ITF_NUM_CDC_STDIO_DATA,
+#endif
 
     ITF_NUM__TOTAL
 };
 enum {
     CONFIG_TOTAL_LEN
         = TUD_CONFIG_DESC_LEN
+#if CFG_TUD_VENDOR > 0
         + TUD_VENDOR_DESC_LEN
+#endif
+#ifdef USE_USBCDC_FOR_STDIO
+        + TUD_CDC_DESC_LEN
+#endif
 };
 
-#define EPNUM_VND_CFG_OUT     0x02
-#define EPNUM_VND_CFG_IN      0x82
+#define EPNUM_VND_CFG_OUT       0x01
+#define EPNUM_VND_CFG_IN        0x81
+#define EPNUM_CDC_STDIO_OUT     0x02
+#define EPNUM_CDC_STDIO_IN      0x82
+#define EPNUM_CDC_STDIO_NOTIF   0x83
 
 // clang-format off
 static const tusb_desc_device_t desc_device = {
@@ -73,8 +91,15 @@ static const uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM__TOTAL, STRID_CONFIG, CONFIG_TOTAL_LEN,
         TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
 
+#if CFG_TUD_VENDOR > 0
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VND_CFG, STRID_IF_VND_CFG, EPNUM_VND_CFG_OUT,
         EPNUM_VND_CFG_IN, 64),
+#endif
+
+#ifdef USE_USBCDC_FOR_STDIO
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_STDIO_COM, STRID_IF_CDC_STDIO, EPNUM_CDC_STDIO_NOTIF, 64,
+        EPNUM_CDC_STDIO_OUT, EPNUM_CDC_STDIO_IN, 64),
+#endif
 };
 static const char* string_desc_arr[] = {
     [STRID_LANGID] = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
@@ -83,6 +108,7 @@ static const char* string_desc_arr[] = {
 
     [STRID_CONFIG]          = "Configuration descriptor",
     [STRID_IF_VND_CFG]      = "Device cfg/ctl interface",
+    [STRID_IF_CDC_STDIO]    = "stdio CDC interface (debug)",
 };
 // clang-format on
 
@@ -106,6 +132,7 @@ void mode_std_hid_set_report_cb(uint8_t instance, uint8_t report_id,
     (void)instance;
     (void)report_id;
     (void)report_type;
+    (void)rx_data_buffer;
 
     tud_hid_report(0, tx_data_buffer, response_size);
 }
@@ -116,7 +143,7 @@ void mode_std_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_codi
     (void)line_coding;
 }
 #endif
-#if CFG_TUD_VENDOR > 0
+//#if CFG_TUD_VENDOR > 0
 bool mode_std_vendor_control_xfer_cb(uint8_t rhport, uint8_t ep_addr,
         tusb_control_request_t const* req) {
     (void)rhport;
@@ -125,7 +152,7 @@ bool mode_std_vendor_control_xfer_cb(uint8_t rhport, uint8_t ep_addr,
 
     return true;
 }
-#endif
+//#endif
 
 const uint8_t* mode_std_hid_descriptor_report_cb(uint8_t instance) {
     (void)instance;

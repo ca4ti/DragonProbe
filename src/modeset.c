@@ -2,15 +2,14 @@
 
 #include "mode.h"
 
-extern struct mode m_01_default, m_02_default2;
+extern struct mode m_01_default/*, m_02_default2*/;
 
 // clang-format off
 const struct mode* mode_list[16] = {
     NULL, // dummy 0 entry
     &m_01_default,
-    &m_02_default2,
+    //&m_02_default2,
     NULL, // terminating entry
-
 };
 // clang-format on
 
@@ -55,12 +54,12 @@ void modes_init(void) {
 #else
     tusb_got[tusbgot_cdc_line_coding    ] = NULL;
 #endif
-#if CFG_TUD_VENDOR > 0
+//#if CFG_TUD_VENDOR > 0
     tusb_got[tusbgot_vendor_control_xfer] =
         ORDEF(mode_default->tud_vendor_control_xfer_cb, mode_std_vendor_control_xfer_cb);
-#else
-    tusb_got[tusbgot_vendor_control_xfer] = NULL;
-#endif
+//#else
+//    tusb_got[tusbgot_vendor_control_xfer] = NULL;
+//#endif
 
     tusb_got[tusbgot_hid_descriptor_report   ] =
         ORDEF(mode_default->tud_hid_descriptor_report_cb, mode_std_hid_descriptor_report_cb);
@@ -107,12 +106,12 @@ void modes_switch(uint8_t newmode) {
 #else
         tusb_got[tusbgot_cdc_line_coding    ] = NULL;
 #endif
-#if CFG_TUD_VENDOR > 0
+//#if CFG_TUD_VENDOR > 0
         tusb_got[tusbgot_vendor_control_xfer] =
             ORDEF(mode_current->tud_vendor_control_xfer_cb, mode_std_vendor_control_xfer_cb);
-#else
-        tusb_got[tusbgot_vendor_control_xfer] = NULL;
-#endif
+//#else
+//        tusb_got[tusbgot_vendor_control_xfer] = NULL;
+//#endif
 
         tusb_got[tusbgot_hid_descriptor_report   ] =
             ORDEF(mode_current->tud_hid_descriptor_report_cb, mode_std_hid_descriptor_report_cb);
@@ -137,11 +136,11 @@ void modes_switch(uint8_t newmode) {
 #else
         tusb_got[tusbgot_cdc_line_coding    ] = NULL;
 #endif
-#if CFG_TUD_VENDOR > 0
+//#if CFG_TUD_VENDOR > 0
         tusb_got[tusbgot_vendor_control_xfer] = mode_std_vendor_control_xfer_cb;
-#else
-        tusb_got[tusbgot_vendor_control_xfer] = NULL;
-#endif
+//#else
+//        tusb_got[tusbgot_vendor_control_xfer] = NULL;
+//#endif
 
         tusb_got[tusbgot_hid_descriptor_report   ] = mode_std_hid_descriptor_report_cb;
         tusb_got[tusbgot_descriptor_device       ] = mode_std_descriptor_device_cb;

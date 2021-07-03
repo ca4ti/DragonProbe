@@ -1,6 +1,8 @@
 // vim: set et:
 
+#include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "thread.h"
 
@@ -11,6 +13,32 @@ cothread_t        co_active_handle;
 
 static cothread_t mainthread;
 
-void thread_init (void) { mainthread = co_active(); }
-void thread_yield(void) { co_switch(mainthread); }
+static cothread_t threadarr[16]; /* 16 nested threads should be enough... */
+static size_t     threadind;
+
+void thread_init(void) {
+    memset(threadarr, 0, sizeof threadarr);
+
+    mainthread = co_active();
+    threadarr[0] = mainthread;
+    threadind    = 0;
+}
+
+void thread_yield(void) {
+    /*cothread_t newthrd = threadarr[threadind];
+    if (threadind > 0) --threadind;*/
+
+    co_switch(mainthread/*newthrd*/);
+}
+
+void thread_enter(cothread_t thrid) {
+    /*if (threadind + 1 == sizeof(threadarr) / sizeof(threadarr[0])) {
+        // TODO: PANIC!
+    }
+
+    threadarr[threadind] = co_active();
+    ++threadind;*/
+
+    co_switch(thrid);
+}
 

@@ -56,11 +56,11 @@ endif()
 
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/libco.S
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/modeset.c
@@ -68,8 +68,15 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tusb_plt.S
   ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/vnd_cfg.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/0def.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default2/0def.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/_default.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/cdc_serprog.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/tempsensor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/vnd_i2ctinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/spi_serprog.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
+# ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default2/0def.c
 )
 if(USE_USBCDC_FOR_STDIO)
   target_sources(${PROJECT} PUBLIC
@@ -79,13 +86,13 @@ endif()
 target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
-# ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror=implicit-function-declaration")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 add_custom_target(fix_db ALL WORKING_DIRECTORY ${OUTPUT_DIR}

@@ -8,6 +8,7 @@
 
 #include "thread.h"
 
+#if CFG_TUD_VENDOR > 0
 static uint8_t rx_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
 static uint8_t tx_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
 
@@ -144,4 +145,14 @@ void vnd_cfg_task(void) {
         }
     }
 }
+#else /* CFG_TUD_VENDOR == 0 */
+void vnd_cfg_init(void) { }
+uint8_t vnd_cfg_read_byte(void) { return 0xff; }
+void vnd_cfg_write_flush(void) { }
+void vnd_cfg_write_byte(uint8_t v) { (void)v; }
+void vnd_cfg_write_resp(enum cfg_resp stat, uint16_t len, const void* data) {
+    (void)stat; (void)len; (void)data;
+}
+void vnd_cfg_task(void) { }
+#endif /* CFG_TUD_VENDOR */
 

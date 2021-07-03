@@ -13,8 +13,10 @@
 static cothread_t vndcfg_thread;
 static uint8_t    vndcfg_stack[THREAD_STACK_SIZE];
 
+// FIXME: move declaration elsewhere
 #ifdef USE_USBCDC_FOR_STDIO
 void stdio_usb_init(void);
+void stdio_usb_set_itf_num(int itf);
 #endif
 
 static void vndcfg_thread_fn(void) {
@@ -32,7 +34,7 @@ int main() {
     board_init();  // tinyusb hardware support function
 
     vndcfg_thread = co_derive(vndcfg_stack, sizeof vndcfg_stack, vndcfg_thread_fn);
-    co_switch(vndcfg_thread);
+    thread_enter(vndcfg_thread);
 
     modes_init();
     if (mode_current) mode_current->enter();
@@ -41,6 +43,8 @@ int main() {
 
     // FIXME: put elsewhere?
 #ifdef USE_USBCDC_FOR_STDIO
+    stdio_usb_set_itf_num(0);
+
     stdio_usb_init();
 #endif
 
@@ -49,7 +53,7 @@ int main() {
         if (mode_current) mode_current->task();
 
         tud_task();
-        co_switch(vndcfg_thread);
+        thread_enter(vndcfg_thread);
 
         // do this here instead of in a callback or in the vnd_cfg_task fn
         if (mode_next_id != -1) {
