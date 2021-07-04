@@ -1,13 +1,15 @@
 // vim: set et:
 
+#include <assert.h>
+
 #include "mode.h"
 
 extern struct mode m_01_default/*, m_02_default2*/;
 
 // clang-format off
-const struct mode* mode_list[16] = {
+const struct mode* const mode_list[16] = {
     NULL, // dummy 0 entry
-    &m_01_default,
+    &m_01_default, // entry 1 CANNOT be NULL!
     //&m_02_default2,
     NULL, // terminating entry
 };
@@ -36,7 +38,7 @@ void modes_init(void) {
     mode_current_id = &mode_default - mode_list;
     mode_next_id = -1;
 
-    if (!mode_default) return; // TODO: panic here
+    //if (!mode_default) return;
 
     // clang-format off
 #if CFG_TUD_HID > 0

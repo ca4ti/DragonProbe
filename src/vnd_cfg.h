@@ -43,7 +43,7 @@ enum cfg_resp {
 uint8_t vnd_cfg_read_byte (void);
 void    vnd_cfg_write_flush(void);
 void    vnd_cfg_write_byte(uint8_t v);
-void    vnd_cfg_write_resp(enum cfg_resp stat, uint16_t len, const void* data);
+void    vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data);
 
 /*
  * wire protocol:

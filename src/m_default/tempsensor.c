@@ -105,7 +105,6 @@ int tempsense_do_read(int length, uint8_t* buf) {
     int i;
     for (i = 0; i < length; ++i, ++index) {
         switch (reg) {
-                // TODO: big or little endian? seems to be big
             case cap: buf[index] = 0; break;
             case config:
                 if (index == 0)
@@ -273,21 +272,25 @@ void tempsense_bulk_cmd(void) {
         resp[0] =  temp       & 0xff;
         resp[1] = (temp >> 8) & 0xff;
         vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+        break;
     case tcmd_get_lower:
         temp = tempsense_dev_get_lower();
         resp[0] =  temp       & 0xff;
         resp[1] = (temp >> 8) & 0xff;
         vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+        break;
     case tcmd_get_upper:
         temp = tempsense_dev_get_upper();
         resp[0] =  temp       & 0xff;
         resp[1] = (temp >> 8) & 0xff;
         vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+        break;
     case tcmd_get_crit:
         temp = tempsense_dev_get_crit();
         resp[0] =  temp       & 0xff;
         resp[1] = (temp >> 8) & 0xff;
         vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+        break;
     default:
         vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
         break;

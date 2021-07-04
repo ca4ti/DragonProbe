@@ -52,7 +52,7 @@ void modes_switch(uint8_t newmode);
 
 extern int mode_current_id;
 extern int mode_next_id;
-extern const struct mode* mode_list[16];
+extern const struct mode* const mode_list[16];
 #define mode_default (mode_list[1])
 #define mode_current (((mode_current_id)==-1)?NULL:(mode_list[mode_current_id]))
 

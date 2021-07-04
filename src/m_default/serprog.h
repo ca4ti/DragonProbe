@@ -27,35 +27,57 @@ enum serprog_cmd {
     S_CMD_S_SPI_FREQ  = 0x14,
     S_CMD_S_PINSTATE  = 0x15,
 
-    S_CMD_MAGIC_SETTINGS = 0x53
+    // TODO: upstream this to flashrom? could be useful to others maybe
+    S_CMD_Q_NUM_CS    = 0x40,
+    S_CMD_S_SPI_FLAGS = 0x41,
+    // number of chip (well, bitflags) to use when asserting/deasserting the chip select line
+    S_CMD_S_SPI_CHIPN = 0x42,
+    S_CMD_SPI_READ    = 0x43,
+    S_CMD_SPI_WRITE   = 0x44,
+    // as opposed to S_CMD_SPIOP, this one is full-duplex instead of half-duplex
+    S_CMD_SPI_RDWR    = 0x45,
 };
 
 enum serprog_response { S_ACK = 0x06, S_NAK = 0x15 };
 
+enum serprog_flags {
+    S_FLG_CPOL  = 1<<0, // 1: clock polarity 1, else clkpol 0
+    S_FLG_CPHA  = 1<<1, // 1: clock phase 1, else clkpha 1
+    S_FLG_16BIT = 1<<2, // 1: 16-bit transfers, else 8-bit xfers
+};
+
 #define SERPROG_IFACE_VERSION 0x0001
 
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
 /* functions to be implemented by the BSP */
 uint32_t /*freq_applied*/ sp_spi_set_freq(uint32_t freq_wanted);
 
+void sp_spi_set_flags(enum serprog_flags flags);
+__attribute__((__const__)) int sp_spi_get_num_cs(void);
+
 void sp_spi_init(void);
 void sp_spi_deinit(void);
-void sp_spi_cs_deselect(void);
-void sp_spi_cs_select(void);
-void sp_spi_op_begin(void);
-void sp_spi_op_write(uint32_t write_len, const uint8_t* write_data);
-void sp_spi_op_read(uint32_t read_len, uint8_t* read_data);
-void sp_spi_op_end(void);
+void sp_spi_cs_deselect(uint8_t csflags);
+void sp_spi_cs_select(uint8_t csflags);
 
-static inline void sp_spi_op_do(
-        uint32_t write_len, const uint8_t* write_data, uint32_t read_len, uint8_t* read_data) {
+void sp_spi_op_write(uint32_t write_len, const void* write_data);
+void sp_spi_op_read(uint32_t read_len, void* read_data);
+void sp_spi_op_read_write(uint32_t len, void* read_data, const void* write_data);
+
+/* serprog-specific */
+void sp_spi_op_begin(uint8_t csflags);
+void sp_spi_op_end(uint8_t csflags);
+// half-duplex
+/*static inline void sp_spi_op_do(uint32_t write_len, const uint8_t* write_data,
+        uint32_t read_len, uint8_t* read_data) {
     sp_spi_op_begin();
     sp_spi_op_write(write_len, write_data);
     sp_spi_op_write(read_len, read_data);
     sp_spi_op_end();
-}
+}*/
 
 /* protocol handling functions */
+__attribute__((__const__)) uint32_t sp_spi_get_buf_limit(void); // rdnmaxlen, wrnmaxlen
 void cdc_serprog_init(void);
 void cdc_serprog_deinit(void);
 void cdc_serprog_task(void);

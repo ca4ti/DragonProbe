@@ -5,7 +5,7 @@
 #define DBOARD_HAS_UART
 #define DBOARD_HAS_CMSISDAP
 // TODO: rename to _SPI
-#define DBOARD_HAS_SERPROG
+#define DBOARD_HAS_SPI
 #define DBOARD_HAS_I2C
 #define DBOARD_HAS_TEMPSENSOR
 
@@ -27,7 +27,7 @@ enum {
 };
 enum {
 #if CFG_TUD_VENDOR > 0
-    VND_CFG = 0,
+    VND_N_CFG = 0,
 #endif
 
     VND_N__NITF

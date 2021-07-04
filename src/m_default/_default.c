@@ -55,7 +55,7 @@ static void uart_thread_fn(void) {
 }
 #endif
 
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
 static cothread_t serprogthread;
 static uint8_t    serprogstack[THREAD_STACK_SIZE];
 
@@ -82,7 +82,7 @@ static void enter_cb(void) {
     uartthread = co_derive(uartstack, sizeof uartstack, uart_thread_fn);
     thread_enter(uartthread);  // will call cdc_uart_init() on correct thread
 #endif
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
     serprogthread = co_derive(serprogstack, sizeof serprogstack, serprog_thread_fn);
     thread_enter(serprogthread);  // will call cdc_serprog_init() on correct thread
 #endif
@@ -95,7 +95,7 @@ static void leave_cb(void) {
 #ifdef DBOARD_HAS_UART
     cdc_uart_deinit();
 #endif
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
     cdc_serprog_deinit();
 #endif
 }
@@ -105,7 +105,7 @@ static void task_cb(void) {
     tud_task();
     thread_enter(uartthread);
 #endif
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
     tud_task();
     thread_enter(serprogthread);
 #endif
@@ -122,7 +122,7 @@ static void handle_cmd_cb(uint8_t cmd) {
 #ifdef DBOARD_HAS_CMSISDAP
         resp |= mdef_feat_cmsisdap;
 #endif
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
         resp |= mdef_feat_spi;
 #endif
 #ifdef DBOARD_HAS_I2C
@@ -134,7 +134,7 @@ static void handle_cmd_cb(uint8_t cmd) {
         vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
         break;
     case mdef_cmd_spi:
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
         sp_spi_bulk_cmd();
 #else
         vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
@@ -194,7 +194,7 @@ enum {
     ITF_NUM_CDC_UART_COM,
     ITF_NUM_CDC_UART_DATA,
 #endif
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
     ITF_NUM_CDC_SERPROG_COM,
     ITF_NUM_CDC_SERPROG_DATA,
 #endif
@@ -220,7 +220,7 @@ enum {
 #ifdef DBOARD_HAS_UART
         + TUD_CDC_DESC_LEN
 #endif
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
         + TUD_CDC_DESC_LEN
 #endif
 #ifdef USE_USBCDC_FOR_STDIO
@@ -265,7 +265,7 @@ static const uint8_t desc_configuration[] = {
 
 #if CFG_TUD_VENDOR > 0
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_VND_CFG, STRID_IF_VND_CFG, EPNUM_VND_CFG_OUT,
-        EPNUM_VND_CFG_IN, 64),
+        EPNUM_VND_CFG_IN, CFG_TUD_VENDOR_RX_BUFSIZE),
 #endif
 
 #if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
@@ -279,18 +279,18 @@ static const uint8_t desc_configuration[] = {
 #endif
 
 #ifdef DBOARD_HAS_UART
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_UART_COM, STRID_IF_CDC_UART, EPNUM_CDC_UART_NOTIF, 64,
-        EPNUM_CDC_UART_OUT, EPNUM_CDC_UART_IN, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_UART_COM, STRID_IF_CDC_UART, EPNUM_CDC_UART_NOTIF,
+        CFG_TUD_CDC_RX_BUFSIZE, EPNUM_CDC_UART_OUT, EPNUM_CDC_UART_IN, CFG_TUD_CDC_RX_BUFSIZE),
 #endif
 
-#ifdef DBOARD_HAS_SERPROG
+#ifdef DBOARD_HAS_SPI
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_SERPROG_COM, STRID_IF_CDC_SERPROG, EPNUM_CDC_SERPROG_NOTIF,
-        64, EPNUM_CDC_SERPROG_OUT, EPNUM_CDC_SERPROG_IN, 64),
+        CFG_TUD_CDC_RX_BUFSIZE, EPNUM_CDC_SERPROG_OUT, EPNUM_CDC_SERPROG_IN, CFG_TUD_CDC_RX_BUFSIZE),
 #endif
 
 #ifdef USE_USBCDC_FOR_STDIO
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_STDIO_COM, STRID_IF_CDC_STDIO, EPNUM_CDC_STDIO_NOTIF, 64,
-        EPNUM_CDC_STDIO_OUT, EPNUM_CDC_STDIO_IN, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_STDIO_COM, STRID_IF_CDC_STDIO, EPNUM_CDC_STDIO_NOTIF,
+        CFG_TUD_CDC_RX_BUFSIZE, EPNUM_CDC_STDIO_OUT, EPNUM_CDC_STDIO_IN, CFG_TUD_CDC_RX_BUFSIZE),
 #endif
 };
 static const char* string_desc_arr[] = {

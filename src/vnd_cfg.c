@@ -56,19 +56,28 @@ void vnd_cfg_write_byte(uint8_t v) {
     tx_buf[txpos] = v;
     ++txpos;
 }
-void vnd_cfg_write_resp(enum cfg_resp stat, uint16_t len, const void* data) {
-    if (len > 0x7fff) len = 0x7fff; // aaaaaaaaaaaaaaaaa // TODO: throw some kind of error
-
-    vnd_cfg_write_byte(stat);
-    if (len < 0x80) {
-        vnd_cfg_write_byte(len);
-    } else {
-        vnd_cfg_write_byte((len & 0x7f) | 0x80);
-        vnd_cfg_write_byte(len >> 7);
+void vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data) {
+    if (len > 0x3fffff) {
+        printf("W: truncating response length from 0x%lx to 0x3fffff\n", len);
+        len = 0x3fffff;
     }
 
-    for (size_t i = 0; i < len; ++i) {
-        vnd_cfg_write_byte(((const uint8_t*)data)[i]);
+    vnd_cfg_write_byte(stat);
+    if (len < (1<<7)) {
+        vnd_cfg_write_byte(len);
+    } else if (len < (1<<14)) {
+        vnd_cfg_write_byte((len & 0x7f) | 0x80);
+        vnd_cfg_write_byte((len >> 7) & 0x7f);
+    } else {
+        vnd_cfg_write_byte((len & 0x7f) | 0x80);
+        vnd_cfg_write_byte(((len >> 7) & 0x7f) | 0x80);
+        vnd_cfg_write_byte(((len >> 14) & 0x7f));
+    }
+
+    if (data) {
+        for (size_t i = 0; i < len; ++i) {
+            vnd_cfg_write_byte(((const uint8_t*)data)[i]);
+        }
     }
 
     vnd_cfg_write_flush();
