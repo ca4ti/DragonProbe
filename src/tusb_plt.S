@@ -7,7 +7,7 @@
 .global tusb_plt
 tusb_plt:
 
-	@ sigh, thumb...
+	@ sigh, thumb... (cant do `ldr r12, ...`)
 .type tud_hid_get_report_cb, %function
 .global tud_hid_get_report_cb
 tud_hid_get_report_cb:

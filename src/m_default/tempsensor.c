@@ -13,6 +13,8 @@
 // clang-format on
 #endif
 
+#include "vnd_cfg.h"
+
 #ifdef DBOARD_HAS_TEMPSENSOR
 
 #include "tempsensor.h"
@@ -249,6 +251,47 @@ int tempsense_do_write(int length, const uint8_t* buf) {
     }
 
     return i;
+}
+
+void tempsense_bulk_cmd(void) {
+    uint16_t temp;
+    uint8_t resp[2];
+
+    switch (vnd_cfg_read_byte()) {
+    case tcmd_get_addr:
+        resp[0] = tempsense_get_addr();
+        vnd_cfg_write_resp(cfg_resp_ok, 1, resp);
+        break;
+    case tcmd_set_addr:
+        resp[0] = tempsense_get_addr();
+        tempsense_set_addr(vnd_cfg_read_byte());
+        resp[1] = tempsense_get_addr();
+        vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+        break;
+    case tcmd_get_temp:
+        temp = tempsense_dev_get_temp();
+        resp[0] =  temp       & 0xff;
+        resp[1] = (temp >> 8) & 0xff;
+        vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+    case tcmd_get_lower:
+        temp = tempsense_dev_get_lower();
+        resp[0] =  temp       & 0xff;
+        resp[1] = (temp >> 8) & 0xff;
+        vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+    case tcmd_get_upper:
+        temp = tempsense_dev_get_upper();
+        resp[0] =  temp       & 0xff;
+        resp[1] = (temp >> 8) & 0xff;
+        vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+    case tcmd_get_crit:
+        temp = tempsense_dev_get_crit();
+        resp[0] =  temp       & 0xff;
+        resp[1] = (temp >> 8) & 0xff;
+        vnd_cfg_write_resp(cfg_resp_ok, 2, resp);
+    default:
+        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        break;
+    }
 }
 
 #endif

@@ -28,6 +28,8 @@ enum mode_cmd {
     mode_cmd_get_name     = 0x00,
     mode_cmd_get_version  = 0x01,
     mode_cmd_get_features = 0x02,
+
+    mode_cmd__specific = 0x03
 };
 
 enum cfg_resp {
@@ -35,6 +37,7 @@ enum cfg_resp {
     cfg_resp_illcmd     = 0x01,
     cfg_resp_badmode    = 0x02,
     cfg_resp_nosuchmode = 0x03,
+    cfg_resp_badarg     = 0x04
 };
 
 uint8_t vnd_cfg_read_byte (void);

@@ -6,6 +6,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+enum tempsense_cmd {
+    tcmd_get_addr,
+    tcmd_set_addr,
+    tcmd_get_temp,
+    tcmd_get_lower,
+    tcmd_get_upper,
+    tcmd_get_crit
+};
+
 void tempsense_init(void);
 void tempsense_deinit(void);
 
@@ -18,6 +27,8 @@ void tempsense_do_start(void);  // start cond
 int  tempsense_do_read(int length, uint8_t* buf);
 int  tempsense_do_write(int length, const uint8_t* buf);
 void tempsense_do_stop(void);  // stop cond
+
+void tempsense_bulk_cmd(void);
 
 #ifdef DBOARD_HAS_TEMPSENSOR
 void    tempsense_dev_init(void);

@@ -381,7 +381,7 @@ static inline int i2cex_read_timeout_us(i2c_inst_t* i2c, uint16_t addr, bool a10
     return i2cex_read_blocking_until(i2c, addr, a10bit, dst, len, nostop, t);
 }
 
-__attribute__((__const__)) enum ki2c_funcs i2ctu_get_func(void) {
+__attribute__((__const__)) enum ki2c_funcs i2ctu_dev_get_func(void) {
     // TODO: SMBUS_EMUL_ALL => I2C_M_RECV_LEN
     // TODO: maybe also PROTOCOL_MANGLING, NOSTART
     return I2C_FUNC_I2C | I2C_FUNC_SMBUS_EMUL | I2C_FUNC_10BIT_ADDR;

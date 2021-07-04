@@ -11,6 +11,7 @@
 #include "info.h"
 #include "util.h"
 #include "thread.h"
+#include "vnd_cfg.h"
 
 #include "serprog.h"
 
@@ -218,6 +219,11 @@ static void handle_cmd(void) {
 }
 
 void cdc_serprog_task(void) { handle_cmd(); }
+
+void sp_spi_bulk_cmd(void) {
+    // TODO
+    vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+}
 
 #endif /* DBOARD_HAS_SERPROG */
 

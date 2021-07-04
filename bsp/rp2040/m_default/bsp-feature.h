@@ -4,11 +4,10 @@
 
 #define DBOARD_HAS_UART
 #define DBOARD_HAS_CMSISDAP
+// TODO: rename to _SPI
 #define DBOARD_HAS_SERPROG
-// FIXME: this one doesn't work yet!!!!! (kernel usb device cfg fails)
-//        "usb 1-1: can't set config #1, error -32"
-/*#define DBOARD_HAS_I2C*/
-/*#define DBOARD_HAS_TEMPSENSOR*/
+#define DBOARD_HAS_I2C
+#define DBOARD_HAS_TEMPSENSOR
 
 #include "bsp-info.h"
 

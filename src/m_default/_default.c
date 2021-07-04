@@ -21,6 +21,26 @@
 /* CDC-Serprog */
 #include "m_default/serprog.h"
 
+/* temperature sensor */
+#include "m_default/tempsensor.h"
+
+// FIXME: this one doesn't work yet!!!!! (kernel usb device cfg fails)
+//        "usb 1-1: can't set config #1, error -32"
+/*#define MODE_ENABLE_I2CTINYUSB*/
+
+enum m_default_cmds {
+    mdef_cmd_spi = mode_cmd__specific,
+    mdef_cmd_i2c,
+    mdef_cmd_tempsense
+};
+enum m_default_feature {
+    mdef_feat_uart      = 1<<0,
+    mdef_feat_cmsisdap  = 1<<1,
+    mdef_feat_spi       = 1<<2,
+    mdef_feat_i2c       = 1<<3,
+    mdef_feat_tempsense = 1<<4,
+};
+
 #ifdef DBOARD_HAS_UART
 static cothread_t uartthread;
 static uint8_t    uartstack[THREAD_STACK_SIZE];
@@ -94,10 +114,45 @@ static void task_cb(void) {
 static void handle_cmd_cb(uint8_t cmd) {
     uint8_t resp = 0;
 
-    // TODO: tempsensor control commands!
     switch (cmd) {
     case mode_cmd_get_features:
+#ifdef DBOARD_HAS_UART
+        resp |= mdef_feat_uart;
+#endif
+#ifdef DBOARD_HAS_CMSISDAP
+        resp |= mdef_feat_cmsisdap;
+#endif
+#ifdef DBOARD_HAS_SERPROG
+        resp |= mdef_feat_spi;
+#endif
+#ifdef DBOARD_HAS_I2C
+        resp |= mdef_feat_i2c;
+#endif
+#ifdef DBOARD_HAS_TEMPSENSOR
+        resp |= mdef_feat_tempsense;
+#endif
         vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
+        break;
+    case mdef_cmd_spi:
+#ifdef DBOARD_HAS_SERPROG
+        sp_spi_bulk_cmd();
+#else
+        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+#endif
+        break;
+    case mdef_cmd_i2c:
+#ifdef DBOARD_HAS_I2C
+        i2ctu_bulk_cmd();
+#else
+        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+#endif
+        break;
+    case mdef_cmd_tempsense:
+#ifdef DBOARD_HAS_TEMPSENSOR
+        tempsense_bulk_cmd();
+#else
+        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+#endif
         break;
     default:
         vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
@@ -129,7 +184,7 @@ enum {
 #if CFG_TUD_VENDOR > 0
     ITF_NUM_VND_CFG,
 #endif
-#ifdef DBOARD_HAS_I2C
+#if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
     ITF_NUM_VND_I2CTINYUSB,
 #endif
 #ifdef DBOARD_HAS_CMSISDAP
@@ -156,7 +211,7 @@ enum {
 #if CFG_TUD_VENDOR > 0
         + TUD_VENDOR_DESC_LEN
 #endif
-#ifdef DBOARD_HAS_I2C
+#if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
         + TUD_I2CTINYUSB_LEN
 #endif
 #ifdef DBOARD_HAS_CMSISDAP
@@ -213,7 +268,7 @@ static const uint8_t desc_configuration[] = {
         EPNUM_VND_CFG_IN, 64),
 #endif
 
-#ifdef DBOARD_HAS_I2C
+#if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
     TUD_I2CTINYUSB_DESCRIPTOR(ITF_NUM_VND_I2CTINYUSB, STRID_IF_VND_I2CTINYUSB),
 #endif
 
@@ -288,7 +343,7 @@ static void my_hid_set_report_cb(uint8_t instance, uint8_t report_id,
 }
 #endif
 
-#ifdef DBOARD_HAS_I2CTINYUSB
+#if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
 static bool my_vendor_control_xfer_cb(uint8_t rhport, uint8_t ep_addr,
         tusb_control_request_t const* req) {
     return i2ctu_ctl_req(rhport, ep_addr, req);
@@ -318,7 +373,7 @@ struct mode m_01_default = {
     .tud_hid_descriptor_report_cb = my_hid_descriptor_report_cb,
 #endif
 
-#if defined(DBOARD_HAS_I2CTINYUSB)
+#if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
     .tud_vendor_control_xfer_cb = i2ctu_ctl_req,
 #endif
 };

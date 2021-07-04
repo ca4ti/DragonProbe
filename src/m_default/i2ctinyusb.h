@@ -105,6 +105,7 @@ enum itu_status i2ctu_dev_read(enum ki2c_flags flags, enum itu_command startstop
 void i2ctu_init(void);
 void i2ctu_deinit(void);
 bool i2ctu_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req);
+void i2ctu_bulk_cmd(void); /* uses data in/out from vnd_cfg.h */
 #endif
 
 #endif

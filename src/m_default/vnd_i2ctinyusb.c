@@ -1,3 +1,4 @@
+// vim: set et:
 
 #include "m_default/bsp-feature.h"
 
@@ -13,7 +14,7 @@
 #include <tusb.h>
 #include <device/usbd_pvt.h>
 
-#include "m_default/bsp-feature.h"
+#include "vnd_cfg.h"
 
 #include "i2ctinyusb.h"
 
@@ -46,6 +47,61 @@ void i2ctu_deinit(void) {
 #endif
 }
 
+static void handle_probe(struct itu_cmd* cmd) {
+    uint8_t bleh = 0;
+#ifdef DBOARD_HAS_TEMPSENSOR
+    if (tempsense_get_active() && tempsense_get_addr() == cmd->addr) {
+        if (cmd->cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
+        int rv = tempsense_do_write(0, &bleh);
+        if (rv < 0 || rv != cmd->len)
+            status = ITU_STATUS_ADDR_NAK;
+        else
+            status = ITU_STATUS_ADDR_ACK;
+        if (cmd->cmd & ITU_CMD_I2C_IO_END_F) tempsense_do_stop();
+    } else
+#endif
+    {
+        status = i2ctu_dev_write(cmd->flags, cmd->cmd & ITU_CMD_I2C_IO_DIR_MASK,
+                cmd->addr, &bleh, 0);
+    }
+}
+static void handle_read(struct itu_cmd* cmd) {
+#ifdef DBOARD_HAS_TEMPSENSOR
+    if (tempsense_get_active() && tempsense_get_addr() == cmd->addr) {
+        if (cmd->cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
+        int rv = tempsense_do_read(
+                cmd->len > sizeof txbuf ? sizeof txbuf : cmd->len, txbuf);
+        if (rv < 0 || rv != cmd->len)
+            status = ITU_STATUS_ADDR_NAK;
+        else
+            status = ITU_STATUS_ADDR_ACK;
+        if (cmd->cmd & ITU_CMD_I2C_IO_END_F) tempsense_do_stop();
+    } else
+#endif
+    {
+        status = i2ctu_dev_read(cmd->flags, cmd->cmd & ITU_CMD_I2C_IO_DIR_MASK, cmd->addr,
+                txbuf, cmd->len > sizeof txbuf ? sizeof txbuf : cmd->len);
+    }
+}
+static void handle_write(struct itu_cmd* cmd) {
+#ifdef DBOARD_HAS_TEMPSENSOR
+    if (tempsense_get_active() && tempsense_get_addr() == cmd->addr) {
+        if (cmd->cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
+        // FIXME: fix status handling
+        int rv = tempsense_do_write(cmd->len > sizeof rxbuf ? sizeof rxbuf : cmd->len, rxbuf);
+        if (rv < 0 || rv != cmd->len)
+            status = ITU_STATUS_ADDR_NAK;
+        else
+            status = ITU_STATUS_ADDR_ACK;
+        if (cmd->cmd & ITU_CMD_I2C_IO_END_F) tempsense_do_stop();
+    } else
+#endif
+    {
+        status = i2ctu_dev_write(cmd->flags, cmd->cmd & ITU_CMD_I2C_IO_DIR_MASK, cmd->addr, rxbuf,
+                cmd->len > sizeof rxbuf ? sizeof rxbuf : cmd->len);
+    }
+}
+
 bool i2ctu_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* req) {
     (void)rhport;
 
@@ -67,22 +123,7 @@ bool i2ctu_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* 
             // printf("WDATA a=%04hx l=%04hx ", cmd.addr, cmd.len);
 
             // printf("data=%02x %02x...\n", rxbuf[0], rxbuf[1]);
-#ifdef DBOARD_HAS_TEMPSENSOR
-            if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
-                if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
-                // FIXME: fix status handling
-                int rv = tempsense_do_write(cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len, rxbuf);
-                if (rv < 0 || rv != cmd.len)
-                    status = ITU_STATUS_ADDR_NAK;
-                else
-                    status = ITU_STATUS_ADDR_ACK;
-                if (cmd.cmd & ITU_CMD_I2C_IO_END_F) tempsense_do_stop();
-            } else
-#endif
-            {
-                status = i2ctu_dev_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK, cmd.addr, rxbuf,
-                        cmd.len > sizeof rxbuf ? sizeof rxbuf : cmd.len);
-            }
+            handle_write(&cmd);
 
             // cancel curcmd
             curcmd.cmd = 0xff;
@@ -140,44 +181,14 @@ bool i2ctu_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* 
 
                 if (cmd.flags & I2C_M_RD) {  // read from I2C device
                     // printf("read addr=%04hx len=%04hx ", cmd.addr, cmd.len);
-#ifdef DBOARD_HAS_TEMPSENSOR
-                    if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
-                        if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
-                        int rv = tempsense_do_read(
-                                cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len, txbuf);
-                        if (rv < 0 || rv != cmd.len)
-                            status = ITU_STATUS_ADDR_NAK;
-                        else
-                            status = ITU_STATUS_ADDR_ACK;
-                        if (cmd.cmd & ITU_CMD_I2C_IO_END_F) tempsense_do_stop();
-                    } else
-#endif
-                    {
-                        status = i2ctu_dev_read(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK, cmd.addr,
-                                txbuf, cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len);
-                    }
+                    handle_read(&cmd);
                     // printf("data=%02x %02x...\n", txbuf[0], txbuf[1]);
                     return tud_control_xfer(
                             rhport, req, txbuf, cmd.len > sizeof txbuf ? sizeof txbuf : cmd.len);
                 } else {  // write
                     // printf("write addr=%04hx len=%04hx ", cmd.addr, cmd.len);
                     if (cmd.len == 0) {  // address probe -> do this here
-                        uint8_t bleh = 0;
-#ifdef DBOARD_HAS_TEMPSENSOR
-                        if (tempsense_get_active() && tempsense_get_addr() == cmd.addr) {
-                            if (cmd.cmd & ITU_CMD_I2C_IO_BEGIN_F) tempsense_do_start();
-                            int rv = tempsense_do_write(0, &bleh);
-                            if (rv < 0 || rv != cmd.len)
-                                status = ITU_STATUS_ADDR_NAK;
-                            else
-                                status = ITU_STATUS_ADDR_ACK;
-                            if (cmd.cmd & ITU_CMD_I2C_IO_END_F) tempsense_do_stop();
-                        } else
-#endif
-                        {
-                            status = i2ctu_dev_write(cmd.flags, cmd.cmd & ITU_CMD_I2C_IO_DIR_MASK,
-                                    cmd.addr, &bleh, 0);
-                        }
+                        handle_probe(&cmd);
                         // printf("probe -> %d\n", status);
                         return tud_control_status(rhport, req);
                     } else {
@@ -195,6 +206,78 @@ bool i2ctu_ctl_req(uint8_t rhport, uint8_t stage, tusb_control_request_t const* 
         }
     } else
         return true;  // other stage...
+}
+
+void i2ctu_bulk_cmd(void) {
+    uint16_t us;
+    uint32_t func, freq;
+
+    switch (vnd_cfg_read_byte()) {
+    case ITU_CMD_ECHO:
+        txbuf[0] = vnd_cfg_read_byte();
+        vnd_cfg_write_resp(cfg_resp_ok, 1, txbuf);
+        break;
+    case ITU_CMD_GET_FUNC:
+        func = i2ctu_dev_get_func();
+
+        txbuf[0] = func & 0xff;
+        txbuf[1] = (func >> 8) & 0xff;
+        txbuf[2] = (func >> 16) & 0xff;
+        txbuf[3] = (func >> 24) & 0xff;
+        vnd_cfg_write_resp(cfg_resp_ok, 4, txbuf);
+        break;
+    case ITU_CMD_SET_DELAY:
+        us = (uint16_t)vnd_cfg_read_byte();
+        us |= ((uint16_t)vnd_cfg_read_byte() << 8);
+
+        if (us == 0) us = 1;
+        freq = 1000 * 1000 / (uint32_t)us;
+
+        if (i2ctu_dev_set_freq(freq, us) != 0)
+            vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
+        else
+            vnd_cfg_write_resp(cfg_resp_badarg, 0, NULL);
+        break;
+    case ITU_CMD_GET_STATUS:
+        txbuf[0] = status;
+        vnd_cfg_write_resp(cfg_resp_ok, 1, txbuf);
+        break;
+    case ITU_CMD_I2C_IO:
+    case ITU_CMD_I2C_IO_BEGIN:
+    case ITU_CMD_I2C_IO_END:
+    case ITU_CMD_I2C_IO_BEGINEND: {
+        struct itu_cmd cmd;
+        cmd.cmd    = vnd_cfg_read_byte();
+        cmd.flags  = (uint16_t)vnd_cfg_read_byte();
+        cmd.flags |= (uint16_t)vnd_cfg_read_byte() << 8;
+        cmd.addr   = (uint16_t)vnd_cfg_read_byte();
+        cmd.addr  |= (uint16_t)vnd_cfg_read_byte() << 8;
+        cmd.len    = (uint16_t)vnd_cfg_read_byte();
+        cmd.len   |= (uint16_t)vnd_cfg_read_byte() << 8;
+
+        if (cmd.flags & I2C_M_RD) {
+            handle_read(&cmd);
+            us = cmd.len;
+            if (us > sizeof txbuf) us = sizeof txbuf;
+            vnd_cfg_write_resp(cfg_resp_ok, us, txbuf);
+        } else if (cmd.len == 0) {
+            handle_probe(&cmd);
+            txbuf[0] = status;
+            vnd_cfg_write_resp(cfg_resp_ok, 1, txbuf);
+        } else {
+            us = cmd.len;
+            if (us > sizeof rxbuf) us = sizeof rxbuf;
+            for (size_t i = 0; i < us; ++i)
+                rxbuf[i] = vnd_cfg_read_byte();
+
+            handle_write(&cmd);
+        }
+    } break;
+
+    default:
+        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        break;
+    }
 }
 
 #endif /* DBOARD_HAS_I2C */

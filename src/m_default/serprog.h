@@ -59,6 +59,7 @@ static inline void sp_spi_op_do(
 void cdc_serprog_init(void);
 void cdc_serprog_deinit(void);
 void cdc_serprog_task(void);
+void sp_spi_bulk_cmd(void);
 #endif
 
 #endif
