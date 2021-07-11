@@ -29,7 +29,7 @@
 /*#define MODE_ENABLE_I2CTINYUSB*/
 
 enum m_default_cmds {
-    mdef_cmd_spi = mode_cmd__specific,
+    mdef_cmd_spi = mode_cmd__specific | 0x10,
     mdef_cmd_i2c,
     mdef_cmd_tempsense
 };

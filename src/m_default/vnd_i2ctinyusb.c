@@ -212,7 +212,8 @@ void i2ctu_bulk_cmd(void) {
     uint16_t us;
     uint32_t func, freq;
 
-    switch (vnd_cfg_read_byte()) {
+    uint8_t cmdb = vnd_cfg_read_byte();
+    switch (cmdb) {
     case ITU_CMD_ECHO:
         txbuf[0] = vnd_cfg_read_byte();
         vnd_cfg_write_resp(cfg_resp_ok, 1, txbuf);
@@ -247,7 +248,7 @@ void i2ctu_bulk_cmd(void) {
     case ITU_CMD_I2C_IO_END:
     case ITU_CMD_I2C_IO_BEGINEND: {
         struct itu_cmd cmd;
-        cmd.cmd    = vnd_cfg_read_byte();
+        cmd.cmd    = cmdb;
         cmd.flags  = (uint16_t)vnd_cfg_read_byte();
         cmd.flags |= (uint16_t)vnd_cfg_read_byte() << 8;
         cmd.addr   = (uint16_t)vnd_cfg_read_byte();

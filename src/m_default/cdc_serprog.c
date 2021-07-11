@@ -189,15 +189,19 @@ static void handle_cmd(uint8_t cmd, int ud, uint8_t (*read_byte)(void),
             break;
 
         case S_CMD_SPIOP: case S_CMD_SPI_READ: case S_CMD_SPI_WRITE: {
-            uint32_t slen, rlen;
+            uint32_t slen = 0, rlen = 0;
 
             // clang-format off
-            slen  = (uint32_t)read_byte();
-            slen |= (uint32_t)read_byte() << 8;
-            slen |= (uint32_t)read_byte() << 16;
-            rlen  = (uint32_t)read_byte();
-            rlen |= (uint32_t)read_byte() << 8;
-            rlen |= (uint32_t)read_byte() << 16;
+            if (cmd == S_CMD_SPIOP || cmd == S_CMD_SPI_WRITE) {
+                slen  = (uint32_t)read_byte();
+                slen |= (uint32_t)read_byte() << 8;
+                slen |= (uint32_t)read_byte() << 16;
+            }
+            if (cmd == S_CMD_SPIOP || cmd == S_CMD_SPI_READ) {
+                rlen  = (uint32_t)read_byte();
+                rlen |= (uint32_t)read_byte() << 8;
+                rlen |= (uint32_t)read_byte() << 16;
+            }
             // clang-format on
 
             if (writehdr)

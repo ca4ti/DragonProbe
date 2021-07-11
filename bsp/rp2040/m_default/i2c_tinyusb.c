@@ -434,7 +434,7 @@ enum itu_status i2ctu_dev_write(enum ki2c_flags flags, enum itu_command startsto
             return ITU_STATUS_ADDR_ACK;
     } else*/
     {
-        int rv = i2cex_write_timeout_us(PINOUT_I2C_DEV, addr, bit10, buf, len, nostop, 1000 * 1000);
+        int rv = i2cex_write_timeout_us(PINOUT_I2C_DEV, addr, bit10, buf, len, nostop, 400 * 1000);
         if (rv < 0 || (size_t)rv < len) return ITU_STATUS_ADDR_NAK;
         return ITU_STATUS_ADDR_ACK;
     }
@@ -452,7 +452,7 @@ enum itu_status i2ctu_dev_read(enum ki2c_flags flags, enum itu_command startstop
             return ITU_STATUS_ADDR_ACK;
     } else*/
     {
-        int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, bit10, buf, len, nostop, 1000 * 1000);
+        int rv = i2cex_read_timeout_us(PINOUT_I2C_DEV, addr, bit10, buf, len, nostop, 400 * 1000);
         // printf("p le rv=%d buf=%02x ", rv, buf[0]);
         if (rv < 0 || (size_t)rv < len) return ITU_STATUS_ADDR_NAK;
         return ITU_STATUS_ADDR_ACK;
