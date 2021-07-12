@@ -3,6 +3,9 @@
  * Driver for the DapperMime-JTAG USB multitool: base MFD driver
  *
  * Copyright (c) sys64738 and haskal
+ *
+ * Adapted from:
+ *   dln2.c   Copyright (c) 2014 Intel Corporation
  */
 
 #include <linux/kernel.h>
@@ -403,8 +406,11 @@ static int dmj_hw_init(struct dmj_dev *dmj)
 
 /* MFD stuff */
 
-static const struct mfd_cell dmj_mfd_devs[] = {
+static const struct mfd_cell dmj_mfd_char[] = {
 	{ .name = "dmj-char" },
+};
+static const struct mfd_cell dmj_mfd_i2c[] = {
+	{ .name = "dmj-i2c" },
 };
 
 /* USB device control */
@@ -453,9 +459,9 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 	}
 
 	if (dmj->dmj_mode == 1) {
-		ret = mfd_add_hotplug_devices(dev, dmj_mfd_devs, ARRAY_SIZE(dmj_mfd_devs));
+		ret = mfd_add_hotplug_devices(dev, dmj_mfd_char, ARRAY_SIZE(dmj_mfd_char));
 		if (ret) {
-			dev_err(dev, "failed to add MFD devices\n");
+			dev_err(dev, "failed to add MFD character devices\n");
 			goto out_free;
 		}
 
@@ -463,7 +469,11 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 			// TODO: add SPI MFD
 		}
 		if (dmj->dmj_mode & DMJ_FEATURE_MODE1_I2C) {
-			// TODO: add I2C MFD
+			ret = mfd_add_hotplug_devices(dev, dmj_mfd_i2c, ARRAY_SIZE(dmj_mfd_i2c));
+			if (ret) {
+				dev_err(dev, "failed to add MFD I2C devices\n");
+				goto out_free;
+			}
 		}
 		if (dmj->dmj_mode & DMJ_FEATURE_MODE1_TEMPSENSOR) {
 			// TODO: add tempsensor MFD

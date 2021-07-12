@@ -263,8 +263,7 @@ void i2ctu_bulk_cmd(void) {
             vnd_cfg_write_resp(cfg_resp_ok, (uint32_t)us, txbuf);
         } else if (cmd.len == 0) {
             handle_probe(&cmd);
-            txbuf[0] = status;
-            vnd_cfg_write_resp(cfg_resp_ok, 1, txbuf);
+            vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
         } else {
             us = cmd.len;
             if (us > sizeof rxbuf) us = sizeof rxbuf;
@@ -272,6 +271,7 @@ void i2ctu_bulk_cmd(void) {
                 rxbuf[i] = vnd_cfg_read_byte();
 
             handle_write(&cmd);
+            vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
         }
     } break;
 

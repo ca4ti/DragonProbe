@@ -1,5 +1,5 @@
 
-obj-m  := dmj.o dmj-char.o
+obj-m  := dmj.o dmj-char.o i2c-dmj.o
 KDIR   := /lib/modules/$(shell uname -r)/build
 PWD    := $(shell pwd)
 

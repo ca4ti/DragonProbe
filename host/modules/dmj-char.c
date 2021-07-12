@@ -20,7 +20,7 @@
 #include <linux/types.h>
 
 #if 0
-#include <linux/driver/dmj.h>
+#include <linux/mfd/dmj.h>
 #else
 #include "dmj.h"
 #endif
@@ -206,7 +206,7 @@ static int dmj_char_probe(struct platform_device *pdev)
 	dev_info(pd, HARDWARE_NAME " /dev entries driver, major=%d, minor=%d\n",
 			dmj_char_major, minor);
 
-	dmjch = kzalloc(sizeof(*dmjch), GFP_KERNEL);
+	dmjch = devm_kzalloc(pd, sizeof(*dmjch), GFP_KERNEL);
 	if (!dmjch) return -ENOMEM;
 
 	platform_set_drvdata(pdev, dmjch);
@@ -244,8 +244,6 @@ static int dmj_char_remove(struct platform_device *pdev)
 	device_destroy(dmj_char_class, MKDEV(dmj_char_major, dmjch->minor));
 	cdev_del(&dmjch->cdev);
 	unregister_chrdev(MKDEV(dmj_char_major, dmjch->minor), CLASS_NAME);
-
-	kfree(dmjch);
 
 	return 0;
 }
@@ -318,4 +316,3 @@ MODULE_DESCRIPTION("Character device for the " HARDWARE_NAME " USB multitool");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:dmj-char");
 
-MODULE_DEPEND

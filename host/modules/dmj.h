@@ -37,6 +37,18 @@ struct dmj_platform_data {
 #define DMJ_XFER_FLAGS_PARSE_RESP   (1<<0)
 #define DMJ_XFER_FLAGS_FILL_RECVBUF (1<<1)
 
+inline static const char *dmj_get_protoerr(int err)
+{
+	switch (err) {
+	case DMJ_RESP_STAT_OK: return "ok";
+	case DMJ_RESP_STAT_ILLCMD: return "unknown/unimplemented command";
+	case DMJ_RESP_STAT_BADMODE: return "bad mode";
+	case DMJ_RESP_STAT_NOSUCHMODE: return "no such mode available";
+	case DMJ_RESP_STAT_BADARG: return "illegal argument";
+	default: return "???";
+	}
+}
+
 int dmj_transfer(struct platform_device *pdev, int cmd, int recvflags,
 		const void *wbuf, int wbufsize, void *rbuf, int *rbufsize);
 
