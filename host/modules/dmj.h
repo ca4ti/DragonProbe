@@ -48,6 +48,28 @@ inline static const char *dmj_get_protoerr(int err)
 	default: return "???";
 	}
 }
+inline static int dmj_check_retval(int ret, int len, struct device *dev,
+		const char *pfix, bool check_pos_val, int lmin, int lmax)
+{
+	if (ret < 0) {
+		dev_err(dev, "%s: USB fail: %d\n", pfix, ret);
+		return ret;
+	}
+	if (ret && check_pos_val) {
+		dev_err(dev, "%s: USB protocol fail: %s (%d)\n", pfix, dmj_get_protoerr(ret), ret);
+		return -EIO;
+	}
+	if (len < lmin && lmin >= 0) {
+		dev_err(dev, "%s: USB reply too short: %d\n", pfix, len);
+		return -EREMOTEIO;
+	}
+	if (len > lmax && lmax >= 0) {
+		dev_err(dev, "%s: USB reply too long: %d\n", pfix, len);
+		return -EMSGSIZE;
+	}
+
+	return 0;
+}
 
 int dmj_transfer(struct platform_device *pdev, int cmd, int recvflags,
 		const void *wbuf, int wbufsize, void *rbuf, int *rbufsize);

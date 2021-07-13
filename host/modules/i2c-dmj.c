@@ -42,7 +42,7 @@
 #define DMJ_I2C_STAT_ACK  1
 #define DMJ_I2C_STAT_NAK  2
 
-static unsigned short delay = 10;
+static uint16_t delay = 10;
 module_param(delay, ushort, 0);
 MODULE_PARM_DESC(delay, "bit delay in microseconds (default is 10us for 100kHz)");
 
@@ -72,14 +72,8 @@ static int dmj_i2c_read(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
 
 	ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
 			cmdbuf, sizeof(cmdbuf), respbuf, &len);
-	if (ret < 0) {
-		dev_err(dev, "read: USB comms error: %d\n", ret);
-		goto err_free;
-	} else if (ret) {
-		dev_err(dev, "read: protocol error: %s (%d)\n", dmj_get_protoerr(ret), ret);
-		ret = -EIO;
-		goto err_free;
-	}
+	ret = dmj_check_retval(ret, len, dev, "i2c read", true, -1, -1);
+	if (ret < 0) goto err_free;
 
 	memcpy(msg->buf, respbuf, msg->len);
 	kfree(respbuf);
@@ -109,14 +103,8 @@ static int dmj_i2c_write(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
 	memcpy(&cmdbuf[7], msg->buf, msg->len);
 
 	ret = dmj_write(dmji->pdev, DMJ_CMD_MODE1_I2C, cmdbuf, len);
-	if (ret < 0) {
-		dev_err(dev, "write: USB comms error: %d\n", ret);
-		goto err_free;
-	} else if (ret) {
-		dev_err(dev, "write: protocol error: %s (%d)\n", dmj_get_protoerr(ret), ret);
-		ret = -EIO;
-		goto err_free;
-	}
+	ret = dmj_check_retval(ret, len, dev, "i2c write", true, -1, -1);
+	if (ret < 0) goto err_free;
 
 	kfree(cmdbuf);
 	return msg->len;
@@ -141,7 +129,7 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 
 		pmsg = &msgs[i];
 
-		dev_dbg(&a->dev,
+		dev_warn(&a->dev,
 			"  %d: %s (flags %04x) %d bytes to 0x%02x\n",
 			i, pmsg->flags & I2C_M_RD ? "read" : "write",
 			pmsg->flags, pmsg->len, pmsg->addr);
@@ -169,20 +157,10 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 		stlen = sizeof(status);
 		ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
 				&i2ccmd, sizeof(i2ccmd), &status, &stlen);
-		if (ret < 0) {
-			dev_err(dev, "xfer get stat: USB comms error: %d\n", ret);
-			goto err_ret;
-		} else if (ret) {
-			dev_err(dev, "xfer get stat: protocol error: %s (%d)\n", dmj_get_protoerr(ret), ret);
-			ret = -EIO;
-			goto err_ret;
-		} else if (stlen != sizeof(status)) {
-			dev_err(dev, "xfer get stat: unexpected return length: want %zu, got %d\n", sizeof(status), stlen);
-			ret = -EMSGSIZE;
-			goto err_ret;
-		}
+		ret = dmj_check_retval(ret, stlen, dev, "i2c stat", true, sizeof(status), sizeof(status));
+		if (ret < 0) goto err_ret;
 
-		dev_dbg(dev, "  status = %d\n", status);
+		dev_warn(dev, "  status = %d\n", status);
 		if (status == DMJ_I2C_STAT_NAK) {
 			ret = -ENXIO;
 			goto err_ret;
@@ -205,16 +183,8 @@ static uint32_t dmj_i2c_func(struct i2c_adapter *a)
 
 	ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
 			&i2ccmd, sizeof(i2ccmd), &func, &len);
-	if (ret < 0) {
-		dev_err(dev, "func: USB comms error: %d\n", ret);
-		return 0;
-	} else if (ret) {
-		dev_err(dev, "func: protocol error: %s (%d)\n", dmj_get_protoerr(ret), ret);
-		return 0;
-	} else if (len != sizeof(func)) {
-		dev_err(dev, "func: unexpected return length: want %zu, got %d\n", sizeof(func), len);
-		return 0;
-	}
+	ret = dmj_check_retval(ret, len, dev, "i2c get_func", true, sizeof(func), sizeof(func));
+	if (ret < 0) return 0;
 
 	dev_warn(dev, "I2C functionality: 0x%08x\n", le32_to_cpu(func));
 
@@ -230,15 +200,100 @@ static const struct i2c_adapter_quirks dmj_i2c_quirks = {
 	.max_write_len = DMJ_I2C_MAX_XSFER_SIZE,
 };
 
+static int dmj_i2c_check_hw(struct platform_device *pdev)
+{
+	/*
+	 * 1. check if mode 1 is available
+	 * 2. check mode 1 version
+	 * 3. check if mode 1 has the I2C feature
+	 * 4. test the echo I2C command
+	 */
+
+	struct device *dev = &pdev->dev;
+	__le16 m1ver;
+	uint8_t curmode, m1feat, echoval;
+	const int ver_min = 0x0010, ver_max = 0x0010;
+	uint8_t i2ccmd[2];
+	int ret = 0, len;
+
+	len = sizeof(curmode);
+	ret = dmj_transfer(pdev, DMJ_CMD_CFG_GET_CUR_MODE,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &curmode, &len);
+	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(curmode), sizeof(curmode));
+	if (ret < 0) return ret;
+	if (curmode != 0x1) {
+		dev_err(dev, "device must be in mode 1 for ICD to work, but it is in mode %d\n", curmode);
+		return -EIO;
+	}
+
+	len = sizeof(m1ver);
+	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_VERSION,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &m1ver, &len);
+	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(m1ver), sizeof(m1ver));
+	if (ret < 0) return ret;
+	if (le16_to_cpu(m1ver) > ver_max || le16_to_cpu(m1ver) < ver_min) {
+		dev_err(dev, "bad mode 1 version %04x on device, must be between %04x and %04x\n",
+				le16_to_cpu(m1ver), ver_min, ver_max);
+		return -EIO;
+	}
+
+	len = sizeof(m1feat);
+	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_FEATURES,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &m1feat, &len);
+	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(m1feat), sizeof(m1feat));
+	if (ret < 0) return ret;
+	if (!(m1feat & DMJ_FEATURE_MODE1_I2C)) {
+		dev_err(dev, "device's mode 1 does not support I2C\n");
+		return -EIO;
+	}
+
+	echoval = 0x42;
+	i2ccmd[0] = DMJ_I2C_CMD_ECHO;
+	i2ccmd[1] = ~echoval;
+	len = sizeof(echoval);
+	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE1_I2C,
+			DMJ_XFER_FLAGS_PARSE_RESP, i2ccmd, sizeof(i2ccmd), &m1feat, &len);
+	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(m1feat), sizeof(m1feat));
+	if (ret < 0) return ret;
+	if (echoval != i2ccmd[1]) {
+		dev_err(dev, "I2C echo test command not functional\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int dmj_i2c_set_delay(struct platform_device *pdev, uint16_t us)
+{
+	struct device *dev = &pdev->dev;
+	uint8_t i2ccmd[3];
+	int ret = 0;
+
+	i2ccmd[0] = DMJ_I2C_CMD_SET_DELAY;
+	i2ccmd[1] = (us >> 0) & 0xff;
+	i2ccmd[2] = (us >> 8) & 0xff;
+
+	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
+			i2ccmd, sizeof(i2ccmd), NULL, NULL);
+	ret = dmj_check_retval(ret, -1, dev, "i2c set delay", true, -1, -1);
+
+	return ret;
+}
+
 static int dmj_i2c_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct dmj_i2c *dmji;
 	struct device *dev = &pdev->dev;
 
-	// TODO: check if mode 1 and I2C available?
+	ret = dmj_i2c_check_hw(pdev);
+	if (ret) return -ENODEV;
 
-	// TODO: test ECHO cmd
+	ret = dmj_i2c_set_delay(pdev, delay);
+	if (ret) {
+		dev_err(dev, "failed to set I2C speed: %d\n", ret);
+		return ret;
+	}
 
 	dmji = devm_kzalloc(dev, sizeof(*dmji), GFP_KERNEL);
 	if (!dmji) return -ENOMEM;
@@ -251,8 +306,6 @@ static int dmj_i2c_probe(struct platform_device *pdev)
 	dmji->adapter.quirks = &dmj_i2c_quirks; /* TODO: is this needed? probably... */
 	dmji->adapter.dev.of_node = dev->of_node;
 	i2c_set_adapdata(&dmji->adapter, dmji);
-
-	// TODO: set delay from module param
 
 	snprintf(dmji->adapter.name, sizeof(dmji->adapter.name), "%s-%s",
 		"dln2-i2c", dev_name(pdev->dev.parent));

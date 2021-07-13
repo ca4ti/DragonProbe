@@ -280,7 +280,7 @@ static int __init dmj_char_init(void)
 	if (IS_ERR(class)) {
 		ret = PTR_ERR(class);
 		printk(KERN_ERR " failed to create class: %d\n", ret);
-		unregister_chrdev(major, DEVICE_NAME); /* TODO: unregister_chrdev_rage */
+		unregister_chrdev(major, DEVICE_NAME);
 		return ret;
 	}
 	printk(KERN_DEBUG DEVICE_NAME " created class\n");
@@ -301,7 +301,7 @@ static void __exit dmj_char_exit(void)
 	spin_unlock(&ndevs_lock);
 
 	class_destroy(dmj_char_class);
-	unregister_chrdev(MKDEV(dmj_char_major, 0), CLASS_NAME); /* TODO: unregister_chrdev_rage */
+	unregister_chrdev(dmj_char_major, CLASS_NAME);
 
 	dmj_char_major = -1;
 	dmj_char_class = NULL;

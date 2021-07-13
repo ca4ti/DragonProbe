@@ -286,24 +286,8 @@ static int dmj_check_hw(struct dmj_dev *dmj)
 
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_VERSION,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &protover, &len);
-
-	if (ret < 0) {
-		dev_err(dev, "USB fail: %d\n", ret);
-		return ret;
-	}
-	if (ret) {
-		dev_err(dev, "USB protocol fail: %s (%d)\n", dmj_get_protoerr(ret), ret);
-		return -EIO;
-	}
-	if (len < sizeof(protover)) {
-		dev_err(dev, "USB fail remoteio: %d\n", len);
-		return -EREMOTEIO;
-	}
-	if (len > sizeof(protover)) {
-		dev_err(dev, "USB fail msgsize: %d\n", len);
-		return -EMSGSIZE;
-	}
-
+	ret = dmj_check_retval(ret, len, dev, "version check", true, sizeof(protover), sizeof(protover));
+	if (ret < 0) return ret;
 	if (le16_to_cpu(protover) != DMJ_USB_CFG_PROTO_VER) {
 		dev_err(&dmj->interface->dev, HARDWARE_NAME " config protocol version 0x%04x too %s\n",
 				le16_to_cpu(protover), (le16_to_cpu(protover) > DMJ_USB_CFG_PROTO_VER) ? "new" : "old");
@@ -325,12 +309,8 @@ static int dmj_print_info(struct dmj_dev *dmj)
 	len = sizeof(strinfo)-1;
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_INFOSTR,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, strinfo, &len);
+	ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(strinfo));
 	if (ret < 0) return ret;
-	if (ret) {
-		dev_err(dev, "USB protocol fail: %s (%d)\n", dmj_get_protoerr(ret), ret);
-		return -EIO;
-	}
-	if (len >= sizeof(strinfo)) return -EMSGSIZE;
 	strinfo[len] = 0; /*strinfo[64] = 0;*/
 	dev_info(dev, HARDWARE_NAME " '%s'\n", strinfo);
 
@@ -338,18 +318,16 @@ static int dmj_print_info(struct dmj_dev *dmj)
 	len = sizeof(curmode);
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_CUR_MODE,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &curmode, &len);
+	ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(curmode), sizeof(curmode));
 	if (ret < 0) return ret;
-	if (len < sizeof(curmode)) return -EREMOTEIO;
-	if (len > sizeof(curmode)) return -EMSGSIZE;
 	dmj->dmj_mode = curmode;
 
 	/* map of available modes */
 	len = sizeof(modes);
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_MODES,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &modes, &len);
+	ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(modes), sizeof(modes));
 	if (ret < 0) return ret;
-	if (len < sizeof(modes)) return -EREMOTEIO;
-	if (len > sizeof(modes)) return -EMSGSIZE;
 
 	for (i = 1; i < 16; ++i) { /* build the string, uglily */
 		if (le16_to_cpu(modes) & (1<<i)) {
@@ -368,6 +346,7 @@ static int dmj_print_info(struct dmj_dev *dmj)
 		len = sizeof(strinfo)-1;
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_NAME,
 				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, strinfo, &len);
+		ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(strinfo));
 		if (ret < 0) return ret;
 		if (len >= sizeof(strinfo)) return -EMSGSIZE;
 		strinfo[len] = 0; /*strinfo[64] = 0;*/
@@ -376,17 +355,15 @@ static int dmj_print_info(struct dmj_dev *dmj)
 		len = sizeof(mversion);
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_VERSION,
 				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &mversion, &len);
+		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(mversion), sizeof(mversion));
 		if (ret < 0) return ret;
-		if (len < sizeof(mversion)) return -EREMOTEIO;
-		if (len > sizeof(mversion)) return -EMSGSIZE;
 
 		/* features */
 		len = sizeof(features);
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_FEATURES,
 				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &features, &len);
+		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(features), sizeof(features));
 		if (ret < 0) return ret;
-		if (len < sizeof(features)) return -EREMOTEIO;
-		if (len > sizeof(features)) return -EMSGSIZE;
 
 		if (i == 1) dmj->dmj_m1feature = features;
 
