@@ -5,8 +5,18 @@
 
 #include <stdint.h>
 
-/* the configuration vendor interface must always be the first vendor itf, and
- * have endpoint number 1. */
+/* the configuration vendor interface has a specific subclass and protocol
+ * number that can be useful for identification */
+#define VND_CFG_SUBCLASS 42
+#define VND_CFG_PROTOCOL 69
+#define TUD_VENDOR_DESCRIPTOR_EX(_itfnum, _stridx, _epout, _epin, _epsize, _subclass, _protocol) \
+  /* Interface */\
+  9, TUSB_DESC_INTERFACE, _itfnum, 0, 2, TUSB_CLASS_VENDOR_SPECIFIC, _subclass, _protocol, _stridx,\
+  /* Endpoint Out */\
+  7, TUSB_DESC_ENDPOINT, _epout, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0,\
+  /* Endpoint In */\
+  7, TUSB_DESC_ENDPOINT, _epin, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0
+
 
 #define VND_CFG_PROTO_VER 0x0010
 

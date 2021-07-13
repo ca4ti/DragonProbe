@@ -230,6 +230,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 ## TODO
 
 - [ ] A name
+- [ ] A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf
 - [x] CMSIS-DAP JTAG implementation
 - [x] Flashrom/SPI support using Serprog
   - Parallel ROM flashing support, too, by having the device switch into a
@@ -254,7 +255,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
       it'll be used for other stuff anyway, etc.). Means a custom Linux driver but
       oh well, I2C-Tiny-USB needs patching either way.
 - [ ] 1-wire using ↑
-- [ ] A proper interface for sending commands etc. instead of shoehorning it
+- [x] A proper interface for sending commands etc. instead of shoehorning it
       into Serprog.
   - Can probably be included in the "Better USB interface stuff".
 - [ ] JTAG pinout detector

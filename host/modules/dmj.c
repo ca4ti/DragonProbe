@@ -287,9 +287,13 @@ static int dmj_check_hw(struct dmj_dev *dmj)
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_VERSION,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &protover, &len);
 
-	if (ret < 0) { /* TODO: positive error codes from respstat */
+	if (ret < 0) {
 		dev_err(dev, "USB fail: %d\n", ret);
 		return ret;
+	}
+	if (ret) {
+		dev_err(dev, "USB protocol fail: %s (%d)\n", dmj_get_protoerr(ret), ret);
+		return -EIO;
 	}
 	if (len < sizeof(protover)) {
 		dev_err(dev, "USB fail remoteio: %d\n", len);
@@ -321,7 +325,11 @@ static int dmj_print_info(struct dmj_dev *dmj)
 	len = sizeof(strinfo)-1;
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_INFOSTR,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, strinfo, &len);
-	if (ret < 0) return ret; /* TODO: positive error codes from respstat */
+	if (ret < 0) return ret;
+	if (ret) {
+		dev_err(dev, "USB protocol fail: %s (%d)\n", dmj_get_protoerr(ret), ret);
+		return -EIO;
+	}
 	if (len >= sizeof(strinfo)) return -EMSGSIZE;
 	strinfo[len] = 0; /*strinfo[64] = 0;*/
 	dev_info(dev, HARDWARE_NAME " '%s'\n", strinfo);
@@ -418,31 +426,34 @@ static const struct mfd_cell dmj_mfd_i2c[] = {
 static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_id)
 {
 	struct usb_host_interface *hostitf = itf->cur_altsetting;
-	struct usb_endpoint_descriptor *epin, *epout;
+	struct usb_endpoint_descriptor *epin = NULL, *epout = NULL, *curep;
 	struct device *dev = &itf->dev;
 	struct dmj_dev *dmj;
-	int ret;
+	int ret, i;
 
-	/*dev_dbg(dev, "dmj probe itfn=%d nendp=%d\n",
-		hostitf->desc.bInterfaceNumber, hostitf->desc.bNumEndpoints);*/
-
-	if (hostitf->desc.bInterfaceNumber != 0 || hostitf->desc.bNumEndpoints < 2)
+	if (hostitf->desc.bNumEndpoints < 2)
 		return -ENODEV;
 
-	/* TODO: query endpoints in a better way */
-	epout = &hostitf->endpoint[DMJ_VND_CFG_EP_OUT].desc;
-	epin = &hostitf->endpoint[DMJ_VND_CFG_EP_IN].desc;
+	for (i = 0; i < hostitf->desc.bNumEndpoints; ++i) {
+		curep = &hostitf->endpoint[i].desc;
 
-	/*dev_dbg(dev, "epout addr=0x%02x, epin addr=0x%02x\n",
-			epout->bEndpointAddress, epin->bEndpointAddress);*/
+		if (!epin  && usb_endpoint_is_bulk_in (curep)) epin  = curep;
+		if (!epout && usb_endpoint_is_bulk_out(curep)) epout = curep;
 
-	if (!usb_endpoint_is_bulk_out(epout)) { dev_warn(dev, "aaa1\n"); return -ENODEV; }
-	if (!usb_endpoint_is_bulk_in(epin)) { dev_warn(dev, "aaa1\n"); return -ENODEV; }
+		if (epin && epout) break;
+	}
+
+	if (!epin) {
+		dev_warn(dev, "found suitable device but no ep in\n");
+		return -ENODEV;
+	}
+	if (!epout) {
+		dev_warn(dev, "found suitable device but no ep out\n");
+		return -ENODEV;
+	}
 
 	dmj = kzalloc(sizeof(*dmj), GFP_KERNEL);
 	if (!dmj) return -ENOMEM;
-
-	/*dev_dbg(dev, "hi there!\n");*/
 
 	dmj->ep_out = epout->bEndpointAddress;
 	dmj->ep_in = epin->bEndpointAddress;
@@ -525,7 +536,7 @@ static int dmj_resume(struct usb_interface *itf)
 }
 
 static const struct usb_device_id dmj_table[] = {
-	{ USB_DEVICE(0xcafe, 0x1312) },
+	{ USB_DEVICE_AND_INTERFACE_INFO(0xcafe, 0x1312, USB_CLASS_VENDOR_SPEC, 42, 69) },
 	{ }
 };
 MODULE_DEVICE_TABLE(usb, dmj_table);
