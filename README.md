@@ -79,13 +79,13 @@ The pin mapping for the RP2040 is as follows:
 | GND        | &lt;ground&gt; | &lt;ground&gt; | GND        |
 | GP2        | SWCLK/TCK      |                | 3V3 EN     |
 | GP3        | SWDIO/TMS      |                | 3V3 OUT    |
-| GP4        | UART TX        |                | ADC VREF   |
-| GP5        | UART RX        |                | GP28 / ADC2|
+| GP4        | TDI            |                | ADC VREF   |
+| GP5        | TDO            |                | GP28 / ADC2|
 | GND        | &lt;ground&gt; | &lt;ground&gt; | GND  / AGND|
-| GP6        | TDI            |                | GP27 / ADC1|
-| GP7        | TDO            |                | GP26 / ADC0|
-| GP8        | nTRST          |                | RUN        |
-| GP9        | nRESET         |                | GP22       |
+| GP6        | nTRST          |                | GP27 / ADC1|
+| GP7        | nRESET         |                | GP26 / ADC0|
+| GP8        | UART TX        |                | RUN        |
+| GP9        | UART RX        | (1-wire, TODO) | GP22       |
 | GND        | &lt;ground&gt; | &lt;ground&gt; | GND        |
 | GP10       | UART CTS       | SCL            | GP21       |
 | GP11       | UART RTS       | SDA            | GP20       |
@@ -259,6 +259,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - Can probably be included in the "Better USB interface stuff".
 - [ ] JTAG pinout detector
   - https://github.com/cyphunk/JTAGenum
+  - https://github.com/travisgoodspeed/goodfet/blob/master/firmware/apps/jscan/jscan.c
 - [ ] Host-side script that is an XVC (or hw_server) cable and communicates
       with the device to perform the JTAG commands, because Vivado no likey
       OpenOCD.
@@ -274,16 +275,30 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - [ ] SUMP logic analyzer mode?
   - see also [this](https://github.com/perexg/picoprobe-sump)
 - [ ] FT2232 emulation mode?
+  - watch out, still need a vnd cfg interface! libftdi expects the following stuff: (TODO: acquire detailed protocol description)
+    - interface 0 ("A"): index 1, epin 0x02, epout 0x81
+    - interface 1 ("B"): index 2, epin 0x04, epout 0x83
+    - interface 2 ("C"): index 3, epin 0x06, epout 0x85
+    - interface 3 ("D"): index 4, epin 0x08, epout 0x87
+  - or, FX2 emulation mode??? (useful links: https://sigrok.org/wiki/Fx2lafw ; https://sigrok.org/wiki/CWAV_USBee_SX/Info )
 - [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????
   - Maybe also with code that auto-reacts to stuff from the environment?
 - [ ] Facedancer implementation by connecting two picos via GPIO, one doing host
       stuff, the other device, commands being sent over GPIO to do stuff
 - [ ] Maybe use the ADCs for something?
 - [ ] SD/MMC/SDIO (will be a pain)
+- [ ] MSP430 programming
+  - https://dlbeer.co.nz/mspdebug/usb.html
+  - https://github.com/dlbeer/mspdebug
+  - https://www.ti.com/lit/an/slaa754/slaa754.pdf
+  - https://www.ti.com/lit/ug/slau320aj/slau320aj.pdf
 - [ ] AVR programming (USBavr emulation?)
   - AVR ISP is hardly used anymore
   - TPI/UPDI requires 5V levels, Pico doesn't do that :/
   - debugWIRE????
+  - https://github.com/travisgoodspeed/goodfet/blob/master/firmware/apps/avr/avr.c
+- [ ] PIC programming
+  - https://github.com/travisgoodspeed/goodfet/tree/master/firmware/apps/pic
 - iCE40 programming??
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
