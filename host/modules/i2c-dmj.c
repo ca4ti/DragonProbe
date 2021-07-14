@@ -54,13 +54,9 @@ struct dmj_i2c {
 static int dmj_i2c_read(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
 {
 	struct device *dev = &dmji->pdev->dev;
-	uint8_t *respbuf;
+	void *respbuf = NULL;
 	int ret, len;
 	uint8_t cmdbuf[1+2+2+2]; /* cmd, flags, addr, len */
-
-	len = msg->len;
-	respbuf = kzalloc(len, GFP_KERNEL); /* 0 length: returns status byte */
-	if (!respbuf) return -ENOMEM;
 
 	cmdbuf[0] = cmd;
 	cmdbuf[1] = (msg->flags >> 0) & 0xff;
@@ -71,16 +67,15 @@ static int dmj_i2c_read(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
 	cmdbuf[6] = (msg->len   >> 8) & 0xff;
 
 	ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
-			cmdbuf, sizeof(cmdbuf), respbuf, &len);
-	ret = dmj_check_retval(ret, len, dev, "i2c read", true, -1, -1);
-	if (ret < 0) goto err_free;
+			cmdbuf, sizeof(cmdbuf), &respbuf, &len);
+	ret = dmj_check_retval(ret, len, dev, "i2c read", true, -1, msg->len);
+	if (ret < 0 || !respbuf) goto err_free;
 
 	memcpy(msg->buf, respbuf, msg->len);
-	kfree(respbuf);
-	return len;
+	ret = len;
 
 err_free:
-	kfree(respbuf);
+	if (respbuf) kfree(respbuf);
 	return ret;
 }
 static int dmj_i2c_write(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
@@ -89,8 +84,8 @@ static int dmj_i2c_write(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
 	uint8_t *cmdbuf;
 	int ret, len;
 
-	len = msg->len + 1+2+2+2;
-	cmdbuf = kzalloc(len, GFP_KERNEL); /* cmd, flags, addr, len */
+	len = msg->len + 1+2+2+2; /* cmd, flags, addr, len */
+	cmdbuf = kzalloc(len, GFP_KERNEL);
 	if (!cmdbuf) return -ENOMEM;
 
 	cmdbuf[0] = cmd;
@@ -106,8 +101,7 @@ static int dmj_i2c_write(struct dmj_i2c *dmji, struct i2c_msg *msg, int cmd)
 	ret = dmj_check_retval(ret, len, dev, "i2c write", true, -1, -1);
 	if (ret < 0) goto err_free;
 
-	kfree(cmdbuf);
-	return msg->len;
+	ret = msg->len;
 
 err_free:
 	kfree(cmdbuf);
@@ -120,7 +114,7 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 	struct device *dev = &dmji->pdev->dev;
 	struct i2c_msg *pmsg;
 	int i, ret, cmd, stlen;
-	uint8_t status, i2ccmd;
+	uint8_t *status = NULL, i2ccmd;
 
 	for (i = 0; i < nmsg; ++i) {
 		cmd = DMJ_I2C_CMD_DO_XFER;
@@ -154,14 +148,13 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 
 		/* read status */
 		i2ccmd = DMJ_I2C_CMD_GET_STATUS;
-		stlen = sizeof(status);
 		ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
-				&i2ccmd, sizeof(i2ccmd), &status, &stlen);
+				&i2ccmd, sizeof(i2ccmd), (void**)&status, &stlen);
 		ret = dmj_check_retval(ret, stlen, dev, "i2c stat", true, sizeof(status), sizeof(status));
-		if (ret < 0) goto err_ret;
+		if (ret < 0 || !status) goto err_ret;
 
-		dev_warn(dev, "  status = %d\n", status);
-		if (status == DMJ_I2C_STAT_NAK) {
+		dev_warn(dev, "  status = %d\n", *status);
+		if (*status == DMJ_I2C_STAT_NAK) {
 			ret = -ENXIO;
 			goto err_ret;
 		}
@@ -170,6 +163,7 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 	ret = i;
 
 err_ret:
+	if (status) kfree(status);
 	return ret;
 }
 static uint32_t dmj_i2c_func(struct i2c_adapter *a)
@@ -177,22 +171,27 @@ static uint32_t dmj_i2c_func(struct i2c_adapter *a)
 	struct dmj_i2c *dmji = i2c_get_adapdata(a);
 	struct device *dev = &dmji->pdev->dev;
 
-	__le32 func = 0;
-	int len = sizeof(func), ret;
+	uint32_t func = 0;
+	int len, ret;
 	uint8_t i2ccmd = DMJ_I2C_CMD_GET_FUNC;
+	uint8_t *fbuf = NULL;
 
 	ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
-			&i2ccmd, sizeof(i2ccmd), &func, &len);
+			&i2ccmd, sizeof(i2ccmd), (void**)&fbuf, &len);
 	ret = dmj_check_retval(ret, len, dev, "i2c get_func", true, sizeof(func), sizeof(func));
-	if (ret < 0) return 0;
+	if (ret < 0 || !fbuf) return 0;
 
-	dev_warn(dev, "I2C functionality: 0x%08x\n", le32_to_cpu(func));
+	func =  (uint32_t)fbuf[0]        | ((uint32_t)fbuf[1] <<  8)
+	     | ((uint32_t)fbuf[2] << 16) | ((uint32_t)fbuf[3] << 24);
 
-	return le32_to_cpu(func);
+	dev_warn(dev, "I2C functionality: 0x%08x\n", func);
+
+	kfree(fbuf);
+	return func;
 }
 
 static const struct i2c_algorithm dmj_i2c_algo = {
-	.master_xfer = dmj_i2c_xfer,
+	.master_xfer   = dmj_i2c_xfer,
 	.functionality = dmj_i2c_func
 };
 static const struct i2c_adapter_quirks dmj_i2c_quirks = {
@@ -210,57 +209,87 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 	 */
 
 	struct device *dev = &pdev->dev;
-	__le16 m1ver;
+	uint16_t m1ver;
 	uint8_t curmode, m1feat, echoval;
 	const int ver_min = 0x0010, ver_max = 0x0010;
 	uint8_t i2ccmd[2];
 	int ret = 0, len;
+	uint8_t *buf = NULL;
 
-	len = sizeof(curmode);
 	ret = dmj_transfer(pdev, DMJ_CMD_CFG_GET_CUR_MODE,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &curmode, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "i2c test 1", true, sizeof(curmode), sizeof(curmode));
-	if (ret < 0) return ret;
+	if (ret < 0 || !buf) goto out;
+
+	dev_warn(dev, "check hw 1\n");
+
+	curmode = buf[0];
+	kfree(buf); buf = NULL;
 	if (curmode != 0x1) {
 		dev_err(dev, "device must be in mode 1 for ICD to work, but it is in mode %d\n", curmode);
-		return -EIO;
+		ret = -EIO;
+		goto out;
 	}
 
-	len = sizeof(m1ver);
+	dev_warn(dev, "check hw 2\n");
+
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_VERSION,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &m1ver, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "i2c test 2", true, sizeof(m1ver), sizeof(m1ver));
-	if (ret < 0) return ret;
-	if (le16_to_cpu(m1ver) > ver_max || le16_to_cpu(m1ver) < ver_min) {
+	if (ret < 0 || !buf) goto out;
+
+	dev_warn(dev, "check hw 3\n");
+
+	m1ver = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+	kfree(buf); buf = NULL;
+	if (m1ver > ver_max || m1ver < ver_min) {
 		dev_err(dev, "bad mode 1 version %04x on device, must be between %04x and %04x\n",
-				le16_to_cpu(m1ver), ver_min, ver_max);
-		return -EIO;
+				m1ver, ver_min, ver_max);
+		ret = -EIO;
+		goto out;
 	}
 
-	len = sizeof(m1feat);
+	dev_warn(dev, "check hw 4\n");
+
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_FEATURES,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &m1feat, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "i2c test 3", true, sizeof(m1feat), sizeof(m1feat));
-	if (ret < 0) return ret;
+	if (ret < 0 || !buf) goto out;
+	m1feat = buf[0];
+	kfree(buf); buf = NULL;
 	if (!(m1feat & DMJ_FEATURE_MODE1_I2C)) {
 		dev_err(dev, "device's mode 1 does not support I2C\n");
-		return -EIO;
+		ret = -EIO;
+		goto out;
 	}
+
+	dev_warn(dev, "check hw 5\n");
 
 	echoval = 0x42;
 	i2ccmd[0] = DMJ_I2C_CMD_ECHO;
 	i2ccmd[1] = ~echoval;
-	len = sizeof(echoval);
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE1_I2C,
-			DMJ_XFER_FLAGS_PARSE_RESP, i2ccmd, sizeof(i2ccmd), &m1feat, &len);
-	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(m1feat), sizeof(m1feat));
-	if (ret < 0) return ret;
+			DMJ_XFER_FLAGS_PARSE_RESP, i2ccmd, sizeof(i2ccmd), (void**)&buf, &len);
+	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(echoval), sizeof(echoval));
+	if (ret < 0 || !buf) goto out;
+
+	echoval = buf[0];
+	kfree(buf); buf = NULL;
 	if (echoval != i2ccmd[1]) {
 		dev_err(dev, "I2C echo test command not functional\n");
-		return -EIO;
+		ret = -EIO;
+		goto out;
 	}
 
-	return 0;
+	dev_warn(dev, "check hw 6\n");
+
+	ret = 0;
+
+out:
+	dev_warn(dev, "check hw 7\n");
+
+	if (buf) kfree(buf);
+	return ret;
 }
 
 static int dmj_i2c_set_delay(struct platform_device *pdev, uint16_t us)
@@ -269,13 +298,17 @@ static int dmj_i2c_set_delay(struct platform_device *pdev, uint16_t us)
 	uint8_t i2ccmd[3];
 	int ret = 0;
 
+	dev_warn(dev, "set delay 1\n");
+
 	i2ccmd[0] = DMJ_I2C_CMD_SET_DELAY;
 	i2ccmd[1] = (us >> 0) & 0xff;
 	i2ccmd[2] = (us >> 8) & 0xff;
 
-	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
-			i2ccmd, sizeof(i2ccmd), NULL, NULL);
+	ret = dmj_write(pdev, (1<<4) | DMJ_CMD_MODE1_I2C, i2ccmd, sizeof(i2ccmd));
+	dev_dbg(dev, "set delay to %hu us, result %d\n", us, ret);
 	ret = dmj_check_retval(ret, -1, dev, "i2c set delay", true, -1, -1);
+
+	dev_warn(dev, "set delay 2\n");
 
 	return ret;
 }
@@ -302,17 +335,26 @@ static int dmj_i2c_probe(struct platform_device *pdev)
 
 	dmji->pdev = pdev;
 
+	dev_warn(dev, "probe 2\n");
+
 	dmji->adapter.owner = THIS_MODULE;
 	dmji->adapter.class = I2C_CLASS_HWMON;
 	dmji->adapter.algo  = &dmj_i2c_algo;
 	dmji->adapter.quirks = &dmj_i2c_quirks; /* TODO: is this needed? probably... */
 	dmji->adapter.dev.of_node = dev->of_node;
+	dev_warn(dev, "probe 3\n");
 	i2c_set_adapdata(&dmji->adapter, dmji);
 
+	dev_warn(dev, "probe 4\n");
+
 	snprintf(dmji->adapter.name, sizeof(dmji->adapter.name), "%s-%s",
-		"dln2-i2c", dev_name(pdev->dev.parent));
+		"dmj-i2c", dev_name(pdev->dev.parent));
+
+	dev_warn(dev, "probe 5\n");
 
 	platform_set_drvdata(pdev, dmji);
+
+	dev_warn(dev, "probe 6\n");
 
 	return i2c_add_adapter(&dmji->adapter);
 }

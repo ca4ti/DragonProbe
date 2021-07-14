@@ -96,39 +96,15 @@ static int dmj_send_wait(struct dmj_dev *dmj, int cmd, const void *wbuf, int wbu
 	return ret;
 }
 
-static int dmj_recv_wait(struct dmj_dev *dmj, void **kbuf, int rbufsize, bool parse_hdr)
-{
-	int len, actual;
-	int ret;
-	void *buf;
-
-	*kbuf = NULL;
-
-	if (rbufsize <= 0) len = 0;
-	else if (parse_hdr) len = rbufsize + DMJ_RESP_HDR_SIZE;
-	else len = rbufsize;
-
-	buf = kmalloc(len, GFP_KERNEL);
-	if (!buf) return -ENOMEM;
-
-	ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
-			buf, len, &actual, DMJ_USB_TIMEOUT);
-	if (ret < 0) kfree(buf);
-
-	*kbuf = buf;
-	return actual;
-}
-
 int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
-		const void *wbuf, int wbufsize, void *rbuf, int *rbufsize)
+		const void *wbuf, int wbufsize, void **rbuf, int *rbufsize)
 {
-	int ret = 0, actual;
+	int ret = 0, actual, pl_off, todo;
 	struct device *dev = &dmj->interface->dev;
-	int respstat, total_len, bytes_read;
 	uint32_t pl_len;
-	void *buf;
-	uint8_t *dbuf;
-	ptrdiff_t pl_off;
+	void *tmpbuf = NULL, *longbuf = NULL;
+	uint8_t *bbuf;
+	uint8_t respstat;
 
 	spin_lock(&dmj->disconnect_lock);
 	if (dmj->disconnect) ret = -ENODEV;
@@ -144,125 +120,172 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 		}
 	}
 
-	if ((recvflags & DMJ_XFER_FLAGS_PARSE_RESP) == 0
-			&& !(rbufsize && *rbufsize > 0 && rbuf)) {
-		/* don't want any type of response? then dont do the urb stuff either */
-		return 0;
-	}
-
-	/* first recv buffer, with optional response header parsing */
-	ret = dmj_recv_wait(dmj, &buf, (rbufsize && *rbufsize > 0) ? *rbufsize : 0,
-			(recvflags & DMJ_XFER_FLAGS_PARSE_RESP) != 0);
-	if (ret < 0 || !buf) {
-		dev_err(dev, "USB read failed: %d\n", ret);
-		return ret;
-	}
-	actual = ret;
+	if (rbuf) *rbuf = NULL;
 
 	if (recvflags & DMJ_XFER_FLAGS_PARSE_RESP) {
-		dbuf = buf;
+		/*
+		 * if we do want to parse the response, we'll split the reads into
+		 * blocks of 64 bytes, first to read the response header, and then
+		 * allocate a big reponse buffer, and then keep doing 64b reads
+		 * to fill that buffer. result length will be put in rbufsize, its
+		 * value when passed to the function will not matter
+		 */
 
-		/* decode payload length */
-		if (dbuf[1] & 0x80) {
+		if (*rbufsize) *rbufsize = -1;
+
+		tmpbuf = kmalloc(64, GFP_KERNEL);
+		if (!tmpbuf) return -ENOMEM;
+		/* first read: 64b, with header data to parse */
+		ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
+				tmpbuf, 64, &actual, DMJ_USB_TIMEOUT);
+		if (ret < 0) goto err_freetmp;
+		if (actual < 0) { ret = -EREMOTEIO; goto err_freetmp; }
+
+		bbuf = tmpbuf;
+
+		if (bbuf[1] & 0x80) {
 			if (actual < 3) {
 				dev_err(dev, "short response (%d, expected at least 3)\n", actual);
-				kfree(buf);
-				return -EREMOTEIO;
+				ret = -EREMOTEIO;
+				goto err_freetmp;
 			}
 
-			pl_len = (uint32_t)(dbuf[1] & 0x7f);
+			pl_len = (uint32_t)(bbuf[1] & 0x7f);
 
-			if (dbuf[2] & 0x80) {
+			if (bbuf[2] & 0x80) {
 				if (actual < 4) {
 					dev_err(dev, "short response (%d, expected at least 4)\n", actual);
-					kfree(buf);
-					return -EREMOTEIO;
+					ret = -EREMOTEIO;
+					goto err_freetmp;
 				}
 
-				pl_len |= (uint32_t)(dbuf[2] & 0x7f) << 7;
-				pl_len |= (uint32_t)dbuf[3] << 14;
+				pl_len |= (uint32_t)(bbuf[2] & 0x7f) << 7;
+				pl_len |= (uint32_t)bbuf[3] << 14;
 				pl_off = 4;
 			} else {
-				pl_len |= (uint32_t)dbuf[2] << 7;
+				pl_len |= (uint32_t)bbuf[2] << 7;
 				pl_off = 3;
 			}
 		} else {
 			if (actual < 2) {
 				dev_err(dev, "short response (%d, expected at least 2)\n", actual);
-				kfree(buf);
-				return -EREMOTEIO;
+				ret = -EREMOTEIO;
+				goto err_freetmp;
 			}
 
-			pl_len = (uint32_t)dbuf[1];
+			pl_len = (uint32_t)bbuf[1];
 			pl_off = 2;
 		}
 
-		respstat = dbuf[0];
-		total_len = pl_len;
-		actual -= pl_off;
+		respstat = bbuf[0];
 
-		/*dev_dbg(dev, "pl_len=%d,off=%ld,resp=%d\n", pl_len, pl_off, respstat);*/
-	} else {
-		pl_off = 0;
-		if (rbufsize && *rbufsize > 0) total_len = *rbufsize;
-		else total_len = actual;
-		respstat = 0;
-	}
+		dev_dbg(dev, "got packet hdr: status %02x, payload len 0x%x, off %u\n",
+				respstat, pl_len, pl_off);
 
-	if (rbuf && rbufsize && *rbufsize > 0) {
-		if (*rbufsize < total_len) total_len = *rbufsize;
+		/* now that the header has been parsed, we can start filling in the
+		 * actual response buffer */
+		longbuf = kmalloc(pl_len, GFP_KERNEL);
+		todo = (int)pl_len;
+		/* rest of the data of the 1st read */
+		memcpy(longbuf, tmpbuf + pl_off, actual - pl_off);
+		todo -= (actual - pl_off);
+		pl_off = actual - pl_off;
 
-		if (actual > total_len) {
-			/*if (recvflags & DMJ_XFER_FLAGS_FILL_RECVBUF)*/
-			{
-				dev_err(dev, "aaa msgsize %d > %d\n", actual, total_len);
-				kfree(buf);
-				return -EMSGSIZE;
-			} /*else {
-				actual = total_len;
-			}*/
+		while (todo) {
+			actual = 64;
+			if (todo < actual) actual = todo;
+
+			ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
+					tmpbuf, actual, &actual, DMJ_USB_TIMEOUT);
+			if (ret < 0) goto err_freelong;
+			if (actual < 0) { ret = -EREMOTEIO; goto err_freelong; }
+			if (actual > todo) {
+				dev_err(dev, "USB protocol violation! bulk reply longer than payload header!\n");
+				ret = -EMSGSIZE;
+				goto err_freelong;
+			}
+
+			memcpy(longbuf + pl_off, tmpbuf, actual);
+
+			todo   -= actual;
+			pl_off += actual;
 		}
 
-		memcpy(rbuf + bytes_read, buf + pl_off, actual);
-		kfree(buf);
-		pl_off = -1;
-		buf = NULL;
+		/* we're done! */
 
-		bytes_read = actual;
+		/* response maybe not always wanted in this case, maybe was just called
+		 * to check the status */
+		if (rbuf) *rbuf = longbuf;
+		else kfree(longbuf);
+		if (rbufsize) *rbufsize = (int)pl_len;
 
-		while (bytes_read < total_len && (recvflags & DMJ_XFER_FLAGS_FILL_RECVBUF) != 0) {
-			ret = dmj_recv_wait(dmj, &buf, total_len - bytes_read, false);
-			if (ret < 0 || !buf) {
-				dev_err(dev, "USB read failed: %d\n", ret);
-				return ret;
-			}
-			actual = ret;
-
-			if (bytes_read + actual > total_len) {
-				/*actual = total_len - bytes_read;*/
-				dev_err(dev, "aaa2 msgsize %d > %d\n", actual+bytes_read, total_len);
-				kfree(buf);
-				return -EMSGSIZE;
-			}
-			memcpy(rbuf + bytes_read, buf, actual);
-			kfree(buf);
-			buf = NULL;
-
-			bytes_read += actual;
-		}
+		ret = respstat;
 	} else {
-		bytes_read = 0;
-		kfree(buf);
+		/*
+		 * otherwise, read max. rbufsize bytes (if using
+		 * DMJ_XFER_FLAGS_FILL_RECVBUF, will try to fill it exactly, but it
+		 * will error when going beyond!). also done in 64b chunks
+		 */
+
+		if (!rbuf || !rbufsize || *rbufsize <= 0) return 0;
+
+		if (recvflags & DMJ_XFER_FLAGS_FILL_RECVBUF) {
+			tmpbuf = kmalloc(64, GFP_KERNEL);
+			if (!tmpbuf) return -ENOMEM;
+			longbuf = kmalloc(*rbufsize, GFP_KERNEL);
+			if (!longbuf) { ret = -ENOMEM; goto err_freetmp; }
+
+			todo = *rbufsize;
+			pl_off = 0;
+			while (todo) {
+				actual = 64;
+				if (todo < actual) actual = todo;
+
+				ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
+						tmpbuf, actual, &actual, DMJ_USB_TIMEOUT);
+				if (ret < 0) goto err_freelong;
+				if (actual < 0) { ret = -EREMOTEIO; goto err_freelong; }
+				if (actual > todo) { ret = -EMSGSIZE; goto err_freelong; }
+
+				memcpy(longbuf + pl_off, tmpbuf, actual);
+
+				todo   -= actual;
+				pl_off += actual;
+			}
+
+			ret = 0;
+			*rbuf = longbuf;
+			*rbufsize = pl_off;
+		} else {
+			/* just try it at once & see what happens */
+			tmpbuf = NULL;
+			longbuf = kmalloc(*rbufsize, GFP_KERNEL);
+			if (!longbuf) return -ENOMEM;
+
+			ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
+					longbuf, *rbufsize, rbufsize, DMJ_USB_TIMEOUT);
+			if (ret < 0) goto err_freelong;
+			if (actual < 0) { ret = -EREMOTEIO; goto err_freelong; }
+
+			ret = 0;
+			*rbuf = longbuf;
+		}
 	}
 
-	*rbufsize = bytes_read;
+	if (tmpbuf) kfree(tmpbuf);
+	return ret;
 
-	/*dev_dbg(dev, "all good! resp=%02x\n", respstat);*/
-	return respstat;
+
+err_freelong:
+	if (longbuf) kfree(longbuf);
+	if (rbuf) *rbuf = NULL;
+err_freetmp:
+	if (tmpbuf) kfree(tmpbuf);
+	return ret;
 }
 
 int dmj_transfer(struct platform_device *pdev, int cmd, int recvflags,
-		const void *wbuf, int wbufsize, void *rbuf, int *rbufsize)
+		const void *wbuf, int wbufsize, void **rbuf, int *rbufsize)
 {
 	struct dmj_platform_data *dmj_pdata;
 	struct dmj_dev *dmj;
@@ -280,57 +303,66 @@ static int dmj_check_hw(struct dmj_dev *dmj)
 {
 	struct device *dev = &dmj->interface->dev;
 
-	int ret;
-	__le16 protover;
-	int len = sizeof(protover);
+	int ret, len;
+	uint16_t protover;
+	uint8_t *buf = NULL;
 
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_VERSION,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &protover, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "version check", true, sizeof(protover), sizeof(protover));
-	if (ret < 0) return ret;
-	if (le16_to_cpu(protover) != DMJ_USB_CFG_PROTO_VER) {
-		dev_err(&dmj->interface->dev, HARDWARE_NAME " config protocol version 0x%04x too %s\n",
-				le16_to_cpu(protover), (le16_to_cpu(protover) > DMJ_USB_CFG_PROTO_VER) ? "new" : "old");
-		return -ENODEV;
-	}
+	if (ret < 0 || !buf) goto out;
 
-	return 0;
+	protover = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+
+	if (protover != DMJ_USB_CFG_PROTO_VER) {
+		dev_err(&dmj->interface->dev, HARDWARE_NAME " config protocol version 0x%04x too %s\n",
+				protover, (protover > DMJ_USB_CFG_PROTO_VER) ? "new" : "old");
+
+		ret = -ENODEV;
+	} else
+		ret = 0;
+
+out:
+	if (buf) kfree(buf);
+	return ret;
 }
 static int dmj_print_info(struct dmj_dev *dmj)
 {
 	int ret, i, j, len;
-	__le16 modes, mversion;
+	uint16_t modes, mversion;
 	uint8_t curmode, features;
 	struct device *dev = &dmj->interface->dev;
-	char strinfo[65];
+	uint8_t *buf;
 	char modeinfo[16];
+	char *strinfo;
 
 	/* info string */
-	len = sizeof(strinfo)-1;
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_INFOSTR,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, strinfo, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(strinfo));
-	if (ret < 0) return ret;
-	strinfo[len] = 0; /*strinfo[64] = 0;*/
-	dev_info(dev, HARDWARE_NAME " '%s'\n", strinfo);
+	if (ret < 0 || !buf) goto out;
+	buf[len] = 0;
+	dev_info(dev, HARDWARE_NAME " '%s'\n", buf);
+	kfree(buf); buf = NULL;
 
 	/* cur mode */
-	len = sizeof(curmode);
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_CUR_MODE,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &curmode, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(curmode), sizeof(curmode));
-	if (ret < 0) return ret;
-	dmj->dmj_mode = curmode;
+	if (ret < 0 || !buf) goto out;
+	dmj->dmj_mode = curmode = buf[0];
+	kfree(buf); buf = NULL;
 
 	/* map of available modes */
-	len = sizeof(modes);
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_MODES,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &modes, &len);
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(modes), sizeof(modes));
-	if (ret < 0) return ret;
+	if (ret < 0 || !buf) goto out;
+	modes = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+	kfree(buf); buf = NULL;
 
 	for (i = 1; i < 16; ++i) { /* build the string, uglily */
-		if (le16_to_cpu(modes) & (1<<i)) {
+		if (modes & (1<<i)) {
 			if (i < 0xa) modeinfo[i - 1] = '0'+i-0;
 			else modeinfo[i - 1] = 'a'+i-0xa;
 		} else modeinfo[i - 1] = '-';
@@ -340,30 +372,31 @@ static int dmj_print_info(struct dmj_dev *dmj)
 
 	/* for each available mode print name, version and features */
 	for (i = 1; i < 16; ++i) {
-		if (!(le16_to_cpu(modes) & (1<<i))) continue; /* not available */
+		if (!(modes & (1<<i))) continue; /* not available */
 
 		/* name */
-		len = sizeof(strinfo)-1;
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_NAME,
-				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, strinfo, &len);
-		ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(strinfo));
-		if (ret < 0) return ret;
-		if (len >= sizeof(strinfo)) return -EMSGSIZE;
-		strinfo[len] = 0; /*strinfo[64] = 0;*/
+				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+		ret = dmj_check_retval(ret, len, dev, "get info", true, -1, -1);
+		if (ret < 0 || !buf) goto out;
+		buf[len] = 0;
+		strinfo = buf; buf = NULL;
 
 		/* version */
-		len = sizeof(mversion);
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_VERSION,
-				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &mversion, &len);
+				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(mversion), sizeof(mversion));
-		if (ret < 0) return ret;
+		if (ret < 0 || !buf) { kfree(strinfo); goto out; }
+		mversion = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+		kfree(buf); buf = NULL;
 
 		/* features */
-		len = sizeof(features);
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_FEATURES,
-				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &features, &len);
+				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(features), sizeof(features));
-		if (ret < 0) return ret;
+		if (ret < 0 || !buf) { kfree(strinfo); goto out; }
+		features = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+		kfree(buf); buf = NULL;
 
 		if (i == 1) dmj->dmj_m1feature = features;
 
@@ -375,9 +408,14 @@ static int dmj_print_info(struct dmj_dev *dmj)
 
 		dev_dbg(dev, "Mode %d: '%s' version 0x%04x, features: %s\n",
 				i, strinfo, mversion, modeinfo);
+		kfree(strinfo);
 	}
 
 	return 0;
+
+out:
+	if (buf) kfree(buf);
+	return ret;
 }
 static int dmj_hw_init(struct dmj_dev *dmj)
 {
@@ -461,8 +499,6 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 			if (ret) {
 				dev_err(dev, "failed to add MFD I2C devices\n");
 				goto out_free;
-			} else {
-				dev_warn(dev, "added i2c mfd\n");
 			}
 		}
 		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_TEMPSENSOR) {

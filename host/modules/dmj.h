@@ -71,11 +71,13 @@ inline static int dmj_check_retval(int ret, int len, struct device *dev,
 	return 0;
 }
 
+/* TODO: split up in "raw" read & writes, and higher-level ones with cmd and
+ *       repstat, because the way this is currently overloaded, is, bad */
 int dmj_transfer(struct platform_device *pdev, int cmd, int recvflags,
-		const void *wbuf, int wbufsize, void *rbuf, int *rbufsize);
+		const void *wbuf, int wbufsize, void **rbuf, int *rbufsize);
 
 inline static int dmj_read(struct platform_device *pdev, int recvflags,
-		void *rbuf, int *rbufsize)
+		void **rbuf, int *rbufsize)
 {
 	return dmj_transfer(pdev, -1, recvflags, NULL, 0, rbuf, rbufsize);
 }

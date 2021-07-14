@@ -29,17 +29,11 @@
 #define DEVICE_NAME "dmj-char"
 #define CLASS_NAME "dmj"
 
-#define DMJ_READ_BUFSIZE 64
-
 struct dmj_char_dev {
 	struct cdev cdev;
 	struct device *dev;
 	struct platform_device *pdev;
 	int minor;
-	spinlock_t devopen_lock;
-
-	size_t bufpos;
-	uint8_t rdbuf[DMJ_READ_BUFSIZE];
 };
 
 static int n_cdevs = 0;
@@ -50,86 +44,34 @@ static struct class *dmj_char_class;
 
 static ssize_t dmj_char_read(struct file *file, char *buf, size_t len, loff_t *loff)
 {
-	int res, bsize;
-	struct dmj_char_dev *dmjch;
-	size_t bpos, todo, done = 0;
-	uint8_t *kbuf;
-	struct device *dev;
+	int res, ilen;
+	unsigned long ret;
+	struct dmj_char_dev *dmjch = file->private_data;
+	void *kbuf = NULL;
+	struct device *dev = dmjch->dev;
 
-	kbuf = kmalloc(len + DMJ_READ_BUFSIZE, GFP_KERNEL);
-	if (!kbuf) return -ENOMEM;
+	if (len > INT_MAX) return -EINVAL;
+	ilen = (int)len;
 
-	dmjch = file->private_data;
-	dev = dmjch->dev;
-	todo = len;
-
-	spin_lock(&dmjch->devopen_lock);
-	bpos = dmjch->bufpos;
-
-	/* TODO: ioctl to control this buffering? */
-	if (bpos) { /* data in buffer */
-		if (len <= DMJ_READ_BUFSIZE - bpos) {
-			/* doable in a single copy, no USB xfers needed */
-			memcpy(kbuf, &dmjch->rdbuf[bpos], len);
-			bpos += len;
-			if (bpos == DMJ_READ_BUFSIZE) bpos = 0;
-
-			done += len;
-			todo -= len;
-		} else {
-			/* initial copy stuff */
-			memcpy(kbuf, &dmjch->rdbuf[bpos], DMJ_READ_BUFSIZE - bpos);
-			todo -= DMJ_READ_BUFSIZE - bpos;
-			done += DMJ_READ_BUFSIZE - bpos;
-			bpos = 0;
-		}
+	res = dmj_transfer(dmjch->pdev, -1, DMJ_XFER_FLAGS_FILL_RECVBUF, NULL, 0, &kbuf, &ilen);
+	if (res < 0 || ilen < 0 || !kbuf) {
+		if (kbuf) kfree(kbuf);
+		return (res >= 0) ? -EIO : ret;
 	}
 
-	if /*while*/ (todo) { /* TODO: do we want a while here? */
-		bsize = DMJ_READ_BUFSIZE;
+	ret = copy_to_user(buf, kbuf, (size_t)ilen);
+	kfree(kbuf);
 
-		res = dmj_read(dmjch->pdev, 0, &kbuf[done], &bsize);
-		if (res < 0 || bsize < 0) {
-			/* ah snap */
-			spin_unlock(&dmjch->devopen_lock);
-			return res;
-		}
+	if (ret) return -EFAULT;
 
-		if ((size_t)bsize > todo) {
-			if ((size_t)bsize > todo + DMJ_READ_BUFSIZE) {
-				/* can't hold all this data, time to bail out... */
-				dev_err(dev, "too much data (%zu B excess), can't buffer, AAAAAA",
-						(size_t)bsize - (todo + DMJ_READ_BUFSIZE));
-				spin_unlock(&dmjch->devopen_lock);
-				BUG(); /* some stuff somewhere will have been corrupted, so, get out while we can */
-			}
-
-			/* stuff for next call */
-			done = todo;
-			bpos = DMJ_READ_BUFSIZE - ((size_t)bsize - todo);
-			memcpy(&dmjch->rdbuf[bpos], &kbuf[done], (size_t)bsize - todo);
-			todo = 0;
-		} else {
-			todo -= (size_t)bsize;
-			done += (size_t)bsize;
-		}
-	}
-
-	dmjch->bufpos = bpos;
-	spin_unlock(&dmjch->devopen_lock);
-
-	res = copy_to_user(buf, kbuf, len);
-	if (res) return (res < 0) ? res : -EFAULT;
-
-	return done;
+	return (ssize_t)ilen;
 }
 static ssize_t dmj_char_write(struct file *file, const char *buf, size_t len, loff_t *off)
 {
 	unsigned long ret;
-	struct dmj_char_dev *dmjch;
+	int res;
+	struct dmj_char_dev *dmjch = file->private_data;
 	void *kbuf;
-
-	dmjch = file->private_data;
 
 	kbuf = kmalloc(len, GFP_KERNEL);
 	if (!kbuf) return -ENOMEM;
@@ -137,32 +79,20 @@ static ssize_t dmj_char_write(struct file *file, const char *buf, size_t len, lo
 	ret = copy_from_user(kbuf, buf, len);
 	if (ret) {
 		kfree(kbuf);
-		return (ret < 0) ? ret : -EFAULT;
+		return -EFAULT;
 	}
 
-	ret = dmj_transfer(dmjch->pdev, -1, 0, kbuf, len, NULL, NULL);
-	if (ret < 0) {
-		kfree(kbuf);
-		return ret;
-	}
+	res = dmj_transfer(dmjch->pdev, -1, 0, kbuf, len, NULL, NULL);
 
 	kfree(kbuf);
-	return len;
+	return (res < 0) ? res : len;
 }
 
 static int dmj_char_open(struct inode *inode, struct file *file)
 {
 	struct dmj_char_dev *dmjch;
-	int ret;
 
 	dmjch = container_of(inode->i_cdev, struct dmj_char_dev, cdev);
-
-	spin_lock(&dmjch->devopen_lock);
-	ret = dmjch->bufpos;
-	if (~ret == 0) dmjch->bufpos = 0;
-	spin_unlock(&dmjch->devopen_lock);
-
-	if (~ret != 0) return -ETXTBSY; // already open
 
 	file->private_data = dmjch;
 
@@ -173,10 +103,6 @@ static int dmj_char_release(struct inode *inode, struct file *file)
 	struct dmj_char_dev *dmjch;
 
 	dmjch = container_of(inode->i_cdev, struct dmj_char_dev, cdev);
-
-	spin_lock(&dmjch->devopen_lock);
-	dmjch->bufpos = ~(size_t)0;
-	spin_unlock(&dmjch->devopen_lock);
 
 	return 0;
 }
@@ -231,9 +157,6 @@ static int dmj_char_probe(struct platform_device *pdev)
 	dmjch->dev = device;
 	dmjch->minor = minor;
 	dmjch->pdev = pdev;
-	dmjch->bufpos = ~(size_t)0;
-
-	spin_lock_init(&dmjch->devopen_lock);
 
 	return 0;
 }
