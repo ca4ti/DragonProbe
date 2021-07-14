@@ -76,9 +76,9 @@ static uint8_t read_byte_cdc(void) {
 }
 
 static uint32_t nresp = 0;
-static void handle_cmd(uint8_t cmd, int ud, uint8_t (*read_byte)(void),
-        void (*writepkt)(int ud, const uint8_t* buf, uint32_t len),
-        void (*flushpkt)(int ud),
+static void handle_cmd(uint8_t cmd, uint8_t ud, uint8_t (*read_byte)(void),
+        uint32_t (*writepkt)(uint8_t ud, const void* buf, uint32_t len),
+        uint32_t (*flushpkt)(uint8_t ud),
         void (*writehdr)(enum cfg_resp stat, uint32_t len, const void* data)) {
     nresp = 0;
 
@@ -304,15 +304,19 @@ void cdc_serprog_task(void) {
 }
 
 
-static void vnd_writepkt(int ud, const uint8_t* buf, uint32_t len) {
+static uint32_t vnd_writepkt(uint8_t ud, const void* buf, uint32_t len) {
     (void)ud;
 
-    for (size_t i = 0; i < len; ++i) vnd_cfg_write_byte(buf[i]);
+    for (size_t i = 0; i < len; ++i) vnd_cfg_write_byte(((const uint8_t*)buf)[i]);
+
+    return len;
 }
-static void vnd_flushpkt(int ud) {
+static uint32_t vnd_flushpkt(uint8_t ud) {
     (void)ud;
 
     vnd_cfg_write_flush();
+
+    return 0;
 }
 void sp_spi_bulk_cmd(void) {
     uint8_t cmd = read_byte_cdc();

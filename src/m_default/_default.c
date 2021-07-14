@@ -73,6 +73,7 @@ void stdio_usb_set_itf_num(int itf); // TODO: move to a header!
 
 static void enter_cb(void) {
     stdio_usb_set_itf_num(CDC_N_STDIO);
+    vnd_cfg_set_itf_num(VND_N_CFG);
 
     // TODO: CMSISDAP?
 #ifdef DBOARD_HAS_I2C

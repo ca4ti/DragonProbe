@@ -16,12 +16,18 @@ static uint8_t tx_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
 
 static uint32_t rxavail, rxpos, txpos;
 
-static const int VND_N_CFG;
+static int VND_N_CFG = 0;
 
 void vnd_cfg_init(void) {
     rxavail = 0;
     rxpos   = 0;
     txpos   = 0;
+
+    VND_N_CFG = 0;
+}
+
+void vnd_cfg_set_itf_num(int itf) {
+    VND_N_CFG = itf;
 }
 
 uint8_t vnd_cfg_read_byte(void) {

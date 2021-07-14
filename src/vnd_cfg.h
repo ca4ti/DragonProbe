@@ -51,6 +51,7 @@ enum cfg_resp {
     cfg_resp_badarg     = 0x04
 };
 
+void    vnd_cfg_set_itf_num(int itf);
 uint8_t vnd_cfg_read_byte (void);
 void    vnd_cfg_drop_incoming(void);
 void    vnd_cfg_write_flush(void);
