@@ -7,8 +7,11 @@
  */
 
 #include <linux/cdev.h>
+#include <linux/version.h>
 #include <linux/device.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0) /* TODO: make this check more precise */
 #include <linux/device/class.h>
+#endif
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>

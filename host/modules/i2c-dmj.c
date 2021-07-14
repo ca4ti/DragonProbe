@@ -123,7 +123,7 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 
 		pmsg = &msgs[i];
 
-		dev_warn(&a->dev,
+		dev_dbg(&a->dev,
 			"  %d: %s (flags %04x) %d bytes to 0x%02x\n",
 			i, pmsg->flags & I2C_M_RD ? "read" : "write",
 			pmsg->flags, pmsg->len, pmsg->addr);
@@ -150,10 +150,10 @@ static int dmj_i2c_xfer(struct i2c_adapter *a, struct i2c_msg *msgs, int nmsg)
 		i2ccmd = DMJ_I2C_CMD_GET_STATUS;
 		ret = dmj_transfer(dmji->pdev, DMJ_CMD_MODE1_I2C, DMJ_XFER_FLAGS_PARSE_RESP,
 				&i2ccmd, sizeof(i2ccmd), (void**)&status, &stlen);
-		ret = dmj_check_retval(ret, stlen, dev, "i2c stat", true, sizeof(status), sizeof(status));
+		ret = dmj_check_retval(ret, stlen, dev, "i2c stat", true, sizeof(*status), sizeof(*status));
 		if (ret < 0 || !status) goto err_ret;
 
-		dev_warn(dev, "  status = %d\n", *status);
+		dev_dbg(&a->dev, "  status = %d\n", *status);
 		if (*status == DMJ_I2C_STAT_NAK) {
 			ret = -ENXIO;
 			goto err_ret;
@@ -169,7 +169,7 @@ err_ret:
 static uint32_t dmj_i2c_func(struct i2c_adapter *a)
 {
 	struct dmj_i2c *dmji = i2c_get_adapdata(a);
-	struct device *dev = &dmji->pdev->dev;
+	struct device *dev = /*&dmji->pdev->dev;*/ &a->dev;
 
 	uint32_t func = 0;
 	int len, ret;
@@ -184,7 +184,7 @@ static uint32_t dmj_i2c_func(struct i2c_adapter *a)
 	func =  (uint32_t)fbuf[0]        | ((uint32_t)fbuf[1] <<  8)
 	     | ((uint32_t)fbuf[2] << 16) | ((uint32_t)fbuf[3] << 24);
 
-	dev_warn(dev, "I2C functionality: 0x%08x\n", func);
+	dev_dbg(dev, "I2C functionality: 0x%08x\n", func);
 
 	kfree(fbuf);
 	return func;
@@ -221,8 +221,6 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 	ret = dmj_check_retval(ret, len, dev, "i2c test 1", true, sizeof(curmode), sizeof(curmode));
 	if (ret < 0 || !buf) goto out;
 
-	dev_warn(dev, "check hw 1\n");
-
 	curmode = buf[0];
 	kfree(buf); buf = NULL;
 	if (curmode != 0x1) {
@@ -231,14 +229,10 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 		goto out;
 	}
 
-	dev_warn(dev, "check hw 2\n");
-
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_VERSION,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 	ret = dmj_check_retval(ret, len, dev, "i2c test 2", true, sizeof(m1ver), sizeof(m1ver));
 	if (ret < 0 || !buf) goto out;
-
-	dev_warn(dev, "check hw 3\n");
 
 	m1ver = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 	kfree(buf); buf = NULL;
@@ -248,8 +242,6 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 		ret = -EIO;
 		goto out;
 	}
-
-	dev_warn(dev, "check hw 4\n");
 
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_FEATURES,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
@@ -262,8 +254,6 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 		ret = -EIO;
 		goto out;
 	}
-
-	dev_warn(dev, "check hw 5\n");
 
 	echoval = 0x42;
 	i2ccmd[0] = DMJ_I2C_CMD_ECHO;
@@ -281,13 +271,9 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 		goto out;
 	}
 
-	dev_warn(dev, "check hw 6\n");
-
 	ret = 0;
 
 out:
-	dev_warn(dev, "check hw 7\n");
-
 	if (buf) kfree(buf);
 	return ret;
 }
@@ -298,8 +284,6 @@ static int dmj_i2c_set_delay(struct platform_device *pdev, uint16_t us)
 	uint8_t i2ccmd[3];
 	int ret = 0;
 
-	dev_warn(dev, "set delay 1\n");
-
 	i2ccmd[0] = DMJ_I2C_CMD_SET_DELAY;
 	i2ccmd[1] = (us >> 0) & 0xff;
 	i2ccmd[2] = (us >> 8) & 0xff;
@@ -308,18 +292,16 @@ static int dmj_i2c_set_delay(struct platform_device *pdev, uint16_t us)
 	dev_dbg(dev, "set delay to %hu us, result %d\n", us, ret);
 	ret = dmj_check_retval(ret, -1, dev, "i2c set delay", true, -1, -1);
 
-	dev_warn(dev, "set delay 2\n");
-
 	return ret;
 }
 
 static int dmj_i2c_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret, hwnlen;
 	struct dmj_i2c *dmji;
 	struct device *dev = &pdev->dev;
-
-	dev_warn(dev, "i2c probe hi!\n");
+	void *hwname;
+	char namebuf[64];
 
 	ret = dmj_i2c_check_hw(pdev);
 	if (ret) return -ENODEV;
@@ -335,28 +317,35 @@ static int dmj_i2c_probe(struct platform_device *pdev)
 
 	dmji->pdev = pdev;
 
-	dev_warn(dev, "probe 2\n");
-
 	dmji->adapter.owner = THIS_MODULE;
 	dmji->adapter.class = I2C_CLASS_HWMON;
 	dmji->adapter.algo  = &dmj_i2c_algo;
 	dmji->adapter.quirks = &dmj_i2c_quirks; /* TODO: is this needed? probably... */
 	dmji->adapter.dev.of_node = dev->of_node;
-	dev_warn(dev, "probe 3\n");
 	i2c_set_adapdata(&dmji->adapter, dmji);
 
-	dev_warn(dev, "probe 4\n");
+	/* get device name, for adapter name */
+	ret = dmj_transfer(pdev, DMJ_CMD_CFG_GET_INFOSTR,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&hwname, &hwnlen);
+	ret = dmj_check_retval(ret, hwnlen, dev, "probe: get name", true, -1, sizeof(namebuf)-1);
+	if (ret < 0 || !hwname) return -EIO;
+	memcpy(namebuf, hwname, hwnlen);
+	namebuf[hwnlen] = 0;
+	kfree(hwname);
 
-	snprintf(dmji->adapter.name, sizeof(dmji->adapter.name), "%s-%s",
-		"dmj-i2c", dev_name(pdev->dev.parent));
-
-	dev_warn(dev, "probe 5\n");
+	snprintf(dmji->adapter.name, sizeof(dmji->adapter.name),
+			HARDWARE_NAME " '%s' at %s", namebuf, dev_name(pdev->dev.parent));
 
 	platform_set_drvdata(pdev, dmji);
 
-	dev_warn(dev, "probe 6\n");
+	ret = i2c_add_adapter(&dmji->adapter);
 
-	return i2c_add_adapter(&dmji->adapter);
+	if (!ret) {
+		dev_info(dev, HARDWARE_NAME " I2C device driver at i2c-%d, %s\n",
+				dmji->adapter.nr, dmji->adapter.name);
+	}
+
+	return ret;
 }
 static int dmj_i2c_remove(struct platform_device *pdev)
 {

@@ -131,7 +131,7 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 		 * value when passed to the function will not matter
 		 */
 
-		if (*rbufsize) *rbufsize = -1;
+		if (rbufsize) *rbufsize = -1;
 
 		tmpbuf = kmalloc(64, GFP_KERNEL);
 		if (!tmpbuf) return -ENOMEM;
@@ -287,11 +287,9 @@ err_freetmp:
 int dmj_transfer(struct platform_device *pdev, int cmd, int recvflags,
 		const void *wbuf, int wbufsize, void **rbuf, int *rbufsize)
 {
-	struct dmj_platform_data *dmj_pdata;
 	struct dmj_dev *dmj;
 
 	dmj = dev_get_drvdata(pdev->dev.parent);
-	dmj_pdata = dev_get_platdata(&pdev->dev); /* TODO: ??? */
 
 	return dmj_xfer_internal(dmj, cmd, recvflags, wbuf, wbufsize, rbuf, rbufsize);
 }
@@ -333,16 +331,16 @@ static int dmj_print_info(struct dmj_dev *dmj)
 	uint8_t curmode, features;
 	struct device *dev = &dmj->interface->dev;
 	uint8_t *buf;
-	char modeinfo[16];
-	char *strinfo;
+	char modeinfo[16], namebuf[64];
 
 	/* info string */
 	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_INFOSTR,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(strinfo));
+	ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(namebuf)-1);
 	if (ret < 0 || !buf) goto out;
-	buf[len] = 0;
-	dev_info(dev, HARDWARE_NAME " '%s'\n", buf);
+	memcpy(namebuf, buf, len);
+	namebuf[len] = 0;
+	dev_info(dev, HARDWARE_NAME " '%s'\n", namebuf);
 	kfree(buf); buf = NULL;
 
 	/* cur mode */
@@ -377,16 +375,17 @@ static int dmj_print_info(struct dmj_dev *dmj)
 		/* name */
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_NAME,
 				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-		ret = dmj_check_retval(ret, len, dev, "get info", true, -1, -1);
+		ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(namebuf)-1);
 		if (ret < 0 || !buf) goto out;
-		buf[len] = 0;
-		strinfo = buf; buf = NULL;
+		memcpy(namebuf, buf, len);
+		namebuf[len] = 0;
+		kfree(buf); buf = NULL;
 
 		/* version */
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_VERSION,
 				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(mversion), sizeof(mversion));
-		if (ret < 0 || !buf) { kfree(strinfo); goto out; }
+		if (ret < 0 || !buf) goto out;
 		mversion = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 		kfree(buf); buf = NULL;
 
@@ -394,7 +393,7 @@ static int dmj_print_info(struct dmj_dev *dmj)
 		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_FEATURES,
 				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
 		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(features), sizeof(features));
-		if (ret < 0 || !buf) { kfree(strinfo); goto out; }
+		if (ret < 0 || !buf) goto out;
 		features = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 		kfree(buf); buf = NULL;
 
@@ -407,8 +406,7 @@ static int dmj_print_info(struct dmj_dev *dmj)
 		modeinfo[8] = 0;
 
 		dev_dbg(dev, "Mode %d: '%s' version 0x%04x, features: %s\n",
-				i, strinfo, mversion, modeinfo);
-		kfree(strinfo);
+				i, namebuf, mversion, modeinfo);
 	}
 
 	return 0;

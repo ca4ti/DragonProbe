@@ -30,10 +30,6 @@
 #define DMJ_FEATURE_MODE1_I2C        (1<<3)
 #define DMJ_FEATURE_MODE1_TEMPSENSOR (1<<4)
 
-struct dmj_platform_data {
-	uint8_t port;
-};
-
 #define DMJ_XFER_FLAGS_PARSE_RESP   (1<<0)
 #define DMJ_XFER_FLAGS_FILL_RECVBUF (1<<1)
 
