@@ -453,17 +453,19 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 			goto out_free;
 		}
 
-		if (dmj->dmj_mode & DMJ_FEATURE_MODE1_SPI) {
+		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_SPI) {
 			// TODO: add SPI MFD
 		}
-		if (dmj->dmj_mode & DMJ_FEATURE_MODE1_I2C) {
+		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_I2C) {
 			ret = mfd_add_hotplug_devices(dev, dmj_mfd_i2c, ARRAY_SIZE(dmj_mfd_i2c));
 			if (ret) {
 				dev_err(dev, "failed to add MFD I2C devices\n");
 				goto out_free;
+			} else {
+				dev_warn(dev, "added i2c mfd\n");
 			}
 		}
-		if (dmj->dmj_mode & DMJ_FEATURE_MODE1_TEMPSENSOR) {
+		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_TEMPSENSOR) {
 			// TODO: add tempsensor MFD
 		}
 	}

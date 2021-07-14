@@ -276,7 +276,7 @@ void i2ctu_bulk_cmd(void) {
     } break;
 
     default:
-        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        vnd_cfg_write_str(cfg_resp_illcmd, "unknown I2C command");
         break;
     }
 }

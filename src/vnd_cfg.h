@@ -52,9 +52,14 @@ enum cfg_resp {
 };
 
 uint8_t vnd_cfg_read_byte (void);
+void    vnd_cfg_drop_incoming(void);
 void    vnd_cfg_write_flush(void);
 void    vnd_cfg_write_byte(uint8_t v);
+void    vnd_cfg_write_resp_no_drop(enum cfg_resp stat, uint32_t len, const void* data);
 void    vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data);
+void    vnd_cfg_write_str(enum cfg_resp stat, const char* str);
+__attribute__((__format__(printf, 2, 3)))
+void    vnd_cfg_write_strf(enum cfg_resp stat, const char* fmt, ...);
 
 #endif
 

@@ -87,17 +87,18 @@ epout.write(b'\x12') # get mode1 features
 print("stat=%d"%stat)
 print(res)
 
-epout.write(b'\x20') # get mode1 name
+print("echo time!")
+epout.write(b'\x14\x00\x42') # I2C echo!
 (stat, res) = rdresp(epin)
 print("stat=%d"%stat)
 print(res)
 
-epout.write(b'\x21') # get mode1 version
+epout.write(b'\x1f\x14\x00\x43')
 (stat, res) = rdresp(epin)
 print("stat=%d"%stat)
 print(res)
 
-epout.write(b'\x22') # get mode1 features
+epout.write(b'\x14\x00\x44') # I2C echo!
 (stat, res) = rdresp(epin)
 print("stat=%d"%stat)
 print(res)

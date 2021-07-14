@@ -29,7 +29,7 @@
 /*#define MODE_ENABLE_I2CTINYUSB*/
 
 enum m_default_cmds {
-    mdef_cmd_spi = mode_cmd__specific | 0x10,
+    mdef_cmd_spi = mode_cmd__specific,
     mdef_cmd_i2c,
     mdef_cmd_tempsense
 };
@@ -137,25 +137,25 @@ static void handle_cmd_cb(uint8_t cmd) {
 #ifdef DBOARD_HAS_SPI
         sp_spi_bulk_cmd();
 #else
-        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        vnd_cfg_write_str(cfg_resp_illcmd, "SPI not implemented on this device");
 #endif
         break;
     case mdef_cmd_i2c:
 #ifdef DBOARD_HAS_I2C
         i2ctu_bulk_cmd();
 #else
-        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        vnd_cfg_write_str(cfg_resp_illcmd, "I2C not implemented on this device");
 #endif
         break;
     case mdef_cmd_tempsense:
 #ifdef DBOARD_HAS_TEMPSENSOR
         tempsense_bulk_cmd();
 #else
-        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        vnd_cfg_write_str(cfg_resp_illcmd, "temperature sensor not implemented on this device");
 #endif
         break;
     default:
-        vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
+        vnd_cfg_write_strf(cfg_resp_illcmd, "unknown mode1 command %02x", cmd);
         break;
     }
 }

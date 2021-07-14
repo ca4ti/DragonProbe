@@ -1,5 +1,7 @@
 // vim: set et:
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include <tusb.h>
 
@@ -14,6 +16,8 @@ static uint8_t tx_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
 
 static uint32_t rxavail, rxpos, txpos;
 
+static const int VND_N_CFG;
+
 void vnd_cfg_init(void) {
     rxavail = 0;
     rxpos   = 0;
@@ -22,13 +26,13 @@ void vnd_cfg_init(void) {
 
 uint8_t vnd_cfg_read_byte(void) {
     while (rxavail <= 0) {
-        if (!tud_vendor_n_mounted(0) && !tud_vendor_n_available(0)) {
+        if (!tud_vendor_n_mounted(VND_N_CFG) || !tud_vendor_n_available(VND_N_CFG)) {
             thread_yield();
             continue;
         }
 
         rxpos   = 0;
-        rxavail = tud_vendor_n_read(0, rx_buf, sizeof rx_buf);
+        rxavail = tud_vendor_n_read(VND_N_CFG, rx_buf, sizeof rx_buf);
 
         if (rxavail == 0) thread_yield();
     }
@@ -39,13 +43,24 @@ uint8_t vnd_cfg_read_byte(void) {
 
     return rv;
 }
+void vnd_cfg_drop_incoming(void) {
+    rxavail = 0;
+    rxpos = 0;
+
+    // empty tinyusb internal buffer
+    if (tud_vendor_n_mounted(VND_N_CFG)) {
+        while (tud_vendor_n_available(VND_N_CFG)) {
+            tud_vendor_n_read(VND_N_CFG, rx_buf, sizeof rx_buf);
+        }
+    }
+}
 void vnd_cfg_write_flush(void) {
     // TODO: is this needed?
-    while (tud_vendor_n_write_available(0) < txpos) {
+    while (tud_vendor_n_write_available(VND_N_CFG) < txpos) {
         thread_yield();
     }
 
-    tud_vendor_n_write(0, tx_buf, txpos);
+    tud_vendor_n_write(VND_N_CFG, tx_buf, txpos);
     txpos = 0;
 }
 void vnd_cfg_write_byte(uint8_t v) {
@@ -56,7 +71,7 @@ void vnd_cfg_write_byte(uint8_t v) {
     tx_buf[txpos] = v;
     ++txpos;
 }
-void vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data) {
+void vnd_cfg_write_resp_no_drop(enum cfg_resp stat, uint32_t len, const void* data) {
     if (len > 0x3fffff) {
         printf("W: truncating response length from 0x%lx to 0x3fffff\n", len);
         len = 0x3fffff;
@@ -81,6 +96,23 @@ void vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data) {
     }
 
     vnd_cfg_write_flush();
+}
+void vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data) {
+    if (stat != cfg_resp_ok) vnd_cfg_drop_incoming();
+    vnd_cfg_write_resp_no_drop(stat, len, data);
+}
+void vnd_cfg_write_str(enum cfg_resp stat, const char* str) {
+    vnd_cfg_write_resp(stat, strlen(str), str);
+}
+void vnd_cfg_write_strf(enum cfg_resp stat, const char* fmt, ...) {
+    static char pbuf[64];
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(pbuf, sizeof pbuf, fmt, args);
+    va_end(args);
+
+    vnd_cfg_write_str(stat, pbuf);
 }
 
 void vnd_cfg_task(void) {
@@ -157,10 +189,17 @@ void vnd_cfg_task(void) {
 #else /* CFG_TUD_VENDOR == 0 */
 void vnd_cfg_init(void) { }
 uint8_t vnd_cfg_read_byte(void) { return 0xff; }
+void vnd_cfg_drop_incoming(void) { }
 void vnd_cfg_write_flush(void) { }
 void vnd_cfg_write_byte(uint8_t v) { (void)v; }
 void vnd_cfg_write_resp(enum cfg_resp stat, uint16_t len, const void* data) {
     (void)stat; (void)len; (void)data;
+}
+void vnd_cfg_write_str(enum cfg_resp stat, const char* str) {
+    (void)stat; (void)str;
+}
+void vnd_cfg_write_strf(enum cfg_resp stat, const char* fmt, ...) {
+    (void)stat; (void)str;
 }
 void vnd_cfg_task(void) { }
 #endif /* CFG_TUD_VENDOR */

@@ -219,7 +219,7 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 	len = sizeof(curmode);
 	ret = dmj_transfer(pdev, DMJ_CMD_CFG_GET_CUR_MODE,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &curmode, &len);
-	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(curmode), sizeof(curmode));
+	ret = dmj_check_retval(ret, len, dev, "i2c test 1", true, sizeof(curmode), sizeof(curmode));
 	if (ret < 0) return ret;
 	if (curmode != 0x1) {
 		dev_err(dev, "device must be in mode 1 for ICD to work, but it is in mode %d\n", curmode);
@@ -229,7 +229,7 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 	len = sizeof(m1ver);
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_VERSION,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &m1ver, &len);
-	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(m1ver), sizeof(m1ver));
+	ret = dmj_check_retval(ret, len, dev, "i2c test 2", true, sizeof(m1ver), sizeof(m1ver));
 	if (ret < 0) return ret;
 	if (le16_to_cpu(m1ver) > ver_max || le16_to_cpu(m1ver) < ver_min) {
 		dev_err(dev, "bad mode 1 version %04x on device, must be between %04x and %04x\n",
@@ -240,7 +240,7 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 	len = sizeof(m1feat);
 	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_FEATURES,
 			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, &m1feat, &len);
-	ret = dmj_check_retval(ret, len, dev, "i2c test", true, sizeof(m1feat), sizeof(m1feat));
+	ret = dmj_check_retval(ret, len, dev, "i2c test 3", true, sizeof(m1feat), sizeof(m1feat));
 	if (ret < 0) return ret;
 	if (!(m1feat & DMJ_FEATURE_MODE1_I2C)) {
 		dev_err(dev, "device's mode 1 does not support I2C\n");
@@ -285,6 +285,8 @@ static int dmj_i2c_probe(struct platform_device *pdev)
 	int ret;
 	struct dmj_i2c *dmji;
 	struct device *dev = &pdev->dev;
+
+	dev_warn(dev, "i2c probe hi!\n");
 
 	ret = dmj_i2c_check_hw(pdev);
 	if (ret) return -ENODEV;

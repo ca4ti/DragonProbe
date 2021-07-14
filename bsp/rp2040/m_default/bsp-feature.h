@@ -4,7 +4,6 @@
 
 #define DBOARD_HAS_UART
 #define DBOARD_HAS_CMSISDAP
-// TODO: rename to _SPI
 #define DBOARD_HAS_SPI
 #define DBOARD_HAS_I2C
 #define DBOARD_HAS_TEMPSENSOR
