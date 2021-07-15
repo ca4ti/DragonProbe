@@ -12,14 +12,14 @@
 
 #include "m_default/serprog.h"
 
-//static bool cs_asserted;
+static bool cs_asserted;
 
 static uint32_t freq;
 static enum serprog_flags sflags;
 static uint8_t bpw;
 
 void sp_spi_init(void) {
-    //cs_asserted = false;
+    cs_asserted = false;
 
     freq = 512*1000;  // default to 512 kHz
     sflags = 0; // CPOL 0, CPHA 0, MSB first
@@ -39,7 +39,7 @@ void sp_spi_init(void) {
     bi_decl(bi_1pin_with_name(PINOUT_SPI_nCS, "SPI #CS"));
 }
 void sp_spi_deinit(void) {
-    //cs_asserted = false;
+    cs_asserted = false;
     sflags = 0;
     freq = 512*1000;
     bpw = 8;
@@ -101,8 +101,8 @@ __attribute__((__const__)) const struct sp_spi_caps* sp_spi_get_caps(void) {
         .min_bpw = 4,
         .max_bpw = 16,
         .caps = S_CAP_CPOL_HI | S_CAP_CPOL_LO | S_CAP_CPHA_HI | S_CAP_CPHA_LO
-            | S_CAP_MOTO | S_CAP_NATSEM | S_CAP_TI | S_CAP_MSBFST | S_CAP_LSBFST
-            | S_CAP_CSACHI
+            | S_CAP_STDSPI | S_CAP_MICROW | S_CAP_TISSP
+            | S_CAP_MSBFST | S_CAP_LSBFST | S_CAP_CSACHI
     };
 
     caps.freq_min = clock_get_hz(clk_peri) / 254;
@@ -117,7 +117,7 @@ void __not_in_flash_func(sp_spi_cs_deselect)(uint8_t csflags) {
     asm volatile("nop\nnop\nnop");  // idk if this is needed
     gpio_put(PINOUT_SPI_nCS, 1);
     asm volatile("nop\nnop\nnop");  // idk if this is needed
-    //cs_asserted = false;
+    cs_asserted = false;
 }
 void __not_in_flash_func(sp_spi_cs_select)(uint8_t csflags) {
     (void)csflags;
@@ -125,15 +125,14 @@ void __not_in_flash_func(sp_spi_cs_select)(uint8_t csflags) {
     asm volatile("nop\nnop\nnop");  // idk if this is needed
     gpio_put(PINOUT_SPI_nCS, 0);
     asm volatile("nop\nnop\nnop");  // idk if this is needed
-    //cs_asserted = true;
+    cs_asserted = true;
 }
 
 void __not_in_flash_func(sp_spi_op_begin)(uint8_t csflags) {
     // sp_spi_cs_select(csflags);
     (void)csflags;
 
-    //if (!cs_asserted)
-    {
+    if (!cs_asserted) {
         asm volatile("nop\nnop\nnop");  // idk if this is needed
         gpio_put(PINOUT_SPI_nCS, 0);
         asm volatile("nop\nnop\nnop");  // idk if this is needed
@@ -143,8 +142,7 @@ void __not_in_flash_func(sp_spi_op_end)(uint8_t csflags) {
     // sp_spi_cs_deselect(csflags);
     (void)csflags;
 
-    //if (!cs_asserted) {                 // YES, this condition is the intended one!
-    {
+    if (!cs_asserted) {                 // YES, this condition is the intended one!
         asm volatile("nop\nnop\nnop");  // idk if this is needed
         gpio_put(PINOUT_SPI_nCS, 1);
         asm volatile("nop\nnop\nnop");  // idk if this is needed

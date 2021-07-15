@@ -312,6 +312,8 @@ static void handle_cmd(uint8_t cmd, uint8_t ud, uint8_t (*read_byte)(void),
 
                 len -= this_batch;
             }
+
+            sp_spi_op_end(selchip);
             } break;
 
         default:
