@@ -6,7 +6,7 @@
 
 #define INFO_MANUFACTURER   "BLAHAJ CTF"
 #define INFO_PRODUCT_BARE   "Dragnbus"
-#define INFO_PRODUCT(board) "Dragnbus (" board ")"
+#define INFO_PRODUCT(board) INFO_PRODUCT_BARE " (" board ")"
 
 #endif
 

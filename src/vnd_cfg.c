@@ -108,7 +108,7 @@ void vnd_cfg_write_resp(enum cfg_resp stat, uint32_t len, const void* data) {
     vnd_cfg_write_resp_no_drop(stat, len, data);
 }
 void vnd_cfg_write_str(enum cfg_resp stat, const char* str) {
-    vnd_cfg_write_resp(stat, strlen(str), str);
+    vnd_cfg_write_resp(stat, strlen(str)+1/* include null terminator in response */, str);
 }
 void vnd_cfg_write_strf(enum cfg_resp stat, const char* fmt, ...) {
     static char pbuf[64];
@@ -135,8 +135,7 @@ void vnd_cfg_task(void) {
         } else {
             switch (mcmd) {
             case mode_cmd_get_name:
-                vnd_cfg_write_resp(cfg_resp_ok, strlen(mode_list[mode]->name),
-                        mode_list[mode]->name);
+                vnd_cfg_write_str(cfg_resp_ok, mode_list[mode]->name);
                 break;
             case mode_cmd_get_version:
                 verbuf[0] = (mode_list[mode]->version >> 0) & 0xff;
@@ -184,7 +183,7 @@ void vnd_cfg_task(void) {
             }
             break;
         case cfg_cmd_get_infostr:
-            vnd_cfg_write_resp(cfg_resp_ok, strlen("Dragnbus"), "Dragnbus");
+            vnd_cfg_write_str(cfg_resp_ok, INFO_PRODUCT(INFO_BOARDNAME));
             break;
         default:
             vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
