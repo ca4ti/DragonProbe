@@ -24,7 +24,7 @@ static const uint8_t serprog_cmdmap[32] = {
     0,         // 20..27
     0,         // 28..2f
     0,         // 30..37
-    0x3f,      // cmd 40..45
+    0xff,      // cmd 40..47
     0,         // rest is 0
 };
 // clang-format on
@@ -162,7 +162,42 @@ static void handle_cmd(uint8_t cmd, uint8_t ud, uint8_t (*read_byte)(void),
             tx_buf[4] = (nfreq >> 24) & 0xff;
             nresp     = 5;
         } break;
-        case S_CMD_S_PINSTATE: {
+        case S_CMD_S_PINSTATE:
+            // that's not what this command is supposed to do, so, aaa
+            /*if (read_byte() == 0)
+                sp_spi_cs_deselect(selchip);
+            else
+                sp_spi_cs_select(selchip);*/
+
+            tx_buf[0] = S_ACK;
+            nresp     = 1;
+        break;
+
+        case S_CMD_Q_SPI_CAPS: {
+            const struct sp_spi_caps* caps = sp_spi_get_caps();
+
+            tx_buf[0] = S_ACK;
+            tx_buf[1] = caps->freq_min & 0xff;
+            tx_buf[2] = (caps->freq_min >>  8) & 0xff;
+            tx_buf[3] = (caps->freq_min >> 16) & 0xff;
+            tx_buf[4] = (caps->freq_min >> 24) & 0xff;
+            tx_buf[5] = caps->freq_max & 0xff;
+            tx_buf[6] = (caps->freq_max >>  8) & 0xff;
+            tx_buf[7] = (caps->freq_max >> 16) & 0xff;
+            tx_buf[8] = (caps->freq_max >> 24) & 0xff;
+            tx_buf[9] = caps->caps & 0xff;
+            tx_buf[10] = (caps->caps >> 8) & 0xff;
+            tx_buf[11] = caps->num_cs;
+            tx_buf[12] = caps->min_bpw;
+            tx_buf[13] = caps->max_bpw;
+            nresp     = 14;
+            } break;
+        case S_CMD_S_SPI_CHIPN:
+            selchip   = read_byte();
+            tx_buf[0] = S_ACK;
+            nresp     = 1;
+            break;
+        case S_CMD_S_SPI_SETCS:
             if (read_byte() == 0)
                 sp_spi_cs_deselect(selchip);
             else
@@ -170,21 +205,15 @@ static void handle_cmd(uint8_t cmd, uint8_t ud, uint8_t (*read_byte)(void),
 
             tx_buf[0] = S_ACK;
             nresp     = 1;
-        } break;
-
-        case S_CMD_Q_NUM_CS:
-            tx_buf[0] = S_ACK;
-            tx_buf[1] = sp_spi_get_num_cs();
-            nresp     = 2;
-            break;
+        break;
         case S_CMD_S_SPI_FLAGS:
-            sp_spi_set_flags(read_byte());
             tx_buf[0] = S_ACK;
+            tx_buf[1] = sp_spi_set_flags(read_byte());
             nresp     = 1;
             break;
-        case S_CMD_S_SPI_CHIPN:
-            selchip   = read_byte();
+        case S_CMD_S_SPI_BPW:
             tx_buf[0] = S_ACK;
+            tx_buf[1] = sp_spi_set_bpw(read_byte());
             nresp     = 1;
             break;
 

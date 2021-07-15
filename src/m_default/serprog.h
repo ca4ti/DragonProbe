@@ -28,22 +28,45 @@ enum serprog_cmd {
     S_CMD_S_PINSTATE  = 0x15,
 
     // TODO: upstream this to flashrom? could be useful to others maybe
-    S_CMD_Q_NUM_CS    = 0x40,
-    S_CMD_S_SPI_FLAGS = 0x41,
+    S_CMD_Q_SPI_CAPS  = 0x40,
     // number of chip (well, bitflags) to use when asserting/deasserting the chip select line
-    S_CMD_S_SPI_CHIPN = 0x42,
-    S_CMD_SPI_READ    = 0x43,
-    S_CMD_SPI_WRITE   = 0x44,
+    S_CMD_S_SPI_CHIPN = 0x41,
+    // sets chip select line high or low (device does no translation wrt. S_FLG_CSACHI!)
+    S_CMD_S_SPI_SETCS = 0x42,
+    S_CMD_S_SPI_FLAGS = 0x43,
+    S_CMD_S_SPI_BPW   = 0x44, // set bits per word
+    S_CMD_SPI_READ    = 0x45,
+    S_CMD_SPI_WRITE   = 0x46,
     // as opposed to S_CMD_SPIOP, this one is full-duplex instead of half-duplex
-    S_CMD_SPI_RDWR    = 0x45,
+    S_CMD_SPI_RDWR    = 0x47,
 };
 
 enum serprog_response { S_ACK = 0x06, S_NAK = 0x15 };
 
 enum serprog_flags {
-    S_FLG_CPOL  = 1<<0, // 1: clock polarity 1, else clkpol 0
-    S_FLG_CPHA  = 1<<1, // 1: clock phase 1, else clkpha 1
-    S_FLG_16BIT = 1<<2, // 1: 16-bit transfers, else 8-bit xfers
+    S_FLG_CPHA   = 1<<0, // 1: clock phase 1, else clkpha 1
+    S_FLG_CPOL   = 1<<1, // 1: clock polarity 1, else clkpol 0
+    S_FLG_STDSPI = 0<<2, // frame format
+    S_FLG_TISSP  = 1<<2, // frame format
+    S_FLG_MICROW = 2<<2, // frame format
+    S_FLG_MSBFST = 0<<4, // MSBit sent first
+    S_FLG_LSBFST = 1<<4, // LSBit sent first
+    S_FLG_CSACLO = 0<<5, // chip select active-low (common)
+    S_FLG_CSACHI = 1<<5, // chip select active-high
+    S_FLG_3WIRE  = 1<<6,
+};
+enum serprog_caps {
+    S_CAP_CPHA_HI = 1<<0,
+    S_CAP_CPHA_LO = 1<<1,
+    S_CAP_CPOL_HI = 1<<2,
+    S_CAP_CPOL_LO = 1<<3,
+    S_CAP_STDSPI  = 1<<4, // standard SPI
+    S_CAP_TISSP   = 1<<5, // synchronous serial protocol from TI
+    S_CAP_MICROW  = 1<<6, // microwire
+    S_CAP_MSBFST  = 1<<7,
+    S_CAP_LSBFST  = 1<<8,
+    S_CAP_CSACHI  = 1<<9,
+    S_CAP_3WIRE   = 1<<10,
 };
 
 #define SERPROG_IFACE_VERSION 0x0001
@@ -51,9 +74,15 @@ enum serprog_flags {
 #ifdef DBOARD_HAS_SPI
 /* functions to be implemented by the BSP */
 uint32_t /*freq_applied*/ sp_spi_set_freq(uint32_t freq_wanted);
+enum serprog_flags sp_spi_set_flags(enum serprog_flags flags);
+uint8_t sp_spi_set_bpw(uint8_t bpw);
 
-void sp_spi_set_flags(enum serprog_flags flags);
-__attribute__((__const__)) int sp_spi_get_num_cs(void);
+struct sp_spi_caps {
+    uint32_t freq_min, freq_max;
+    uint16_t caps;
+    uint8_t num_cs, min_bpw, max_bpw;
+};
+__attribute__((__const__)) const struct sp_spi_caps* sp_spi_get_caps(void);
 
 void sp_spi_init(void);
 void sp_spi_deinit(void);

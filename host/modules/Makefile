@@ -1,5 +1,5 @@
 
-obj-m  := dmj.o dmj-char.o i2c-dmj.o
+obj-m  := dmj.o dmj-char.o i2c-dmj.o spi-dmj.c
 KDIR   := /lib/modules/$(shell uname -r)/build
 PWD    := $(shell pwd)
 
@@ -14,7 +14,10 @@ clean:
 load:
 	sudo insmod ./dmj.ko
 	sudo insmod ./dmj-char.ko
+	sudo insmod ./spi-dmj.ko
 
 unload:
+	sudo rmmod spi-dmj
+	sudo rmmod i2c-dmj
 	sudo rmmod dmj-char
 	sudo rmmod dmj

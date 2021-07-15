@@ -2,7 +2,7 @@
 /*
  * Driver for the DapperMime-JTAG USB multitool: base MFD driver
  *
- * Copyright (c) sys64738 and haskal
+ * Copyright (c) 2021 sys64738 and haskal
  *
  * Adapted from:
  *   dln2.c   Copyright (c) 2014 Intel Corporation

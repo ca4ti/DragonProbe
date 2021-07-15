@@ -2,7 +2,7 @@
 /*
  * Driver for the DapperMime-JTAG USB multitool: USB-I2C adapter
  *
- * Copyright (c) sys64738 and haskal
+ * Copyright (c) 2021 sys64738 and haskal
  *
  * Adapted from:
  *   i2c-dln2.c      Copyright (c) 2014 Intel Corporation
@@ -25,7 +25,7 @@
 
 #define HARDWARE_NAME "DapperMime-JTAG"
 
-#define DMJ_I2C_MAX_XSFER_SIZE 64
+#define DMJ_I2C_MAX_XFER_SIZE 64
 
 #define DMJ_I2C_CMD_ECHO       0x00
 #define DMJ_I2C_CMD_GET_FUNC   0x01
@@ -195,8 +195,8 @@ static const struct i2c_algorithm dmj_i2c_algo = {
 	.functionality = dmj_i2c_func
 };
 static const struct i2c_adapter_quirks dmj_i2c_quirks = {
-	.max_read_len  = DMJ_I2C_MAX_XSFER_SIZE,
-	.max_write_len = DMJ_I2C_MAX_XSFER_SIZE,
+	.max_read_len  = DMJ_I2C_MAX_XFER_SIZE,
+	.max_write_len = DMJ_I2C_MAX_XFER_SIZE,
 };
 
 static int dmj_i2c_check_hw(struct platform_device *pdev)
