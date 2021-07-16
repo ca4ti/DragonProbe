@@ -59,8 +59,8 @@
 
 static const uint8_t reqd_cmds[] = {
 	DMJ_SPI_CMD_NOP, DMJ_SPI_CMD_Q_IFACE, DMJ_SPI_CMD_Q_CMDMAP,
-	DMJ_SPI_CMD_Q_WRNMAXLEN, DMJ_SPI_CMD_Q_RDNMAXLEN,
-	DMJ_SPI_CMD_S_SPI_FREQ, DMJ_SPI_CMD_S_PINSTATE, /*DMJ_SPI_CMD_SPIOP,*/
+	/*DMJ_SPI_CMD_Q_WRNMAXLEN, DMJ_SPI_CMD_Q_RDNMAXLEN,*/
+	DMJ_SPI_CMD_S_SPI_FREQ, /*DMJ_SPI_CMD_S_PINSTATE,*/ /*DMJ_SPI_CMD_SPIOP,*/
 	DMJ_SPI_CMD_Q_SPI_CAPS, DMJ_SPI_CMD_S_SPI_CHIPN, DMJ_SPI_CMD_S_SPI_FLAGS,
 	DMJ_SPI_CMD_S_SPI_BPW, DMJ_SPI_CMD_S_SPI_SETCS,
 	/*DMJ_SPI_CMD_SPI_READ, DMJ_SPI_CMD_SPI_WRITE, DMJ_SPI_CMD_SPI_RDWR,*/
@@ -92,6 +92,8 @@ static const uint8_t reqd_cmds[] = {
 #define DMJ_SPI_S_CAP_CSACHI  (1<<9)
 #define DMJ_SPI_S_CAP_3WIRE   (1<<10)
 
+#define DMJ_PINST_AUTOSUSPEND_TIMEOUT 2000
+
 struct dmj_spi_caps {
 	uint32_t freq_min, freq_max;
 	uint16_t flgcaps;
@@ -102,20 +104,33 @@ struct dmj_spi_dev_sett {
 	 * serializes transfer_one/set_cs calls */
 	uint32_t freq;
 	uint8_t flags, bpw;
-	uint8_t cs;
+	uint8_t cs, pinst;
 };
 struct dmj_spi {
 	struct platform_device *pdev;
 	struct spi_controller *spictl;
 
-	uint8_t cmdmap[32];
+	uint8_t *txbuf;
 	struct dmj_spi_caps caps;
 	uint8_t csmask;
 	struct dmj_spi_dev_sett devsettings[8];
 	uint32_t wrnmaxlen, rdnmaxlen;
+	uint8_t cmdmap[32];
 
 	spinlock_t csmap_lock;
 };
+
+static int dmj_check_retval_sp(int ret, int len, struct device *dev,
+		const char *pfix, bool check_pos_val, int lmin, int lmax, const void* rbuf)
+{
+	ret = dmj_check_retval(ret, len, dev, pfix, check_pos_val, lmin, lmax);
+	if (ret >= 0 && ((const uint8_t *)rbuf)[0] != DMJ_SPI_ACK) {
+		dev_err(dev, "%s: did not receive ACK\n", pfix);
+		ret = -EIO;
+	}
+
+	return ret;
+}
 
 static bool has_cmd(struct dmj_spi *dmjs, int cmd)
 {
@@ -132,13 +147,13 @@ static uint8_t kernmode_to_flags(uint16_t caps, int mode)
 	else ret |= DMJ_SPI_S_FLG_MSBFST;
 	if (mode & SPI_CS_HIGH) ret |= DMJ_SPI_S_FLG_CSACHI;
 	else ret |= DMJ_SPI_S_FLG_CSACLO;
-	if (mode & SPI_3WIRE) ret |= DMJ_SPI_SL_FLG_3WIRE;
+	if (mode & SPI_3WIRE) ret |= DMJ_SPI_S_FLG_3WIRE;
 
 	/* need some defaults for other stuff */
 	if (caps & DMJ_SPI_S_CAP_STDSPI) ret |= DMJ_SPI_S_FLG_STDSPI;
 	else if (caps & DMJ_SPI_S_CAP_TISSP) ret |= DMJ_SPI_S_FLG_TISSP;
 	else if (caps & DMJ_SPI_S_CAP_MICROW) ret |= DMJ_SPI_S_FLG_MICROW;
-	else ret |= DMJ_SPI_S_FLG_STDSPI; /* shrug */
+	else ret |= DMJ_SPI_S_FLG_STDSPI; /* shrug, also shouldn't happen (cf. get_caps) */
 
 	return ret;
 }
@@ -148,14 +163,14 @@ static int devcaps_to_kernmode(uint16_t caps)
 
 	ret = caps & 3; /* SPI mode (CPHA & CPOL) bits */
 
-	if (caps & DMJ_SPI_S_CAP_LSBFST) ret |= SPI_LB_FIRST;
+	if (caps & DMJ_SPI_S_CAP_LSBFST) ret |= SPI_LSB_FIRST;
 	if (caps & DMJ_SPI_S_CAP_CSACHI) ret |= SPI_CS_HIGH;
 	if (caps & DMJ_SPI_S_CAP_3WIRE) ret |= SPI_3WIRE;
 
 	return ret;
 }
 
-static int bufconv_to_le(void *dst, const void *src, size_t len_bytes, uint8_t bpw)
+static void bufconv_to_le(void *dst, const void *src, size_t len_bytes, uint8_t bpw)
 {
 #ifdef __LITTLE_ENDIAN
 	memcpy(dst, src, len_bytes);
@@ -179,7 +194,7 @@ static int bufconv_to_le(void *dst, const void *src, size_t len_bytes, uint8_t b
 	}
 #endif
 }
-static int bufconv_from_le(void *dst, const void *src, size_t len_bytes, uint8_t bpw)
+static void bufconv_from_le(void *dst, const void *src, size_t len_bytes, uint8_t bpw)
 {
 #ifdef __LITTLE_ENDIAN
 	memcpy(dst, src, len_bytes);
@@ -206,9 +221,12 @@ static int bufconv_from_le(void *dst, const void *src, size_t len_bytes, uint8_t
 
 static int dmj_spi_csmask_set(struct dmj_spi *dmjs, uint8_t csmask)
 {
+	struct device *dev = &dmjs->pdev->dev;
 	uint8_t oldcm;
-	int ret;
 	bool do_csmask = false;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_S_SPI_CHIPN, csmask };
+	uint8_t *rbuf;
+	int ret, rlen;
 
 	spin_lock(&dmjs->csmap_lock);
 	oldcm = dmjs->csmask;
@@ -216,11 +234,18 @@ static int dmj_spi_csmask_set(struct dmj_spi *dmjs, uint8_t csmask)
 		dmjs->csmask = csmask;
 		do_csmask = true;
 	}
-	spin_unlock(&dmjs->csmap_unlock);
+	spin_unlock(&dmjs->csmap_lock);
 
 	if (do_csmask) {
-		// TODO: send S_SPI_CHIPN
+		dev_dbg(dev, "set csmask %02x\n", csmask);
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "set CS mask", true, 1, 1, rbuf);
+
+		if (rbuf) kfree(rbuf);
 	}
+
+	return 0;
 }
 static int dmj_spi_csmask_set_one(struct dmj_spi *dmjs, uint8_t cs)
 {
@@ -228,81 +253,463 @@ static int dmj_spi_csmask_set_one(struct dmj_spi *dmjs, uint8_t cs)
 }
 static int dmj_spi_cs_set(struct dmj_spi *dmjs, int ind, bool lvl)
 {
-	if (dmjs->devsettings[ind].cs == (lvl ? 1 : 0))
-		return 0;
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_S_SPI_SETCS, lvl ? 1 : 0 };
+	uint8_t *rbuf;
+	int ret, rlen;
 
-	// TODO: send S_SPI_SETCS
+	if (dmjs->devsettings[ind].cs == (lvl ? 1 : 0)) return 0;
+
+	dev_dbg(dev, "set cs %s\n", lvl?"hi":"lo");
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "set CS", true, 1, 1, rbuf);
+
+	if (!ret) {
+		dmjs->devsettings[ind].cs = lvl ? 1 : 0;
+	}
+	if (rbuf) kfree(rbuf);
+
+	return ret;
 }
-static int dmj_spi_get_caps(struct dmj_spi *dmjs); // TODO: check if bpw_min > 0
+static int dmj_spi_get_caps(struct dmj_spi *dmjs)
+{
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_Q_SPI_CAPS };
+	uint8_t *rbuf;
+	int ret, rlen;
+
+	dev_dbg(dev, "get caps\n");
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "get caps", true, 14, 14, rbuf);
+
+	if (!ret) {
+		dmjs->caps.freq_min = (uint32_t)rbuf[1] | ((uint32_t)rbuf[2] << 8)
+			| ((uint32_t)rbuf[3] << 16) | ((uint32_t)rbuf[4] << 24);
+		dmjs->caps.freq_max = (uint32_t)rbuf[5] | ((uint32_t)rbuf[6] << 8)
+			| ((uint32_t)rbuf[7] << 16) | ((uint32_t)rbuf[8] << 24);
+		dmjs->caps.flgcaps = (uint32_t)rbuf[9] | ((uint32_t)rbuf[10] << 8);
+
+		dmjs->caps.num_cs = rbuf[11];
+		dmjs->caps.min_bpw = rbuf[12];
+		dmjs->caps.max_bpw = rbuf[13];
+
+		dev_dbg(dev, "got caps: freq=%d..%d, flgcaps=%04hx, bpw=%d..%d, num cs=%d\n",
+			dmjs->caps.freq_min, dmjs->caps.freq_max, dmjs->caps.flgcaps,
+			dmjs->caps.min_bpw, dmjs->caps.max_bpw, dmjs->caps.num_cs);
+
+		if (dmjs->caps.max_bpw == 0 || dmjs->caps.min_bpw == 0) {
+			dev_err(dev, "Device replied with max_bpw=0 or min_bpw=0, wtf?\n");
+			ret = -EXDEV;
+		}
+		if (!(dmjs->caps.flgcaps & (DMJ_SPI_S_CAP_STDSPI
+						| DMJ_SPI_S_CAP_TISSP | DMJ_SPI_S_CAP_MICROW))) {
+			dev_err(dev, "Device does not support any SPI mode, wtf?\n");
+			ret = -EXDEV;
+		}
+
+		kfree(rbuf);
+	}
+
+	return ret;
+}
 static int dmj_spi_set_freq(struct dmj_spi *dmjs, int ind, uint32_t freq)
 {
-	if (dmjs->devsettings[ind].freq == freq)
-		return 0;
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_S_SPI_FREQ,
+		freq, freq >> 8, freq >> 16, freq >> 24 };
+	uint8_t *rbuf;
+	uint32_t freqret;
+	int ret, rlen;
 
-	// TODO: send S_SPI_FREQ
+	if (dmjs->devsettings[ind].freq == freq) return 0;
+
+	dev_dbg(dev, "set freq to %u\n", freq);
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "set CS", true, 5, 5, rbuf);
+
+	if (!ret) {
+		freqret = (uint32_t)rbuf[1] | ((uint32_t)rbuf[2] << 8)
+			| ((uint32_t)rbuf[3] << 16) | ((uint32_t)rbuf[4] << 24);
+
+		if (freqret != freq) {
+			dev_warn(dev, "set frequency: couldn't provide exact freq %u Hz, %u Hz was applied instead.\n",
+					freq, freqret);
+		}
+
+		/* not the returned one, to avoid resending */
+		dmjs->devsettings[ind].freq = freq;
+	}
+	if (rbuf) kfree(rbuf);
+
+	return ret;
 }
 static int dmj_spi_set_flags(struct dmj_spi *dmjs, int ind, uint8_t flags)
 {
-	if (dmjs->devsettings[ind].flags == flags)
-		return 0;
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_S_SPI_FLAGS, flags };
+	uint8_t *rbuf, flagret;
+	int ret, rlen;
 
-	// TODO: send S_SPI_FLAGS
+	if (dmjs->devsettings[ind].flags == flags) return 0;
+
+	dev_dbg(dev, "set flags %08x\n", flags);
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "set flags", true, 2, 2, rbuf);
+
+	if (!ret) {
+		flagret = rbuf[1];
+
+		if (flagret != flags) {
+			dev_warn(dev, "set flags: couldn't set exact flags %08x, was set to %08x instead\n",
+					flags, flagret);
+		}
+
+		/* not the returned one, to avoid resending */
+		dmjs->devsettings[ind].flags = flags;
+	}
+	if (rbuf) kfree(rbuf);
+
+	return ret;
 }
 static int dmj_spi_set_bpw(struct dmj_spi *dmjs, int ind, uint8_t bpw)
 {
-	if (dmjs->devsettings[ind].bpw == bpw)
-		return 0;
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_S_SPI_BPW, bpw };
+	uint8_t *rbuf, bpwret;
+	int ret, rlen;
 
+	if (dmjs->devsettings[ind].bpw == bpw) return 0;
 
-	// TODO: send S_SPI_BPW
+	dev_dbg(dev, "set bpw %hhu\n", bpw);
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "set bpw", true, 2, 2, rbuf);
+
+	if (!ret) {
+		bpwret = rbuf[1];
+
+		if (bpwret != bpw) {
+			dev_warn(dev, "set flags: couldn't set exact bpw %hhu, was set to %hhu instead\n",
+					bpw, bpwret);
+		}
+
+		/* not the returned one, to avoid resending */
+		dmjs->devsettings[ind].bpw = bpw;
+	}
+	if (rbuf) kfree(rbuf);
+
+	return ret;
 }
 static int dmj_spi_set_pinstate(struct dmj_spi *dmjs, bool pins)
 {
-	if (!has_cmd(dmjs, DMJ_SPI_CMD_S_PINSTATE))
-		return 0;
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_S_PINSTATE, pins ? 1 : 0 };
+	uint8_t *rbuf;
+	int ret, rlen;
 
-	// TODO: do cmd
+	if (!has_cmd(dmjs, DMJ_SPI_CMD_S_PINSTATE)) return 0;
+
+	dev_dbg(dev, "set pinstate %sabled\n", pins?"en":"dis");
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "set pinstate", true, 2, 2, rbuf);
+
+	/*if (!ret) {
+		dmjs->devsettings[ind].pinst = pins;
+	}*/
+	if (rbuf) kfree(rbuf);
+
+	return ret;
 }
 
 static int dmj_spi_check_hw(struct dmj_spi *dmjs)
 {
-	/*
-	 * TODO: check:
-	 * * NOP, SYNCNOP
-	 * * Q_IFACE retval (must be SERPROG_IFACE_VERSION)
-	 * *   ^ + SPIOP -or- READ & WRITE support
-	 * * Q_CMDMAP (cf. reqd_cmds)
-	 * * RDNMAXLEN, WRNMAXLEN
-	 */
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t wbuf[] = { DMJ_SPI_CMD_NOP };
+	uint8_t *rbuf;
+	uint16_t iface;
+	int ret, rlen, i;
+
+	dev_dbg(dev, "check hw: nop");
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "check hw: nop", true, 1, 1, rbuf);
+
+	if (rbuf) kfree(rbuf);
+	if (ret) return ret;
+
+	dev_dbg(dev, "check hw: syncnop");
+	wbuf[0] = DMJ_SPI_CMD_SYNCNOP;
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval(ret, rlen, dev, "check hw: nop", true, 2, 2);
+	if (!ret) {
+		if (rbuf[0] != DMJ_SPI_NAK || rbuf[1] != DMJ_SPI_ACK) {
+			dev_err(dev, "check hw: syncnop: bad response %02x %02x\n",
+					rbuf[0], rbuf[1]);
+			ret = -EIO;
+		}
+	}
+	if (rbuf) kfree(rbuf);
+	if (ret) return ret;
+
+	dev_dbg(dev, "check hw: iface");
+	wbuf[0] = DMJ_SPI_CMD_Q_IFACE;
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "check hw: iface", true, 3, 3, rbuf);
+
+	if (!ret) {
+		iface = (uint16_t)rbuf[1] | ((uint16_t)rbuf[2] << 8);
+
+		if (iface != SERPROG_IFACE_VERSION) {
+			dev_err(dev, "check hw: iface: bad serprog version: expected %hu, got %hu\n",
+					SERPROG_IFACE_VERSION, iface);
+			ret = -ENODEV;
+		}
+	}
+	if (rbuf) kfree(rbuf);
+	if (ret) return ret;
+
+	dev_dbg(dev, "check hw: cmdmap");
+	wbuf[0] = DMJ_SPI_CMD_Q_CMDMAP;
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "check hw: cmdmap", true, 33, 33, rbuf);
+
+	if (!ret) {
+		memcpy(dmjs->cmdmap, &rbuf[1], 32);
+	}
+	if (rbuf) kfree(rbuf);
+	if (ret) return ret;
+
+	for (i = 0; i < sizeof(reqd_cmds)/sizeof(*reqd_cmds); ++i) {
+		if (!has_cmd(dmjs, reqd_cmds[i])) {
+			dev_err(dev, "device does not have required serprog command %02x\n", reqd_cmds[i]);
+			ret = -ENODEV;
+		}
+	}
+
+	if (has_cmd(dmjs, DMJ_SPI_CMD_Q_PGMNAME)) {
+		dev_dbg(dev, "check hw: pgmname");
+		wbuf[0] = DMJ_SPI_CMD_Q_PGMNAME;
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "check hw: pgmname", true, 17, 17, rbuf);
+
+		if (!ret) {
+			rbuf[16] = 0;
+			dev_info(dev, "Serprog pgmname: '%s'\n", rbuf);
+		}
+		if (rbuf) kfree(rbuf);
+		if (ret) return ret;
+	}
+
+	if (has_cmd(dmjs, DMJ_SPI_CMD_Q_WRNMAXLEN)) {
+		dev_dbg(dev, "check hw: wrnmaxlen");
+		wbuf[0] = DMJ_SPI_CMD_Q_WRNMAXLEN;
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "check hw: wrnmaxlen", true, 4, 4, rbuf);
+
+		if (!ret) {
+			dmjs->wrnmaxlen = (uint32_t)rbuf[1] | ((uint32_t)rbuf[2] << 8) | ((uint32_t)rbuf[3] << 16);
+		}
+		if (rbuf) kfree(rbuf);
+		if (ret) return ret;
+	} else dmjs->rdnmaxlen = 512;
+	dev_info(dev, "  wrnmaxlen = 0x%x\n", dmjs->wrnmaxlen);
+
+	if (has_cmd(dmjs, DMJ_SPI_CMD_Q_RDNMAXLEN)) {
+		dev_dbg(dev, "check hw: rdnmaxlen");
+		wbuf[0] = DMJ_SPI_CMD_Q_RDNMAXLEN;
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				wbuf, sizeof(wbuf), (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "check hw: rdnmaxlen", true, 4, 4, rbuf);
+
+		if (!ret) {
+			dmjs->rdnmaxlen = (uint32_t)rbuf[1] | ((uint32_t)rbuf[2] << 8) | ((uint32_t)rbuf[3] << 16);
+		}
+		if (rbuf) kfree(rbuf);
+		if (ret) return ret;
+	} else dmjs->rdnmaxlen = 512;
+	dev_info(dev, "  rdnmaxlen = 0x%x\n", dmjs->rdnmaxlen);
+
+	return 0;
 }
 
-static int dmj_spi_do_read(struct dmj_spi *dmjs, void *data, size_t len)
+static int dmj_spi_do_read(struct dmj_spi *dmjs, void *data, size_t len, uint8_t bpw)
 {
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t *rbuf;
+	int ret, rlen;
+
+	if (len > INT_MAX-4) return -EINVAL;
+
 	if (has_cmd(dmjs, DMJ_SPI_CMD_SPI_READ)) {
-		/* TODO: do SPI_READ */
+		dev_dbg(dev, "do spi read len=0x%zx\n", len);
+
+		dmjs->txbuf[0] = DMJ_SPI_CMD_SPI_READ;
+		dmjs->txbuf[1] =  len        & 0xff;
+		dmjs->txbuf[2] = (len >>  8) & 0xff;
+		dmjs->txbuf[3] = (len >> 16) & 0xff;
+
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				dmjs->txbuf, 4, (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "do read", true, (int)len+1, (int)len+1, rbuf);
+
+		if (!ret) bufconv_from_le(data, &rbuf[1], len, bpw);
+
+		if (rbuf) kfree(rbuf);
+	} else if (has_cmd(dmjs, DMJ_SPI_CMD_SPIOP)) {
+		dev_dbg(dev, "do spiop read len=0x%zx\n", len);
+
+		dmjs->txbuf[0] = DMJ_SPI_CMD_SPIOP;
+		dmjs->txbuf[1] = 0;
+		dmjs->txbuf[2] = 0;
+		dmjs->txbuf[3] = 0;
+		dmjs->txbuf[4] =  len        & 0xff;
+		dmjs->txbuf[5] = (len >>  8) & 0xff;
+		dmjs->txbuf[6] = (len >> 16) & 0xff;
+
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				dmjs->txbuf, 7, (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "do spiop read", true, (int)len+1, (int)len+1, rbuf);
+
+		if (!ret) bufconv_from_le(data, &rbuf[1], len, bpw);
+
+		if (rbuf) kfree(rbuf);
+	} else if (has_cmd(dmjs, DMJ_SPI_CMD_SPI_RDWR)) {
+		dev_dbg(dev, "do rdwr read len=0x%zx\n", len);
+
+		dmjs->txbuf[0] = DMJ_SPI_CMD_SPI_RDWR;
+		dmjs->txbuf[1] =  len        & 0xff;
+		dmjs->txbuf[2] = (len >>  8) & 0xff;
+		dmjs->txbuf[3] = (len >> 16) & 0xff;
+
+		/* we need to fill the buffer with stuff bits to control the data
+		 * that will get sent over the full duplex line. 0 is the default used
+		 * in most places apparently? */
+		memset(&dmjs->txbuf[4], 0, len);
+
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				dmjs->txbuf, (int)len+4, (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "do rdwr read", true, (int)len+1, (int)len+1, rbuf);
+
+		if (!ret) bufconv_from_le(data, &rbuf[1], len, bpw);
+
+		if (rbuf) kfree(rbuf);
 	} else {
-		/* TODO: do SPIOP */
+		return -EXDEV;
 	}
+
+	return 0;
 }
-static int dmj_spi_do_write(struct dmj_spi *dmjs, const void *data, size_t len)
+static int dmj_spi_do_write(struct dmj_spi *dmjs, const void *data, size_t len, uint8_t bpw)
 {
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t *rbuf;
+	int ret, rlen;
+
+	if (len > INT_MAX-7) return -EINVAL;
+
 	if (has_cmd(dmjs, DMJ_SPI_CMD_SPI_WRITE)) {
-		/* TODO: do SPI_WRITE */
+		dev_dbg(dev, "do spi write len=0x%zx\n", len);
+
+		dmjs->txbuf[0] = DMJ_SPI_CMD_SPI_WRITE;
+		dmjs->txbuf[1] =  len        & 0xff;
+		dmjs->txbuf[2] = (len >>  8) & 0xff;
+		dmjs->txbuf[3] = (len >> 16) & 0xff;
+
+		bufconv_to_le(&dmjs->txbuf[4], data, len, bpw);
+
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				dmjs->txbuf, (int)len+4, (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "do write", true, 1, 1, rbuf);
+
+		if (rbuf) kfree(rbuf);
+	} else if (has_cmd(dmjs, DMJ_SPI_CMD_SPIOP)) {
+		dev_dbg(dev, "do spiop write len=0x%zx\n", len);
+
+		dmjs->txbuf[0] = DMJ_SPI_CMD_SPIOP;
+		dmjs->txbuf[1] =  len        & 0xff;
+		dmjs->txbuf[2] = (len >>  8) & 0xff;
+		dmjs->txbuf[3] = (len >> 16) & 0xff;
+		dmjs->txbuf[4] = 0;
+		dmjs->txbuf[5] = 0;
+		dmjs->txbuf[6] = 0;
+
+		bufconv_to_le(&dmjs->txbuf[7], data, len, bpw);
+
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				dmjs->txbuf, (int)len+7, (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "do spiop write", true, 1, 1, rbuf);
+
+		if (rbuf) kfree(rbuf);
+	} else if (has_cmd(dmjs, DMJ_SPI_CMD_SPI_RDWR)) {
+		dev_dbg(dev, "do rdwr write len=0x%zx\n", len);
+
+		dmjs->txbuf[0] = DMJ_SPI_CMD_SPI_RDWR;
+		dmjs->txbuf[1] =  len        & 0xff;
+		dmjs->txbuf[2] = (len >>  8) & 0xff;
+		dmjs->txbuf[3] = (len >> 16) & 0xff;
+
+		bufconv_to_le(&dmjs->txbuf[4], data, len, bpw);
+
+		ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+				dmjs->txbuf, (int)len+4, (void**)&rbuf, &rlen);
+		ret = dmj_check_retval_sp(ret, rlen, dev, "do rdwr write", true, (int)len+1, (int)len+1, rbuf);
+		/* we just don't look at the returned bytes in this case */
+		if (rbuf) kfree(rbuf);
 	} else {
-		/* TODO: do SPIOP */
+		return -EXDEV;
 	}
+
+	return 0;
 }
 /* should only be called if it already has the cmd anyway (cf. spi_controller->flags) */
-static int dmj_spi_do_rdwr(struct dmj_spi *dmjs, void *rdata, const void *wdata, size_t len);
+static int dmj_spi_do_rdwr(struct dmj_spi *dmjs, void *rdata, const void *wdata, size_t len, uint8_t bpw)
+{
+	struct device *dev = &dmjs->pdev->dev;
+	uint8_t *rbuf;
+	int ret, rlen;
+
+	if (len > INT_MAX-4) return -EINVAL;
+	if (!has_cmd(dmjs, DMJ_SPI_CMD_SPI_RDWR)) return -EXDEV;
+
+	dev_dbg(dev, "do rdwr len=0x%zx\n", len);
+
+	dmjs->txbuf[0] = DMJ_SPI_CMD_SPI_RDWR;
+	dmjs->txbuf[1] =  len        & 0xff;
+	dmjs->txbuf[2] = (len >>  8) & 0xff;
+	dmjs->txbuf[3] = (len >> 16) & 0xff;
+
+	bufconv_to_le(&dmjs->txbuf[4], wdata, len, bpw);
+
+	ret = dmj_transfer(dmjs->pdev, DMJ_CMD_MODE1_SPI, DMJ_XFER_FLAGS_PARSE_RESP,
+			dmjs->txbuf, (int)len+4, (void**)&rbuf, &rlen);
+	ret = dmj_check_retval_sp(ret, rlen, dev, "do rdwr", true, (int)len+1, -1, rbuf);
+
+	if (!ret) bufconv_from_le(rdata, &rbuf[1], len, bpw);
+
+	if (rbuf) kfree(rbuf);
+
+	return ret;
+}
 
 static int dmj_spi_prepare_message(struct spi_controller *spictl, struct spi_message *msg)
 {
 	struct dmj_spi *dmjs = spi_controller_get_devdata(spictl);
-	struct spi_device *spidev = message->spi;
+	struct spi_device *spidev = msg->spi;
 	struct device *dev = &spidev->dev;
 	int ret;
 
-	ret = dmj_spi_set_flags(dmjs, spidev->chip_select, kernmode_to_flags(spidev->mode));
+	ret = dmj_spi_set_flags(dmjs, spidev->chip_select,
+			kernmode_to_flags(dmjs->caps.flgcaps, spidev->mode));
 	if (ret < 0) {
 		dev_err(dev, "Failed to set SPI flags\n");
 		return ret;
@@ -316,26 +723,26 @@ static int dmj_spi_prepare_message(struct spi_controller *spictl, struct spi_mes
 
 	return ret;
 }
-static int dmj_spi_set_cs(struct spi_device *spidev, bool enable)
+static void dmj_spi_set_cs(struct spi_device *spidev, bool enable)
 {
+	struct spi_controller *spictl = spidev->controller;
 	struct dmj_spi *dmjs = spi_controller_get_devdata(spictl);
-	struct spi_device *spidev = message->spi;
 	struct device *dev = &spidev->dev;
 	int ret;
 
 	ret = dmj_spi_csmask_set_one(dmjs, spidev->chip_select);
 	if (ret < 0) {
 		dev_err(dev, "Failed to set CS mask\n");
-		return ret;
+		return;
 	}
 
 	ret = dmj_spi_cs_set(dmjs, spidev->chip_select, enable);
 	if (ret < 0) {
 		dev_err(dev, "Failed to set chip select line\n");
-		return ret;
+		return;
 	}
 
-	return 0;
+	/*return 0;*/
 }
 static int dmj_spi_transfer_one(struct spi_controller *spictl, struct spi_device *spidev, struct spi_transfer *xfer)
 {
@@ -350,13 +757,12 @@ static int dmj_spi_transfer_one(struct spi_controller *spictl, struct spi_device
 		return ret;
 	}
 
-	ret = dmj_spi_set_bpw(dmjs, spidev->chip_select, xfer->bpw);
+	ret = dmj_spi_set_bpw(dmjs, spidev->chip_select, xfer->bits_per_word);
 	if (ret < 0) {
 		dev_err(dev, "Failed to set SPI bits-per-word to %d\n", xfer->bits_per_word);
 		return ret;
 	}
 
-	cksize;
 	if (xfer->tx_buf && xfer->rx_buf) {
 		cksize = dmjs->wrnmaxlen;
 		if (cksize > dmjs->rdnmaxlen) cksize = dmjs->rdnmaxlen;
@@ -371,14 +777,17 @@ static int dmj_spi_transfer_one(struct spi_controller *spictl, struct spi_device
 		if (todo < cksize) cksize = todo;
 
 		if (xfer->tx_buf && xfer->rx_buf) {
-			ret = dmj_spi_do_rdwr(dmjs, xfer->rx_buf + off, xfer->tx_buf + off, cksize);
+			ret = dmj_spi_do_rdwr(dmjs, xfer->rx_buf + off, xfer->tx_buf + off, cksize, xfer->bits_per_word);
 		} else if (xfer->tx_buf) {
-			ret = dmj_spi_do_write(dmjs, xfer->tx_buf + off, cksize);
+			ret = dmj_spi_do_write(dmjs, xfer->tx_buf + off, cksize, xfer->bits_per_word);
 		} else /*if (xfer->rx_buf)*/ {
-			ret = dmj_spi_do_read(dmjs, xfer->rx_Buf + off, cksize);
+			ret = dmj_spi_do_read(dmjs, xfer->rx_buf + off, cksize, xfer->bits_per_word);
 		}
 
-		if (ret < 0) return ret;
+		if (ret < 0) {
+			dev_err(dev, "SPI transfer failed! %d\n", ret);
+			return ret;
+		}
 
 		todo -= cksize;
 		off  += cksize;
@@ -392,12 +801,12 @@ static int dmj_spi_probe(struct platform_device *pdev)
 	struct spi_controller *spictl;
 	struct dmj_spi *dmjs;
 	struct device *dev = &pdev->dev;
-	int ret;
+	int ret, i;
 
-	controller = spi_alloc_controller(dev, sizeof(*dmjs));
-	if (!controller) return -ENOMEM;
+	spictl = spi_alloc_master(dev, sizeof(*dmjs));
+	if (!spictl ) return -ENOMEM;
 
-	platform_set_drvdata(pdev, controller);
+	platform_set_drvdata(pdev, spictl);
 
 	dmjs = spi_controller_get_devdata(spictl);
 
@@ -416,6 +825,13 @@ static int dmj_spi_probe(struct platform_device *pdev)
 	ret = dmj_spi_check_hw(dmjs);
 	if (ret < 0) {
 		dev_err(dev, "Hardware capabilities lacking\n");
+		goto err_free_ctl;
+	}
+
+	dmjs->txbuf = devm_kmalloc(&pdev->dev, dmjs->wrnmaxlen + 0x10, GFP_KERNEL);
+	if (!dmjs->txbuf) {
+		ret = -ENOMEM;
+		dev_err(dev, "No memory left for TX buffer of length 0x%x\n", dmjs->wrnmaxlen);
 		goto err_free_ctl;
 	}
 
@@ -440,10 +856,10 @@ static int dmj_spi_probe(struct platform_device *pdev)
 	if (!has_cmd(dmjs, DMJ_SPI_CMD_SPI_RDWR))
 		spictl->flags |= SPI_CONTROLLER_HALF_DUPLEX;
 
-	pm_runtime_set_autosuspend_delay(dev, DMJ_RPM_AUTOSUSPEND_TIMEOUT);
+	pm_runtime_set_autosuspend_delay(dev, DMJ_PINST_AUTOSUSPEND_TIMEOUT);
 	pm_runtime_use_autosuspend(dev);
 	pm_runtime_set_active(dev);
-	pm_runtime_set_enable(dev);
+	pm_runtime_enable(dev);
 
 	ret = devm_spi_register_controller(dev, spictl);
 	if (ret < 0) {
