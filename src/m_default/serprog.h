@@ -71,6 +71,41 @@ enum serprog_caps {
 
 #define SERPROG_IFACE_VERSION 0x0001
 
+/*
+It’s easy to be confused here, and the vendor documentation you’ll find isn’t
+necessarily helpful. The four modes combine two mode bits:
+
+        CPOL indicates the initial clock polarity. CPOL=0 means the clock
+        starts low, so the first (leading) edge is rising, and the second
+        (trailing) edge is falling. CPOL=1 means the clock starts high, so the
+        first (leading) edge is falling.
+
+        CPHA indicates the clock phase used to sample data; CPHA=0 says sample
+        on the leading edge, CPHA=1 means the trailing edge.
+
+        Since the signal needs to stablize before it’s sampled, CPHA=0 implies
+        that its data is written half a clock before the first clock edge. The
+        chipselect may have made it become available.
+
+Chip specs won’t always say “uses SPI mode X” in as many words, but their
+timing diagrams will make the CPOL and CPHA modes clear.
+
+In the SPI mode number, CPOL is the high order bit and CPHA is the low order
+bit. So when a chip’s timing diagram shows the clock starting low (CPOL=0) and
+data stabilized for sampling during the trailing clock edge (CPHA=1), that’s
+SPI mode 1.
+
+Note that the clock mode is relevant as soon as the chipselect goes active. So
+the master must set the clock to inactive before selecting a slave, and the
+slave can tell the chosen polarity by sampling the clock level when its select
+line goes active. That’s why many devices support for example both modes 0 and
+3: they don’t care about polarity, and always clock data in/out on rising clock
+edges.
+
+
+            - Linux kernel docs
+*/
+
 #ifdef DBOARD_HAS_SPI
 /* functions to be implemented by the BSP */
 uint32_t /*freq_applied*/ sp_spi_set_freq(uint32_t freq_wanted);

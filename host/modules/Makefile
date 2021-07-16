@@ -1,5 +1,5 @@
 
-obj-m  := dmj.o dmj-char.o i2c-dmj.o spi-dmj.c
+obj-m  := dmj.o dmj-char.o i2c-dmj.o #spi-dmj.c
 KDIR   := /lib/modules/$(shell uname -r)/build
 PWD    := $(shell pwd)
 
