@@ -224,7 +224,7 @@ static int dmj_i2c_check_hw(struct platform_device *pdev)
 	curmode = buf[0];
 	kfree(buf); buf = NULL;
 	if (curmode != 0x1) {
-		dev_err(dev, "device must be in mode 1 for ICD to work, but it is in mode %d\n", curmode);
+		dev_err(dev, "device must be in mode 1 for I2C to work, but it is in mode %d\n", curmode);
 		ret = -EIO;
 		goto out;
 	}

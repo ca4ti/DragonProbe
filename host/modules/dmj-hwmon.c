@@ -43,6 +43,7 @@ static umode_t dmj_hwmon_is_visible(const void *data, enum hwmon_sensor_types ty
 		uint32_t attr, int ch)
 {
 	switch (attr) {
+	case hwmon_temp_type:
 	case hwmon_temp_input:
 	case hwmon_temp_min:
 	case hwmon_temp_max:
@@ -112,18 +113,76 @@ static const struct hwmon_chip_info dmj_chip_info = {
 	.info = dmj_hwmon_info
 };
 
+static int dmj_hwmon_check_hw(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	uint16_t m1ver;
+	uint8_t curmode, m1feat;
+	const int ver_min = 0x0010, ver_max = 0x0010;
+	int ret = 0, len;
+	uint8_t *buf = NULL;
+
+	ret = dmj_transfer(pdev, DMJ_CMD_CFG_GET_CUR_MODE,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dmj_check_retval(ret, len, dev, "hwmon test 1", true, sizeof(curmode), sizeof(curmode));
+	if (ret < 0 || !buf) goto out;
+
+	curmode = buf[0];
+	kfree(buf); buf = NULL;
+	if (curmode != 0x1) {
+		dev_err(dev, "device must be in mode 1 for hwmon to work, but it is in mode %d\n", curmode);
+		ret = -EIO;
+		goto out;
+	}
+
+	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_VERSION,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dmj_check_retval(ret, len, dev, "hwmon test 2", true, sizeof(m1ver), sizeof(m1ver));
+	if (ret < 0 || !buf) goto out;
+
+	m1ver = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+	kfree(buf); buf = NULL;
+	if (m1ver > ver_max || m1ver < ver_min) {
+		dev_err(dev, "bad mode 1 version %04x on device, must be between %04x and %04x\n",
+				m1ver, ver_min, ver_max);
+		ret = -EIO;
+		goto out;
+	}
+
+	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_FEATURES,
+			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dmj_check_retval(ret, len, dev, "hwmon test 3", true, sizeof(m1feat), sizeof(m1feat));
+	if (ret < 0 || !buf) goto out;
+	m1feat = buf[0];
+	kfree(buf); buf = NULL;
+	if (!(m1feat & DMJ_FEATURE_MODE1_I2C)) {
+		dev_err(dev, "device's mode 1 does not support hwmon tempsensor\n");
+		ret = -EIO;
+		goto out;
+	}
+
+	ret = 0;
+
+out:
+	return ret;
+}
+
 static int dmj_hwmon_probe(struct platform_device *pdev)
 {
 	struct dmj_hwmon *dmjh;
 	struct device *dev = &pdev->dev;
 	int ret;
 
+	ret = dmj_hwmon_check_hw(pdev);
+	if (ret) {
+		dev_err(dev, "hw check failed: %d\n", ret);
+		return -ENODEV;
+	}
+
 	dmjh = devm_kzalloc(dev, sizeof(*dmjh), GFP_KERNEL);
 	if (!dmjh) return -ENOMEM;
 
 	dmjh->pdev = pdev;
-
-	/* TODO: check usb stuff? (mode1, tempsensor feature) */
 
 	platform_set_drvdata(pdev, dmjh);
 

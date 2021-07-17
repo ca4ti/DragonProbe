@@ -118,6 +118,8 @@ struct dmj_spi {
 	uint8_t cmdmap[32];
 
 	spinlock_t csmap_lock;
+
+	struct spi_board_info binfo[8];
 };
 
 static int dmj_check_retval_sp(int ret, int len, struct device *dev,
@@ -168,6 +170,19 @@ static int devcaps_to_kernmode(uint16_t caps)
 	if (caps & DMJ_SPI_S_CAP_3WIRE) ret |= SPI_3WIRE;
 
 	return ret;
+}
+static void caps_to_binfo(struct dmj_spi *dmjs, int busnum)
+{
+	int i;
+
+	for (i = 0; i < dmjs->caps.num_cs; ++i) {
+		snprintf(dmjs->binfo[i].modalias, SPI_NAME_SIZE, "spidev");
+		dmjs->binfo[i].controller_data = dmjs;
+		dmjs->binfo[i].max_speed_hz = dmjs->caps.freq_max;
+		dmjs->binfo[i].bus_num = busnum;
+		dmjs->binfo[i].chip_select = i;
+		dmjs->binfo[i].mode = 0; /* shrug */
+	}
 }
 
 static void bufconv_to_le(void *dst, const void *src, size_t len_bytes, uint8_t bpw)
@@ -865,6 +880,15 @@ static int dmj_spi_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(dev, "Failed to register SPI controller\n");
 		goto err_dereg;
+	}
+
+	dev_info(dev, "SPI bus number is %d\n", spictl->bus_num);
+
+	caps_to_binfo(dmjs, spictl->bus_num);
+	for (i = 0; i < dmjs->caps.num_cs; ++i) {
+		if (!spi_new_device(spictl, &dmjs->binfo[i])) {
+			dev_warn(dev, "failed to create %s device %d\n", dmjs->binfo[i].modalias, i);
+		}
 	}
 
 	return dmj_spi_set_pinstate(dmjs, true);
