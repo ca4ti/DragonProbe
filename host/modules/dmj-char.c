@@ -241,4 +241,3 @@ MODULE_AUTHOR("haskal <haskal@awoo.systems>");
 MODULE_DESCRIPTION("Character device for the " HARDWARE_NAME " USB multitool");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:dmj-char");
-

@@ -503,7 +503,7 @@ static int dmj_spi_check_hw(struct dmj_spi *dmjs)
 
 		if (!ret) {
 			rbuf[16] = 0;
-			dev_info(dev, "Serprog pgmname: '%s'\n", rbuf);
+			dev_info(dev, "Serprog pgmname: '%s'\n", &rbuf[1]);
 		}
 		if (rbuf) kfree(rbuf);
 		if (ret) return ret;

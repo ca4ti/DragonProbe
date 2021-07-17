@@ -436,6 +436,9 @@ static const struct mfd_cell dmj_mfd_spi[] = {
 static const struct mfd_cell dmj_mfd_i2c[] = {
 	{ .name = "dmj-i2c" },
 };
+static const struct mfd_cell dmj_mfd_hwmon[] = {
+	{ .name = "dmj-hwmon" },
+};
 
 /* USB device control */
 
@@ -507,7 +510,11 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 			}
 		}
 		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_TEMPSENSOR) {
-			// TODO: add tempsensor MFD
+			ret = mfd_add_hotplug_devices(dev, dmj_mfd_hwmon, ARRAY_SIZE(dmj_mfd_hwmon));
+			if (ret) {
+				dev_err(dev, "failed to add MFD hwmon devices\n");
+				goto out_free;
+			}
 		}
 	}
 
@@ -577,3 +584,6 @@ MODULE_DESCRIPTION("Core driver for the " HARDWARE_NAME " USB multitool");
 MODULE_LICENSE("GPL v2");
 
 MODULE_SOFTDEP("post: dmj-char");
+MODULE_SOFTDEP("post: i2c-dmj");
+MODULE_SOFTDEP("post: spi-dmj");
+MODULE_SOFTDEP("post: dmj-hwmon");
