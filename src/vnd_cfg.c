@@ -5,6 +5,7 @@
 #include <string.h>
 #include <tusb.h>
 
+#include "info.h"
 #include "mode.h"
 #include "vnd_cfg.h"
 

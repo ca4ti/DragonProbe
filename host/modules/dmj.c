@@ -430,6 +430,9 @@ static int dmj_hw_init(struct dmj_dev *dmj)
 static const struct mfd_cell dmj_mfd_char[] = {
 	{ .name = "dmj-char" },
 };
+static const struct mfd_cell dmj_mfd_spi[] = {
+	{ .name = "dmj-spi" },
+};
 static const struct mfd_cell dmj_mfd_i2c[] = {
 	{ .name = "dmj-i2c" },
 };
@@ -490,7 +493,11 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 		}
 
 		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_SPI) {
-			// TODO: add SPI MFD
+			ret = mfd_add_hotplug_devices(dev, dmj_mfd_spi, ARRAY_SIZE(dmj_mfd_spi));
+			if (ret) {
+				dev_err(dev, "failed to add MFD SPI devices\n");
+				goto out_free;
+			}
 		}
 		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_I2C) {
 			ret = mfd_add_hotplug_devices(dev, dmj_mfd_i2c, ARRAY_SIZE(dmj_mfd_i2c));
