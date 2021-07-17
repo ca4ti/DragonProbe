@@ -24,6 +24,7 @@ static const uint8_t serprog_cmdmap[32] = {
     0,         // 20..27
     0,         // 28..2f
     0,         // 30..37
+    0,         // 38..3f
     0xff,      // cmd 40..47
     0,         // rest is 0
 };
@@ -350,7 +351,7 @@ static uint32_t vnd_flushpkt(uint8_t ud) {
     return 0;
 }
 void sp_spi_bulk_cmd(void) {
-    uint8_t cmd = read_byte_cdc();
+    uint8_t cmd = vnd_cfg_read_byte();
     handle_cmd(cmd, VND_N_CFG, vnd_cfg_read_byte, vnd_writepkt, vnd_flushpkt,
             vnd_cfg_write_resp);
 

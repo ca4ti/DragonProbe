@@ -295,7 +295,7 @@ static int dmj_spi_get_caps(struct dmj_spi *dmjs)
 		dmjs->caps.min_bpw = rbuf[12];
 		dmjs->caps.max_bpw = rbuf[13];
 
-		dev_dbg(dev, "got caps: freq=%d..%d, flgcaps=%04hx, bpw=%d..%d, num cs=%d\n",
+		dev_info(dev, "  capabilities: freq=%d..%d, flgcaps=%04hx, bpw=%d..%d, num cs=%d\n",
 			dmjs->caps.freq_min, dmjs->caps.freq_max, dmjs->caps.flgcaps,
 			dmjs->caps.min_bpw, dmjs->caps.max_bpw, dmjs->caps.num_cs);
 
