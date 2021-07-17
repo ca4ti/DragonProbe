@@ -61,8 +61,11 @@ static int dmj_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 	int ret, rlen;
 
 	switch (attr) {
+	case hwmon_temp_type:
+		*val = 1;
+		return 0;
 	case hwmon_temp_input:
-		subcmd = DMJ_TEMP_CMD_GET_ADDR;
+		subcmd = DMJ_TEMP_CMD_GET_TEMP;
 		break;
 	case hwmon_temp_min:
 		subcmd = DMJ_TEMP_CMD_GET_MIN;
@@ -95,7 +98,8 @@ static int dmj_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 }
 
 static const struct hwmon_channel_info *dmj_hwmon_info[] = {
-	HWMON_CHANNEL_INFO(temp, HWMON_T_INPUT | HWMON_T_MIN | HWMON_T_MAX | HWMON_T_CRIT),
+	HWMON_CHANNEL_INFO(temp, HWMON_T_TYPE | HWMON_T_INPUT | HWMON_T_MIN |
+	                         HWMON_T_MAX | HWMON_T_CRIT),
 	NULL
 };
 static const struct hwmon_ops dmj_hwmon_ops = {
