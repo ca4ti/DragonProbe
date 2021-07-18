@@ -231,7 +231,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 
 - [ ] A name
 - [ ] A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf
-- [ ] More Pico SDK meta/buildinfo
+- [x] More Pico SDK meta/buildinfo
 - [x] CMSIS-DAP JTAG implementation
 - [x] Flashrom/SPI support using Serprog
   - Parallel ROM flashing support, too, by having the device switch into a
@@ -275,7 +275,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://github.com/Xilinx/XilinxVirtualCable/
   - https://github.com/derekmulcahy/xvcpi
   - OpenOCD as XVC client??
-- [ ] SUMP logic analyzer mode?
+- [x] SUMP logic analyzer mode?
   - see also [this](https://github.com/perexg/picoprobe-sump)
 - [ ] FT2232 emulation mode?
   - watch out, still need a vnd cfg interface! libftdi expects the following stuff: (TODO: acquire detailed protocol description)

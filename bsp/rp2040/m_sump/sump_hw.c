@@ -6,6 +6,7 @@
 #include <hardware/pwm.h>
 #include <hardware/structs/bus_ctrl.h>
 #include <hardware/sync.h>
+#include <pico/binary_info.h>
 #include <pico/platform.h>
 #include <pico/stdlib.h>
 #include <stdio.h>
@@ -328,6 +329,10 @@ void sump_hw_init(void) {
     irq_set_enabled(SAMPLING_DMA_IRQ, false);
     irq_set_exclusive_handler(SAMPLING_DMA_IRQ, sump_hw_dma_irq_handler);
     sump_dma_set_irq_channel_mask_enabled(SUMP_DMA_MASK, true);
+
+    /*bi_decl(bi_pin_mask_with_name(SAMPLING_GPIO_MASK, "SUMP logic analyzer input"));
+    bi_decl(bi_1pin_with_name(SAMPLING_GPIO_TEST, "SUMP logic analyzer: test PWM"));*/
+    bi_decl(bi_program_feature("Mode 4: SUMP"));
 }
 
 void sump_hw_stop(void) {

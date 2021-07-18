@@ -75,3 +75,11 @@ void cdc_uart_set_hwflow(bool enable) { uart_set_hw_flow(PINOUT_UART_INTERFACE, 
 
 void cdc_uart_set_baudrate(uint32_t brate) { uart_init(PINOUT_UART_INTERFACE, brate); }
 
+// idk where to put this otherwise
+
+bi_decl(bi_program_feature("Mode 1: UART"));
+bi_decl(bi_program_feature("Mode 1: CMSIS-DAP"));
+bi_decl(bi_program_feature("Mode 1: SPI"));
+bi_decl(bi_program_feature("Mode 1: I2C"));
+bi_decl(bi_program_feature("Mode 1: temperature sensor"));
+
