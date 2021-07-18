@@ -87,25 +87,24 @@ epout.write(b'\x12') # get mode1 features
 print("stat=%d"%stat)
 print(res)
 
-print("echo time!")
-epout.write(b'\x14\x00\x42') # I2C echo!
+epout.write(b'\x40') # get mode4 name
 (stat, res) = rdresp(epin)
 print("stat=%d"%stat)
 print(res)
 
-epout.write(b'\x1f\x14\x00\x43')
+epout.write(b'\x41') # get mode4 version
 (stat, res) = rdresp(epin)
 print("stat=%d"%stat)
 print(res)
 
-epout.write(b'\x14\x00\x44') # I2C echo!
+epout.write(b'\x42') # get mode4 features
 (stat, res) = rdresp(epin)
 print("stat=%d"%stat)
 print(res)
 
 ### ATTEMPT A MODESET ###
 
-#epout.write(b'\x03\x02') # set cur mode
-#print('[%s]'%(', '.join(hex(x) for x in epin.read(3)))) # result: status, payload len, mode
+epout.write(b'\x03\x04') # set cur mode
+print('[%s]'%(', '.join(hex(x) for x in epin.read(3)))) # result: status, payload len, mode
 
 

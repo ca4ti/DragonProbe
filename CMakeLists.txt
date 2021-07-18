@@ -72,11 +72,13 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/cdc_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/tempsensor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/vnd_i2ctinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/cdc_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/spi_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
-# ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default2/0def.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_sump/sump_hw.c
 )
 if(USE_USBCDC_FOR_STDIO)
   target_sources(${PROJECT} PUBLIC
@@ -100,7 +102,8 @@ add_custom_target(fix_db ALL WORKING_DIRECTORY ${OUTPUT_DIR}
 
 if(FAMILY STREQUAL "rp2040")
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
-    pico_fix_rp2040_usb_device_enumeration hardware_i2c hardware_adc
+    hardware_i2c hardware_adc hardware_pio hardware_dma hardware_pwm
+    pico_fix_rp2040_usb_device_enumeration
     tinyusb_device tinyusb_board tinyusb_additions)
 
   if(USE_USBCDC_FOR_STDIO)

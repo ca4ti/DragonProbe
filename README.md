@@ -231,6 +231,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 
 - [ ] A name
 - [ ] A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf
+- [ ] More Pico SDK meta/buildinfo
 - [x] CMSIS-DAP JTAG implementation
 - [x] Flashrom/SPI support using Serprog
   - Parallel ROM flashing support, too, by having the device switch into a
@@ -258,6 +259,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - [x] A proper interface for sending commands etc. instead of shoehorning it
       into Serprog.
   - Can probably be included in the "Better USB interface stuff".
+- [ ] make modes persistent?
 - [ ] JTAG pinout detector
   - https://github.com/cyphunk/JTAGenum
   - https://github.com/travisgoodspeed/goodfet/blob/master/firmware/apps/jscan/jscan.c

@@ -1,0 +1,19 @@
+#ifndef BSP_SUMP_HW_PICO_H
+#define BSP_SUMP_HW_PICO_H
+
+#define SAMPLING_DIVIDER	4	// minimal sysclk sampling divider
+
+#define SAMPLING_GPIO_FIRST	6
+#define SAMPLING_GPIO_LAST	21
+
+#define SAMPLING_BITS		(SAMPLING_GPIO_LAST-SAMPLING_GPIO_FIRST+1)
+#define SAMPLING_BYTES		((SAMPLING_BITS+7)/8)
+
+#if PICO_NO_FLASH
+#define SUMP_MEMORY_SIZE	102400	// 100kB
+#else
+#define SUMP_MEMORY_SIZE	204800	// 200kB
+#endif
+#define SUMP_MAX_CHUNK_SIZE	4096
+
+#endif
