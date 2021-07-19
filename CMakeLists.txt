@@ -55,6 +55,7 @@ else()
 endif()
 
 target_sources(${PROJECT} PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/no_malloc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/libco.S
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
@@ -63,6 +64,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/modeset.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/thread.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tusb_plt.S
@@ -101,6 +103,7 @@ add_custom_target(fix_db ALL WORKING_DIRECTORY ${OUTPUT_DIR}
   COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/fix_clang_db.py")
 
 if(FAMILY STREQUAL "rp2040")
+  # NOTE: do NOT enable pico_runtime here, as it pulls in malloc!
   target_link_libraries(${PROJECT} pico_stdlib pico_unique_id hardware_spi
     hardware_i2c hardware_adc hardware_pio hardware_dma hardware_pwm
     pico_fix_rp2040_usb_device_enumeration

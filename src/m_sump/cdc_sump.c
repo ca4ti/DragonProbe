@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <tusb.h>
 
+#include "alloc.h"
 #include "info.h"
 #include "m_sump/bsp-feature.h"
 #include "m_sump/sump.h"
@@ -46,7 +47,7 @@
 #if (SUMP_MEMORY_SIZE % SUMP_MAX_CHUNK_SIZE) != 0
 #error "Invalid maximal chunk size!"
 #endif
-
+// TODO
 #if (SUMP_MEMORY_SIZE / SUMP_MAX_CHUNK_SIZE) < SUMP_DMA_CHANNELS
 #error "DMA buffer and DMA channels out of sync!"
 #endif
@@ -97,8 +98,12 @@ static struct _sump {
     // uint32_t dma_curr_idx;	// current DMA channel (index)
     uint32_t dma_pos;
     uint32_t next_count;
-    uint8_t  buffer[SUMP_MEMORY_SIZE];
+    //uint8_t  buffer[SUMP_MEMORY_SIZE];
 } sump;
+
+// not in the main sump struct, as the latter gets cleared every so often
+size_t sump_memory_size;
+uint8_t* sump_buffer;
 
 /* utility functions ======================================================= */
 
@@ -261,7 +266,7 @@ static int sump_capture_next(uint32_t pos) {
     }
 
     // waiting for the trigger samples
-    uint8_t* ptr = sump_analyze_trigger(sump.buffer + pos, sump.chunk_size);
+    uint8_t* ptr = sump_analyze_trigger(sump_buffer + pos, sump.chunk_size);
     if (ptr == NULL) {
         // call this routine again right after next chunk
         return sump.chunk_size;
@@ -271,8 +276,8 @@ static int sump_capture_next(uint32_t pos) {
 
     // calculate read start
     uint32_t tmp    = (sump.read_count - sump.delay_count) * sump.width;
-    pos             = ptr - sump.buffer;
-    sump.read_start = (pos - tmp) % SUMP_MEMORY_SIZE;
+    pos             = ptr - sump_buffer;
+    sump.read_start = (pos - tmp) % sump_memory_size;//SUMP_MEMORY_SIZE;
 
     // calculate the samples after trigger
     uint32_t delay_bytes = sump.delay_count * sump.width;
@@ -285,7 +290,7 @@ static int sump_capture_next(uint32_t pos) {
 }
 
 uint8_t* sump_capture_get_next_dest(uint32_t numch) {
-    return sump.buffer + (sump.dma_pos + numch * sump.chunk_size) % SUMP_MEMORY_SIZE;
+    return sump_buffer + (sump.dma_pos + numch * sump.chunk_size) % sump_memory_size;//SUMP_MEMORY_SIZE;
 }
 
 void sump_capture_callback_cancel(void) {
@@ -304,7 +309,7 @@ void sump_capture_callback(uint32_t ch, uint32_t numch) {
     // sump_irq_debug("%s(): next=0x%x\n", __func__, sump.next_count);
 
     sump.dma_pos += sump.chunk_size;
-    sump.dma_pos %= SUMP_MEMORY_SIZE;
+    sump.dma_pos %= sump_memory_size;//SUMP_MEMORY_SIZE;
 
     if (sump.state == SUMP_STATE_SAMPLING && sump.next_count >= sump.chunk_size &&
             sump.next_count < numch * sump.chunk_size) {
@@ -325,7 +330,7 @@ static void sump_xfer_start(uint8_t state) {
             sump.delay_count, sump.divider);
 
     uint32_t count = sump.read_count;
-    if (count > SUMP_MEMORY_SIZE) count = SUMP_MEMORY_SIZE;
+    if (count > sump_memory_size) count = sump_memory_size;
     sump.dma_count = count;
 
     if (sump.read_count <= sump.delay_count)
@@ -336,13 +341,13 @@ static void sump_xfer_start(uint8_t state) {
     sump.read_start = 0;
 
     picoprobe_debug("%s(): buffer = 0x%08x, dma_count=0x%08x next_count=0x%08x\n", __func__,
-            sump.buffer, sump.dma_count, sump.next_count);
+            sump_buffer, sump.dma_count, sump.next_count);
 
     // limit chunk size for slow sampling
     sump_set_chunk_size();
 
     /*sump.timestamp_start =*/sump_hw_capture_start(
-            sump.width, sump.flags, sump.chunk_size, sump.buffer);
+            sump.width, sump.flags, sump.chunk_size, sump_buffer);
 
     sump.state = state;
 }
@@ -359,7 +364,7 @@ static void sump_do_meta(void) {
     sump_hw_get_cpu_name(cpu);
     ptr    = sump_add_metas(ptr, SUMP_META_CPU_VERSION, cpu);
     ptr    = sump_add_meta4(ptr, SUMP_META_SAMPLE_RATE, sump_hw_get_sysclk() / SAMPLING_DIVIDER);
-    ptr    = sump_add_meta4(ptr, SUMP_META_SAMPLE_RAM, SUMP_MEMORY_SIZE);
+    ptr    = sump_add_meta4(ptr, SUMP_META_SAMPLE_RAM, sump_memory_size);
     ptr    = sump_add_meta1(ptr, SUMP_META_PROBES_B, SAMPLING_BITS);
     ptr    = sump_add_meta1(ptr, SUMP_META_PROTOCOL_B, 2);
     *ptr++ = SUMP_META_END;
@@ -636,13 +641,13 @@ static uint32_t sump_tx8(uint8_t* buf, uint32_t len) {
     uint32_t i;
     uint32_t count = sump.read_count;
     // picoprobe_debug("%s: count=%u, start=%u\n", __func__, count);
-    uint8_t* ptr   = sump.buffer + (sump.read_start + count) % SUMP_MEMORY_SIZE;
+    uint8_t* ptr   = sump_buffer + (sump.read_start + count) % sump_memory_size;//SUMP_MEMORY_SIZE;
 
     if (sump.flags & SUMP_FLAG1_ENABLE_RLE) {
         uint8_t b, rle_last = 0x80, rle_count = 0;
 
         for (i = 0; i + 1 < len && count > 0; count--) {
-            if (ptr == sump.buffer) ptr = sump.buffer + SUMP_MEMORY_SIZE;
+            if (ptr == sump_buffer) ptr = sump_buffer + sump_memory_size;//SUMP_MEMORY_SIZE;
 
             b = *(--ptr) & 0x7f;
 
@@ -668,7 +673,7 @@ static uint32_t sump_tx8(uint8_t* buf, uint32_t len) {
         }
     } else {
         for (i = 0; i < len && count > 0; i++, count--) {
-            if (ptr == sump.buffer) ptr = sump.buffer + SUMP_MEMORY_SIZE;
+            if (ptr == sump_buffer) ptr = sump_buffer + sump_memory_size;//SUMP_MEMORY_SIZE;
 
             *buf++ = *(--ptr);
         }
@@ -684,13 +689,13 @@ static uint32_t sump_tx16(uint8_t* buf, uint32_t len) {
     uint32_t          i;
     uint32_t          count = sump.read_count;
     // picoprobe_debug("%s: count=%u, start=%u\n", __func__, count, sump.read_count);
-    volatile uint8_t* ptr   = sump.buffer + (sump.read_start + count * 2) % SUMP_MEMORY_SIZE;
+    volatile uint8_t* ptr   = sump_buffer + (sump.read_start + count * 2) % sump_memory_size;//SUMP_MEMORY_SIZE;
 
     if (sump.flags & SUMP_FLAG1_ENABLE_RLE) {
         uint16_t rle_last = 0x8000, rle_count = 0;
 
         for (i = 0; i + 3 < len && count > 0; count--) {
-            if (ptr == sump.buffer) ptr = sump.buffer + SUMP_MEMORY_SIZE;
+            if (ptr == sump_buffer) ptr = sump_buffer + sump_memory_size;//SUMP_MEMORY_SIZE;
 
             ptr -= 2;
 
@@ -718,7 +723,7 @@ static uint32_t sump_tx16(uint8_t* buf, uint32_t len) {
         }
     } else {
         for (i = 0; i + 1 < len && count > 0; i += 2, count--) {
-            if (ptr == sump.buffer) ptr = sump.buffer + SUMP_MEMORY_SIZE;
+            if (ptr == sump_buffer) ptr = sump_buffer + sump_memory_size;//SUMP_MEMORY_SIZE;
 
             ptr -= 2;
             *((uint16_t*)buf) = *((uint16_t*)ptr);
@@ -762,6 +767,7 @@ static uint32_t sump_fill_tx(uint8_t* buf, uint32_t len) {
 
 static void sump_init_connect(void) {
     memset(&sump, 0, sizeof(sump));
+    memset(sump_buffer, 0, sump_memory_size);
     sump.width       = 1;
     sump.divider     = 1000;  // a safe value
     sump.read_count  = 256;
@@ -769,16 +775,19 @@ static void sump_init_connect(void) {
 }
 
 void cdc_sump_init(void) {
+    sump_buffer = m_alloc_all_remaining(SUMP_MAX_CHUNK_SIZE, 4, &sump_memory_size);
+
     sump_hw_init();
 
     sump_init_connect();
 
-    picoprobe_debug("%s(): memory buffer %u bytes\n", __func__, SUMP_MEMORY_SIZE);
+    picoprobe_debug("%s(): memory buffer %u bytes\n", __func__, sump_memory_size);
 }
 void cdc_sump_deinit(void) {
     sump_hw_deinit();
 
     memset(&sump, 0, sizeof(sump));
+    memset(sump_buffer, 0, sump_memory_size);
 }
 
 #define MAX_UART_PKT 64

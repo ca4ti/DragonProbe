@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "alloc.h"
 #include "mode.h"
 
 extern struct mode m_01_default, m_04_sump;
@@ -82,6 +83,8 @@ void modes_switch(uint8_t newmode) {
     }
 
     if (mode_current) mode_current->leave();
+    // wipe all used data
+    m_alloc_clear();
 
     // to force a reconfig from the device, we basically have to kill the USB
     // physical connection for a while
