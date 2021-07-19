@@ -6,6 +6,7 @@
 #include <hardware/pwm.h>
 #include <hardware/structs/bus_ctrl.h>
 #include <hardware/sync.h>
+#include <hardware/vreg.h>
 #include <pico/binary_info.h>
 #include <pico/platform.h>
 #include <pico/stdlib.h>
@@ -336,6 +337,10 @@ void sump_hw_init(void) {
 }
 
 void sump_hw_stop(void) {
+    // TODO: make this configurable
+    vreg_set_voltage(VREG_VOLTAGE_1_15);
+    set_sys_clock_khz(200000, true);
+
     // IRQ and PIO fast stop
     irq_set_enabled(SAMPLING_DMA_IRQ, false);
     pio_sm_set_enabled(SAMPLING_PIO, SAMPLING_PIO_SM, false);
@@ -355,6 +360,10 @@ void sump_hw_stop(void) {
 }
 
 void sump_hw_deinit(void) {
+    // TODO: make this configurable
+    set_sys_clock_khz(133333, false);
+    vreg_set_voltage(VREG_VOLTAGE_DEFAULT);
+
     sump_hw_stop();
 
     sump_dma_set_irq_channel_mask_enabled(SUMP_DMA_MASK, false);

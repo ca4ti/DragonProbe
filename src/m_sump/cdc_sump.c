@@ -44,13 +44,14 @@
 #error "Correct sampling width (8 or 16 bits)"
 #endif
 
-#if (SUMP_MEMORY_SIZE % SUMP_MAX_CHUNK_SIZE) != 0
+// TODO: runtime errors?
+/*#if (SUMP_MEMORY_SIZE % SUMP_MAX_CHUNK_SIZE) != 0
 #error "Invalid maximal chunk size!"
 #endif
-// TODO
+
 #if (SUMP_MEMORY_SIZE / SUMP_MAX_CHUNK_SIZE) < SUMP_DMA_CHANNELS
 #error "DMA buffer and DMA channels out of sync!"
-#endif
+#endif*/
 
 #define SUMP_STATE_CONFIG   0
 #define SUMP_STATE_INIT     1
