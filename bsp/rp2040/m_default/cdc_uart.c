@@ -71,9 +71,27 @@ void cdc_uart_task(void) {
     }
 }
 
-void cdc_uart_set_hwflow(bool enable) { uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable); }
+bool cdc_uart_set_hwflow(bool enable) {
+    uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
+    return true;
+}
 
-void cdc_uart_set_baudrate(uint32_t brate) { uart_init(PINOUT_UART_INTERFACE, brate); }
+uint32_t cdc_uart_set_coding(uint32_t brate,
+        uint8_t stop, uint8_t parity, uint8_t data) {
+    // tusb: parity: 0=none 1=odd  2=even 3=mark 4=space
+    // pîco: parity: 0=none 1=even 2=odd
+    int picopar = 0;
+    switch (parity) {
+        case 0: break;
+        case 1: picopar = 2; break;
+        case 2: picopar = 1; break;
+        default: picopar = -1; break;
+    }
+
+    if (picopar >= 0)
+        uart_set_format(PINOUT_UART_INTERFACE, data, stop, picopar);
+    return uart_set_baudrate(PINOUT_UART_INTERFACE, brate);
+}
 
 // idk where to put this otherwise
 

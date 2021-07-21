@@ -24,7 +24,8 @@
 enum m_default_cmds {
     mdef_cmd_spi = mode_cmd__specific,
     mdef_cmd_i2c,
-    mdef_cmd_tempsense
+    mdef_cmd_tempsense,
+    mdef_cmd_uart_flowcnt,
 };
 enum m_default_feature {
     mdef_feat_uart      = 1<<0,
@@ -146,6 +147,16 @@ static void handle_cmd_cb(uint8_t cmd) {
         tempsense_bulk_cmd();
 #else
         vnd_cfg_write_str(cfg_resp_illcmd, "temperature sensor not implemented on this device");
+#endif
+        break;
+    case mdef_cmd_uart_flowcnt:
+#ifdef DBOARD_HAS_UART
+        if (cdc_uart_set_hwflow(vnd_cfg_read_byte() != 0))
+            vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
+        else
+            vnd_cfg_write_str(cfg_resp_illcmd, "UART flow control setting not supported on this device");
+#else
+        vnd_cfg_write_str(cfg_resp_illcmd, "UART not implemented on this device");
 #endif
         break;
     default:
@@ -338,6 +349,27 @@ static void my_hid_set_report_cb(uint8_t instance, uint8_t report_id,
 }
 #endif
 
+#if CFG_TUD_CDC > 0
+static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
+    switch (itf) {
+#ifdef DBOARD_HAS_UART
+        case CDC_N_UART:
+            cdc_uart_set_coding(line_coding->bit_rate, line_coding->stop_bits,
+                    line_coding->parity, line_coding->data_bits);
+            break;
+#endif
+#ifdef DBOARD_HAS_SPI
+        case CDC_N_SERPROG:
+            break;
+#endif
+#ifdef USE_USBCDC_FOR_STDIO
+        case CDC_N_STDIO:
+            break;
+#endif
+    }
+}
+#endif
+
 #if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
 static bool my_vendor_control_xfer_cb(uint8_t rhport, uint8_t ep_addr,
         tusb_control_request_t const* req) {
@@ -366,6 +398,10 @@ struct mode m_01_default = {
 #endif
     .tud_hid_set_report_cb = my_hid_set_report_cb,
     .tud_hid_descriptor_report_cb = my_hid_descriptor_report_cb,
+#endif
+
+#if CFG_TUD_CDC > 0
+    .tud_cdc_line_coding_cb = my_cdc_line_coding_cb,
 #endif
 
 #if defined(DBOARD_HAS_I2C) && defined(MODE_ENABLE_I2CTINYUSB)
