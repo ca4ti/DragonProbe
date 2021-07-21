@@ -178,7 +178,7 @@ This information includes:
 #define TARGET_DEVICE_NAME   "Pico"          ///< String indicating the Target Device
 #endif
 
-#include "DAP.h"
+/*#include "DAP.h"*/
 
 /** Get Vendor ID string.
 \param str Pointer to buffer to store the string.
@@ -204,7 +204,11 @@ __STATIC_INLINE uint8_t DAP_GetProductString(char* str) {
 \param str Pointer to buffer to store the string.
 \return String length.
 */
-__STATIC_INLINE uint8_t DAP_GetSerNumString(char* str) { return get_unique_id_u8((uint8_t*)str); }
+__STATIC_INLINE uint8_t DAP_GetSerNumString(char* str) {
+    int len = get_unique_id_u8((uint8_t*)str);
+    str[len] = 0;
+    return len;
+}
 
 /** Get Target Device Vendor string.
 \param str Pointer to buffer to store the string (max 60 characters).
@@ -625,3 +629,4 @@ __STATIC_INLINE uint8_t RESET_TARGET(void) {
 ///@}
 
 #endif /* __DAP_CONFIG_H__ */
+

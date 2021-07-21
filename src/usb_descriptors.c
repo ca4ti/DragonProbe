@@ -103,8 +103,8 @@ static const uint8_t desc_configuration[] = {
 };
 static const char* string_desc_arr[] = {
     [STRID_LANGID] = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "BLAHAJ CTF",     // Manufacturer
-    [STRID_PRODUCT]      = "Dragnbus (RP2040 Pico)",  // Product
+    [STRID_MANUFACTURER] = INFO_MANUFACTURER,// Manufacturer
+    [STRID_PRODUCT]      = INFO_PRODUCT(INFO_BOARDNAME),  // Product
 
     [STRID_CONFIG]          = "Configuration descriptor",
     [STRID_IF_VND_CFG]      = "Device cfg/ctl interface",
