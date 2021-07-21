@@ -29,10 +29,10 @@ static void sump_thread_fn(void) {
 }
 #endif
 
-void stdio_usb_set_itf_num(int itf); // TODO: move to a header!
-
 static void enter_cb(void) {
+#ifdef USE_USBCDC_FOR_STDIO
     stdio_usb_set_itf_num(CDC_N_STDIO);
+#endif
     vnd_cfg_set_itf_num(VND_N_CFG);
 
 #ifdef DBOARD_HAS_SUMP
@@ -147,7 +147,9 @@ static const char* string_desc_arr[] = {
     // max string length check:  |||||||||||||||||||||||||||||||
     [STRID_IF_VND_CFG  ]      = "Device cfg/ctl interface",
     [STRID_IF_CDC_SUMP ]      = "SUMP LA CDC interface",
+#ifdef USE_USBCDC_FOR_STDIO
     [STRID_IF_CDC_STDIO]      = "stdio CDC interface (debug)",
+#endif
 };
 // clang-format on
 

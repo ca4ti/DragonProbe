@@ -108,7 +108,9 @@ static const char* string_desc_arr[] = {
 
     [STRID_CONFIG]          = "Configuration descriptor",
     [STRID_IF_VND_CFG]      = "Device cfg/ctl interface",
+#ifdef USE_USBCDC_FOR_STDIO
     [STRID_IF_CDC_STDIO]    = "stdio CDC interface (debug)",
+#endif
 };
 // clang-format on
 

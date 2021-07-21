@@ -8,16 +8,11 @@
 
 #include "mode.h"
 #include "thread.h"
+#include "usbstdio.h"
 #include "vnd_cfg.h"
 
 static cothread_t vndcfg_thread;
 static uint8_t    vndcfg_stack[THREAD_STACK_SIZE];
-
-// FIXME: move declaration elsewhere
-#ifdef USE_USBCDC_FOR_STDIO
-void stdio_usb_init(void);
-void stdio_usb_set_itf_num(int itf);
-#endif
 
 static void vndcfg_thread_fn(void) {
     vnd_cfg_init();

@@ -4,6 +4,7 @@
 
 #include "mode.h"
 #include "thread.h"
+#include "usbstdio.h"
 #include "vnd_cfg.h"
 
 #include "m_default/bsp-feature.h"
@@ -11,22 +12,14 @@
 /* CMSIS-DAP */
 #include "DAP_config.h" /* ARM code *assumes* this is included prior to DAP.h */
 #include "DAP.h"
-
-/* I2C-Tiny-USB */
+/* I2C */
 #include "m_default/i2ctinyusb.h"
-
 /* CDC UART */
 #include "m_default/cdc.h"
-
 /* CDC-Serprog */
 #include "m_default/serprog.h"
-
 /* temperature sensor */
 #include "m_default/tempsensor.h"
-
-// FIXME: this one doesn't work yet!!!!! (kernel usb device cfg fails)
-//        "usb 1-1: can't set config #1, error -32"
-/*#define MODE_ENABLE_I2CTINYUSB*/
 
 enum m_default_cmds {
     mdef_cmd_spi = mode_cmd__specific,
@@ -69,10 +62,10 @@ static void serprog_thread_fn(void) {
 }
 #endif
 
-void stdio_usb_set_itf_num(int itf); // TODO: move to a header!
-
 static void enter_cb(void) {
+#ifdef USE_USBCDC_FOR_STDIO
     stdio_usb_set_itf_num(CDC_N_STDIO);
+#endif
     vnd_cfg_set_itf_num(VND_N_CFG);
 
     // TODO: CMSISDAP?
@@ -306,7 +299,9 @@ static const char* string_desc_arr[] = {
     [STRID_IF_VND_I2CTINYUSB] = "I2C-Tiny-USB interface",
     [STRID_IF_CDC_UART]       = "UART CDC interface",
     [STRID_IF_CDC_SERPROG]    = "Serprog CDC interface",
+#ifdef USE_USBCDC_FOR_STDIO
     [STRID_IF_CDC_STDIO]      = "stdio CDC interface (debug)",
+#endif
 };
 // clang-format on
 
