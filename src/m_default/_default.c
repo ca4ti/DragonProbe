@@ -151,10 +151,16 @@ static void handle_cmd_cb(uint8_t cmd) {
         break;
     case mdef_cmd_uart_flowcnt:
 #ifdef DBOARD_HAS_UART
-        if (cdc_uart_set_hwflow(vnd_cfg_read_byte() != 0))
-            vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
-        else
-            vnd_cfg_write_str(cfg_resp_illcmd, "UART flow control setting not supported on this device");
+        resp = vnd_cfg_read_byte();
+        if (resp == 0xc3) {
+            resp = cdc_uart_get_hwflow() ? 1 : 0;
+            vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
+        } else {
+            if (cdc_uart_set_hwflow(resp != 0))
+                vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
+            else
+                vnd_cfg_write_str(cfg_resp_illcmd, "UART flow control setting not supported on this device");
+        }
 #else
         vnd_cfg_write_str(cfg_resp_illcmd, "UART not implemented on this device");
 #endif

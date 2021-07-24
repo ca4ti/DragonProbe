@@ -85,4 +85,7 @@ void sump_hw_capture_start(uint8_t width, int flags, uint32_t chunk_size, uint8_
 void sump_hw_capture_stop(void);
 void sump_hw_stop(void);
 
+uint8_t sump_hw_get_overclock(void);
+void sump_hw_set_overclock(uint8_t v);
+
 #endif

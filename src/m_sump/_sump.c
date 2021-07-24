@@ -11,7 +11,11 @@
 /* CDC SUMP */
 #include "m_sump/sump.h"
 
-enum m_default_feature {
+enum m_sump_cmds {
+    msump_cmd_getovclk = mode_cmd__specific,
+    msump_cmd_setovclk
+};
+enum m_sump_feature {
     msump_feat_sump      = 1<<0,
 };
 
@@ -62,6 +66,14 @@ static void handle_cmd_cb(uint8_t cmd) {
         resp |= msump_feat_sump;
 #endif
         vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
+        break;
+    case msump_cmd_getovclk:
+        resp = sump_hw_get_overclock();
+        vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
+        break;
+    case msump_cmd_setovclk:
+        sump_hw_set_overclock(vnd_cfg_read_byte());
+        vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
         break;
     default:
         vnd_cfg_write_strf(cfg_resp_illcmd, "unknown mode4 command %02x", cmd);

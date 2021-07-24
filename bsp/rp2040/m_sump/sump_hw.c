@@ -57,6 +57,8 @@ static uint32_t pio_prog_offset;
 static uint32_t dma_curr_idx = 0;
 static uint32_t oldprio;
 
+static bool overclock = false;
+
 uint32_t sump_hw_get_sysclk(void) { return clock_get_hz(clk_sys); }
 
 void sump_hw_get_cpu_name(char cpu[32]) {
@@ -302,6 +304,12 @@ void sump_hw_capture_stop(void) {
 }
 
 void sump_hw_init(void) {
+    // TODO: make this configurable
+    if (overclock) {
+        vreg_set_voltage(VREG_VOLTAGE_1_15);
+        set_sys_clock_khz(200000, true);
+    }
+
     // claim DMA channels
     dma_claim_mask(SUMP_DMA_MASK);
 
@@ -337,10 +345,6 @@ void sump_hw_init(void) {
 }
 
 void sump_hw_stop(void) {
-    // TODO: make this configurable
-    vreg_set_voltage(VREG_VOLTAGE_1_15);
-    set_sys_clock_khz(200000, true);
-
     // IRQ and PIO fast stop
     irq_set_enabled(SAMPLING_DMA_IRQ, false);
     pio_sm_set_enabled(SAMPLING_PIO, SAMPLING_PIO_SM, false);
@@ -360,7 +364,6 @@ void sump_hw_stop(void) {
 }
 
 void sump_hw_deinit(void) {
-    // TODO: make this configurable
     set_sys_clock_khz(133333, false);
     vreg_set_voltage(VREG_VOLTAGE_DEFAULT);
 
@@ -377,5 +380,21 @@ void sump_hw_deinit(void) {
     pio_sm_unclaim(SAMPLING_PIO, SAMPLING_PIO_SM);
 
     for (uint32_t i = SUMP_DMA_CH_FIRST; i <= SUMP_DMA_CH_LAST; ++i) dma_channel_unclaim(i);
+}
+
+uint8_t sump_hw_get_overclock(void) {
+    return overclock ? 1 : 0;
+}
+void sump_hw_set_overclock(uint8_t v) {
+    overclock = v != 0;
+
+    if (overclock) {
+        // TODO: make this configurable
+        vreg_set_voltage(VREG_VOLTAGE_1_15);
+        set_sys_clock_khz(200000, true);
+    } else {
+        set_sys_clock_khz(133333, false);
+        vreg_set_voltage(VREG_VOLTAGE_DEFAULT);
+    }
 }
 

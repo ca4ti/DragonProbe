@@ -35,11 +35,16 @@
 
 static uint8_t rx_buf[CFG_TUD_CDC_RX_BUFSIZE];
 static uint8_t tx_buf[CFG_TUD_CDC_TX_BUFSIZE];
+static bool hwflow = false;
+static int lc_brate = PINOUT_UART_BAUDRATE,
+           lc_data = 8, lc_parity = 0, lc_stop = 1;
 
 void cdc_uart_init(void) {
     gpio_set_function(PINOUT_UART_TX, GPIO_FUNC_UART);
     gpio_set_function(PINOUT_UART_RX, GPIO_FUNC_UART);
-    uart_init(PINOUT_UART_INTERFACE, PINOUT_UART_BAUDRATE);
+    uart_init(PINOUT_UART_INTERFACE, lc_brate/*PINOUT_UART_BAUDRATE*/);
+    uart_set_hw_flow(PINOUT_UART_INTERFACE, hwflow, hwflow);
+    uart_set_format(PINOUT_UART_INTERFACE, lc_data, lc_stop, lc_parity);
 
     bi_decl(bi_2pins_with_func(PINOUT_UART_TX, PINOUT_UART_RX, GPIO_FUNC_UART));
 }
@@ -71,7 +76,11 @@ void cdc_uart_task(void) {
     }
 }
 
+bool cdc_uart_get_hwflow(void) {
+    return hwflow;
+}
 bool cdc_uart_set_hwflow(bool enable) {
+    hwflow = enable;
     uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
     return true;
 }
