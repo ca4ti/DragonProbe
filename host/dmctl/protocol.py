@@ -230,7 +230,7 @@ class DmjDevice:
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "m3: jtag scan result", 5, 5)
 
-        return dict((pinassign[i], pl[i]) for i in range(len(pl)))
+        return { pinassign[i]: pl[i] for i in range(len(pl)) }
 
     def m3_jtagscan_start(self, min_pin: int, max_pin: int):
         cmd = b'\x32\xff\x00'
@@ -263,13 +263,11 @@ class DmjDevice:
         self.current_mode = self.get_mode()
         self.infotext = self.get_info_text()
 
-        self.mode_info = dict(
-            (
-                i,
-                ModeInfo(
-                    self.get_mode_name(i),
-                    self.get_mode_version(i),
-                    self.get_mode_features(i)
-                )
-            ) for i in available_modes)
+        self.mode_info = {
+            i: ModeInfo(
+                self.get_mode_name(i),
+                self.get_mode_version(i),
+                self.get_mode_features(i)
+            ) for i in available_modes
+        }
 
