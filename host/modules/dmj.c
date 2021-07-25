@@ -227,7 +227,10 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 		 * will error when going beyond!). also done in 64b chunks
 		 */
 
-		if (!rbufsize || *rbufsize <= 0) return 0;
+		if (!rbufsize || *rbufsize <= 0) {
+			//dev_warn(dev, "no rbuf\n");
+			return 0;
+		}
 
 		if (recvflags & DMJ_XFER_FLAGS_FILL_RECVBUF) {
 			tmpbuf = kmalloc(64, GFP_KERNEL);
@@ -265,7 +268,10 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 			ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
 					longbuf, *rbufsize, rbufsize, DMJ_USB_TIMEOUT);
 			if (ret < 0) goto err_freelong;
-			if (*rbufsize < 0) ret = -EREMOTEIO; goto err_freelong;
+			if (*rbufsize < 0) {
+				//dev_warn(dev, "remoteio\n");
+				ret = -EREMOTEIO; goto err_freelong;
+			}
 
 			ret = 0;
 			*rbuf = longbuf;
@@ -450,8 +456,10 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 	struct dmj_dev *dmj;
 	int ret, i;
 
-	if (hostitf->desc.bNumEndpoints < 2)
+	if (hostitf->desc.bNumEndpoints < 2) {
+		dev_warn(dev, "not enough endpoints!\n");
 		return -ENODEV;
+	}
 
 	for (i = 0; i < hostitf->desc.bNumEndpoints; ++i) {
 		curep = &hostitf->endpoint[i].desc;
@@ -488,13 +496,13 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 		goto out_free;
 	}
 
-	if (dmj->dmj_mode == 1) {
-		ret = mfd_add_hotplug_devices(dev, dmj_mfd_char, ARRAY_SIZE(dmj_mfd_char));
-		if (ret) {
-			dev_err(dev, "failed to add MFD character devices\n");
-			goto out_free;
-		}
+	ret = mfd_add_hotplug_devices(dev, dmj_mfd_char, ARRAY_SIZE(dmj_mfd_char));
+	if (ret) {
+		dev_err(dev, "failed to add MFD character devices\n");
+		goto out_free;
+	}
 
+	if (dmj->dmj_mode == 1) {
 		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_SPI) {
 			ret = mfd_add_hotplug_devices(dev, dmj_mfd_spi, ARRAY_SIZE(dmj_mfd_spi));
 			if (ret) {
