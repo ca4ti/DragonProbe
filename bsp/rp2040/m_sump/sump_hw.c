@@ -304,7 +304,6 @@ void sump_hw_capture_stop(void) {
 }
 
 void sump_hw_init(void) {
-    // TODO: make this configurable
     if (overclock) {
         vreg_set_voltage(VREG_VOLTAGE_1_15);
         set_sys_clock_khz(200000, true);

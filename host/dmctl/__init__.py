@@ -19,6 +19,7 @@ def dmctl_do(args: Any) -> int:
     def uart_hw_flowctl(conn, args):
         if args.get: return devcmds.uart_hw_flowctl_get(conn)
         fcen = args.set
+        if isinstance(fcen, list): fcen = fcen[0]
         if fcen is None:
             if args.enable: fcen = True
             elif args.disable: fcen = False
@@ -29,8 +30,9 @@ def dmctl_do(args: Any) -> int:
     def tempsensor(conn, args):
         if args.get: return devcmds.tempsensor_get(conn)
         tsen = args.set
+        if isinstance(tsen, list): tsen = tsen[0]
         if tsen is None:
-            if args.disable: tsen = 0
+            if args.disable: tsen = 0xff
         if tsen is None:
             print("Error: none of '--get', '--set' or '--disable' specified.")
             return 1
@@ -40,6 +42,7 @@ def dmctl_do(args: Any) -> int:
     def sump_ovclk(conn, args):
         if args.get: return devcmds.sump_overclock_get(conn)
         oven = args.set
+        if isinstance(oven, list): oven = oven[0]
         if oven is None:
             if args.enable: oven = 1
             elif args.disable: oven = 0
@@ -80,7 +83,7 @@ def dmctl_do(args: Any) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog="dmctl")
 
     def auto_int(x):
         return int(x, 0)
@@ -136,7 +139,7 @@ def main() -> int:
     setmode.add_argument('mode', type=int, help="Mode to switch to, required.")
 
     # mode 1 commands
-    usbhwfctl = subcmds.add_parser("uart-cts-rts", help="Get, Enable/disable"+\
+    usbhwfctl = subcmds.add_parser("uart-cts-rts", help="Get, enable/disable"+\
                                    " UART hardware flow control")
     uartopts = usbhwfctl.add_mutually_exclusive_group()
     uartopts.add_argument('--get', default=False, action='store_true',

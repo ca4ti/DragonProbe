@@ -78,7 +78,7 @@ class UsbConn(DevConn):
             return "Version of device (%04x) too new, must be max. %04x" \
                 % (hex(verno, DevConn._VER_MAX))
 
-        return UsbConn(dev, cfg, itf, epout, epin)
+        return UsbConn(dev, cfg, itf, epin, epout)
 
     def try_find() -> Optional[UsbConn]:
         import usb.core

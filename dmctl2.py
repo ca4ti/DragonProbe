@@ -104,7 +104,7 @@ print(res)
 
 ### ATTEMPT A MODESET ###
 
-epout.write(b'\x03\x04') # set cur mode
-print('[%s]'%(', '.join(hex(x) for x in epin.read(3)))) # result: status, payload len, mode
+#epout.write(b'\x03\x04') # set cur mode
+#print('[%s]'%(', '.join(hex(x) for x in epin.read(3)))) # result: status, payload len, mode
 
 

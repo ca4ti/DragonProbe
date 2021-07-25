@@ -40,6 +40,12 @@ static int lc_brate = PINOUT_UART_BAUDRATE,
            lc_data = 8, lc_parity = 0, lc_stop = 1;
 
 void cdc_uart_init(void) {
+    /*lc_brate = PINOUT_UART_BAUDRATE;
+    lc_data = 8;
+    lc_parity = 0;
+    lc_stop = 1;
+    hwflow = false;*/
+
     gpio_set_function(PINOUT_UART_TX, GPIO_FUNC_UART);
     gpio_set_function(PINOUT_UART_RX, GPIO_FUNC_UART);
     uart_init(PINOUT_UART_INTERFACE, lc_brate/*PINOUT_UART_BAUDRATE*/);
@@ -81,7 +87,7 @@ bool cdc_uart_get_hwflow(void) {
 }
 bool cdc_uart_set_hwflow(bool enable) {
     hwflow = enable;
-    uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
+    //uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
     return true;
 }
 
@@ -92,14 +98,18 @@ uint32_t cdc_uart_set_coding(uint32_t brate,
     int picopar = 0;
     switch (parity) {
         case 0: break;
-        case 1: picopar = 2; break;
         case 2: picopar = 1; break;
-        default: picopar = -1; break;
+        case 1: picopar = 2; break;
+        default: picopar = lc_parity; break;
     }
 
-    if (picopar >= 0)
-        uart_set_format(PINOUT_UART_INTERFACE, data, stop, picopar);
-    return uart_set_baudrate(PINOUT_UART_INTERFACE, brate);
+    // FIXME: this is broken fsr
+    /*uart_set_format(PINOUT_UART_INTERFACE, data, stop, picopar);
+
+    lc_data = data;
+    lc_parity = picopar;
+    lc_stop = stop;*/
+    return (lc_brate = uart_set_baudrate(PINOUT_UART_INTERFACE, brate));
 }
 
 // idk where to put this otherwise

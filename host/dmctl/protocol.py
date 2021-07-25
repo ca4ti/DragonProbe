@@ -24,11 +24,11 @@ def check_statpl(stat, pl, defmsg, minl=None, maxl=None):
     }
 
     if stat != STAT_OK:
-        if len(pl):
+        if len(pl) != 0:
             raise Exception(pl.rstrip(b'\0').decode('utf-8'))
         else:
             errstr = statmsgs.get(stat, str(stat))
-            raise Exception("%s: bad response: %s" % (defmsg, errstr))
+            raise Exception("%s: %s" % (defmsg, errstr))
 
     if minl is not None:
         if len(pl) < minl:
@@ -136,7 +136,7 @@ class DmjDevice:
 
     # TODO: need to invalidate all fncalls after this one because the device will be gone
     def set_mode(self, mode: int):
-        cmd = b'\x03\xff'
+        cmd = bytearray(b'\x03\xff')
         cmd[1] = mode
         self.write(cmd)
         stat, pl = self.read_resp()
@@ -188,7 +188,7 @@ class DmjDevice:
         return pl[0] != 0
 
     def m1_usb_hw_flowctl_set(self, enabled: bool):
-        cmd = b'\x16\xc3'
+        cmd = bytearray(b'\x16\xc3')
         cmd[1] = 1 if enabled else 0
         self.write(cmd)
         stat, pl = self.read_resp()
@@ -202,7 +202,7 @@ class DmjDevice:
         return None if pl[0] == 0xff else pl[0]
 
     def m1_tempsensor_i2cemul_set(self, addr: Optional[int]) -> Tuple[Optional[int], Optional[int]]:
-        cmd = b'\x15\x01\xff'
+        cmd = bytearray(b'\x15\x01\xff')
         cmd[2] = 0xff if addr is None else addr
         self.write(cmd)
         stat, pl = self.read_resp()
@@ -217,7 +217,7 @@ class DmjDevice:
     # mode 3 commands
 
     def m3_jtagscan_get_status(self) -> int:
-        self.write(b'\x30')
+        self.write(b'\x33')
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "m3: jtag scan status", 1, 1)
 
@@ -226,14 +226,21 @@ class DmjDevice:
     def m3_jtagscan_get_result(self) -> Dict[str, int]:
         pinassign = ['TCK', 'TMS', 'TDI', 'TDO', 'TRST']
 
-        self.write(b'\x31')
+        self.write(b'\x34')
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "m3: jtag scan result", 5, 5)
 
         return { pinassign[i]: pl[i] for i in range(len(pl)) }
 
+    def m3_jtagscan_get_error(self) -> str:
+        self.write(b'\x34')
+        stat, pl = self.read_resp()
+        check_statpl(stat, pl, "m3: jtag scan error", 1)
+
+        return pl.rstrip(b'\0').decode('utf-8')
+
     def m3_jtagscan_start(self, min_pin: int, max_pin: int):
-        cmd = b'\x32\xff\x00'
+        cmd = bytearray(b'\x35\xff\x00')
         cmd[1], cmd[2] = min_pin, max_pin
         self.write(cmd)
         stat, pl = self.read_resp()
@@ -242,14 +249,14 @@ class DmjDevice:
     # mode 4 commands
 
     def m4_sump_overclock_get(self) -> int:
-        self.write(b'\x40')
+        self.write(b'\x43')
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "m4: sump overclock get", 1, 1)
 
         return pl[0]
 
     def m4_sump_overclock_set(self, ovclk: int):
-        cmd = b'\x41\xff'
+        cmd = bytearray(b'\x44\xff')
         cmd[1] = ovclk
         self.write(cmd)
         stat, pl = self.read_resp()
