@@ -5,6 +5,7 @@
 #include "mode.h"
 #include "thread.h"
 #include "vnd_cfg.h"
+#include "../usbstdio.h"
 
 #include "m_sump/bsp-feature.h"
 
