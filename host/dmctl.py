@@ -129,9 +129,9 @@ def main(argv: List[str]) -> int:
     getmodeinfo = subcmds.add_parser("get-mode-info", help="Shows mode info."+\
                                      " A mode can optionally be specified, "+\
                                      "default is the current mode.")
-    getmodeinfo.add_argument('mode', default=None, nargs='?',
+    getmodeinfo.add_argument('mode', default=None, nargs='?', #type=int,
                              help="Mode to get info of. Defaults to the " + \
-                             "current mode, a single asterisk (*) means all.")
+                                  "current mode, 'all' means all modes.")
 
     setmode = subcmds.add_parser("set-mode", help="Set the device mode")
     setmode.add_argument('mode', type=int, help="Mode to switch to, required.")

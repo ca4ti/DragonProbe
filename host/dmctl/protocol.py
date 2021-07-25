@@ -1,5 +1,6 @@
 
 import array
+import struct
 
 from typing import *
 
@@ -16,10 +17,10 @@ STAT_BADARG     = 0x04
 def check_statpl(stat, pl, defmsg, minl=None, maxl=None):
     statmsgs = {
         STAT_OK: "ok",
-        STAT_ILLCMD = "Illegal/invalid/unknown command",
-        STAT_BADMODE = "Bad mode for this command",
-        STAT_NOSUCHMODE = "No such mode exists or is available",
-        STAT_BADARG = "Bad argument"
+        STAT_ILLCMD: "Illegal/invalid/unknown command",
+        STAT_BADMODE: "Bad mode for this command",
+        STAT_NOSUCHMODE: "No such mode exists or is available",
+        STAT_BADARG: "Bad argument"
     }
 
     if stat != STAT_OK:
@@ -51,30 +52,32 @@ class DmjDevice:
         self._buf = array.array('B')
         self._buf.fromlist([0]*64)
         self._bufpos = 64
+        self._buffill = 0
 
     def read(self, nb: int) -> bytes:
-        if len(self._buf) - self._bufpos > nb:
+        #print("==> buffill=%d bufpos=%d nb=%d"%(self._buffill, self._bufpos, nb))
+        if self._buffill - self._bufpos >= nb:
             rv = bytes(self._buf[self._bufpos:self._bufpos+nb])
             self._bufpos += nb
-            print("==> return quick", rv)
+            #print("==> return quick bufpos=%d"%self._bufpos, rv)
             return rv
 
-        rv = list(self._buf[self._bufpos:])
+        rv = list(self._buf[self._bufpos:self._buffill])
 
         while True:  # TODO: timeout?
-            nrd = self.conn.read_raw(self._buf)
-            print("==> read raw", repr(self._buf[:nrd]))
+            nrd = self._conn.read_raw(self._buf)
+            self._buffill = nrd
+            #print("==> read raw", repr(self._buf[:nrd]))
             if len(rv) + nrd >= nb:  # last read, will have enough now
-                bytes(rv = rv + list(self._buf[nb - len(rv):]))
-                self._bufpos = nb - len(rv)
-                print("==> return", rv)
+                rvold = len(rv)
+                nadd = nb - len(rv)
+                rv = bytes(rv + list(self._buf[:nadd]))
+                self._bufpos = nadd
+                #print("==> bufpos=%d rv=%d->%d nadd=%d nb=%d" % (self._bufpos, rvold, len(rv), nadd, nb))
+                #print("==> bufpos=%d return"%self._bufpos, rv)
                 return rv
             else:
                 rv += list(self._buf)
-
-    def write(self, b: bytes):
-        print("==> write", b)
-        return self._conn.write(b)
 
     def read_resp(self) -> Tuple[int, bytes]:
         resplen = self.read(2)
@@ -90,12 +93,13 @@ class DmjDevice:
                 plen |= self.read(1) << 14
 
         bs = self.read(plen)
-        print("==> got resp %d res %s" % (resp, repr(bs)))
+        #print("==> got resp %d res %s" % (resp, repr(bs)))
         return (resp, bs)
 
     # TODO: buffer(/retry) writes as well?
     def write(self, b: bytes):
-        return self.conn.write_raw(b)
+        #print("==> write raw", b)
+        return self._conn.write_raw(b)
 
     def __enter__(self):
         self._conn.__enter__()
@@ -115,7 +119,7 @@ class DmjDevice:
         return struct.unpack('<H', pl)[0]
 
     def get_available_modes(self) -> Set[int]:
-        self.write('b\x01')
+        self.write(b'\x01')
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "get modes", 2, 2)
 
@@ -124,7 +128,7 @@ class DmjDevice:
         return { i for i in range(1,16) if (modemap & (1<<i)) != 0 }
 
     def get_mode(self) -> int:
-        self.write('b\x02')
+        self.write(b'\x02')
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "get mode", 1, 1)
 
@@ -139,7 +143,7 @@ class DmjDevice:
         check_statpl(stat, pl, "set mode", 0, 0)
 
     def get_info_text(self) -> str:
-        self.write('\x04')
+        self.write(b'\x04')
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "get info string", 1)
 
@@ -148,7 +152,7 @@ class DmjDevice:
     # common mode commands
 
     def get_mode_name(self, mode: int) -> str:
-        cmd = b'\x00'
+        cmd = bytearray(b'\x00')
         cmd[0] |= mode << 4
         self.write(cmd)
         stat, pl = self.read_resp()
@@ -157,7 +161,7 @@ class DmjDevice:
         return pl.rstrip(b'\0').decode('utf-8')
 
     def get_mode_version(self, mode: int) -> str:
-        cmd = b'\x01'
+        cmd = bytearray(b'\x01')
         cmd[0] |= mode << 4
         self.write(cmd)
         stat, pl = self.read_resp()
@@ -166,13 +170,13 @@ class DmjDevice:
         return struct.unpack('<H', pl)[0]
 
     def get_mode_features(self, mode: int) -> Set[int]:
-        cmd = b'\x02'
+        cmd = bytearray(b'\x02')
         cmd[0] |= mode << 4
         self.write(cmd)
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "get mode features", 1, 1)
 
-        return pl[0]
+        return { i for i in range(1, 8) if (pl[0] & (1<<i)) != 0 }
 
     # mode 1 commands
 
@@ -197,7 +201,7 @@ class DmjDevice:
 
         return None if pl[0] == 0xff else pl[0]
 
-    def m1_tempsensor_i2cemul_set(self, addr: Optional[int]) -> Tuple[Optional[int], Optional[int]]
+    def m1_tempsensor_i2cemul_set(self, addr: Optional[int]) -> Tuple[Optional[int], Optional[int]]:
         cmd = b'\x15\x01\xff'
         cmd[2] = 0xff if addr is None else addr
         self.write(cmd)
