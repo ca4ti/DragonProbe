@@ -56,7 +56,8 @@ static ssize_t dmj_char_read(struct file *file, char *buf, size_t len, loff_t *l
 	if (len > INT_MAX) return -EINVAL;
 	ilen = (int)len;
 
-	res = dmj_transfer(dmjch->pdev, -1, DMJ_XFER_FLAGS_FILL_RECVBUF, NULL, 0, &kbuf, &ilen);
+	/* no flags: act like libusb read */
+	res = dmj_transfer(dmjch->pdev, -1, 0/*DMJ_XFER_FLAGS_FILL_RECVBUF*/, NULL, 0, &kbuf, &ilen);
 	if (res < 0 || ilen < 0 || !kbuf) {
 		if (kbuf) kfree(kbuf);
 		return (res >= 0) ? -EIO : ret;

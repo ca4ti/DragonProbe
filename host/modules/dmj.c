@@ -227,7 +227,7 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 		 * will error when going beyond!). also done in 64b chunks
 		 */
 
-		if (!rbuf || !rbufsize || *rbufsize <= 0) return 0;
+		if (!rbufsize || *rbufsize <= 0) return 0;
 
 		if (recvflags & DMJ_XFER_FLAGS_FILL_RECVBUF) {
 			tmpbuf = kmalloc(64, GFP_KERNEL);
@@ -265,7 +265,7 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 			ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
 					longbuf, *rbufsize, rbufsize, DMJ_USB_TIMEOUT);
 			if (ret < 0) goto err_freelong;
-			if (actual < 0) { ret = -EREMOTEIO; goto err_freelong; }
+			if (*rbufsize < 0) ret = -EREMOTEIO; goto err_freelong;
 
 			ret = 0;
 			*rbuf = longbuf;
