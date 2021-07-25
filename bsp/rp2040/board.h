@@ -28,6 +28,8 @@
 #ifndef BOARD_H_MOD
 #define BOARD_H_MOD
 
+#include <pico/bootrom.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,6 +49,9 @@ extern "C" {
 #define UART_TX_PIN PICO_DEFAULT_UART_TX_PIN
 #define UART_RX_PIN PICO_DEFAULT_UART_RX_PIN
 #endif
+
+// Reset to bootloader
+#define bsp_reset_bootloader() reset_usb_boot(0, 0)
 
 #ifdef __cplusplus
 }
