@@ -5,10 +5,10 @@
 #include <string.h>
 #include <tusb.h>
 
+#include "board.h"
 #include "info.h"
 #include "mode.h"
 #include "vnd_cfg.h"
-
 #include "thread.h"
 
 #if CFG_TUD_VENDOR > 0
@@ -175,7 +175,10 @@ void vnd_cfg_task(void) {
             break;
         case cfg_cmd_set_cur_mode:
             verbuf[0] = vnd_cfg_read_byte();
-            if (verbuf[0] == 0 || verbuf[0] >= 0x10 || mode_list[verbuf[0]] == NULL) {
+            if (verbuf[0] == 0) {
+                // reset
+                bsp_reset_bootloader();
+            } else if (verbuf[0] >= 0x10 || mode_list[verbuf[0]] == NULL) {
                 vnd_cfg_write_resp(cfg_resp_nosuchmode, 0, NULL);
             } else {
                 // will be handled later so the USB stack won't break, whcih might happen if reconfig would happen now
