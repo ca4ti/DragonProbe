@@ -8,6 +8,7 @@ import traceback
 from typing import *
 
 import dmctl.connection as devconn
+import dmctl.protocol   as devproto
 import dmctl.commands   as devcmds
 
 
@@ -49,7 +50,7 @@ def dmctl_do(args: Any) -> int:
         return devcmds.sump_overclock_set(conn, oven)
 
 
-    print(repr(args))
+    #print(repr(args))
     cmds = {
         'get-device-info': get_device_info,
         'get-mode-info': get_mode_info,
@@ -75,7 +76,7 @@ def dmctl_do(args: Any) -> int:
         print("Could not connect to a device: %s." % conn)
         return 1
 
-    with conn as dev:
+    with devproto.DmjDevice(conn) as dev:
         return subfn(dev, args)
 
 

@@ -1,7 +1,6 @@
 
 from __future__ import annotations
 
-import array
 import os
 import re
 import struct
@@ -92,7 +91,7 @@ class UsbConn(DevConn):
         rv = UsbConn._open_dev(dev[0])
         return None if isinstance(rv, str) else rv
 
-    def is_usbdev_path(conn: str) -> bool:
+    def is_path(conn: str) -> bool:
         # eg. cafe:1312
         match_vidpid = re.match('^[0-9a-fA-F]{4}:[0-9a-fA-F]{4}$', conn)
         if match_vidpid is not None:
@@ -193,7 +192,7 @@ class ChardevConn(DevConn):
         rv = ChardevConn.try_open(opts[0])
         return None if isinstance(rv, str) else rv
 
-    def is_chardev_path(conn: str) -> bool:
+    def is_path(conn: str) -> bool:
         if sys.platform != 'linux':
             return False
 
@@ -248,68 +247,29 @@ class ChardevConn(DevConn):
         self._fd = -1
 
 
-class DmjDevice:
-    def __init__(self, conn: DevConn):
-        self._conn = conn
-        self._buf = array.array('B')
-        self._buf.fromlist([0]*64)
-        self._bufpos = 64
-
-    def read(self, nb: int) -> bytes:
-        if len(self._buf) - self._bufpos > nb:
-            rv = bytes(self._buf[self._bufpos:self._bufpos+nb])
-            self._bufpos += nb
-            return rv
-
-        rv = list(self._buf[self._bufpos:])
-
-        while True:  # TODO: timeout?
-            nrd = self.conn.read_raw(self._buf)
-            if len(rv) + nrd >= nb:  # last read, will have enough now
-                rv = rv + list(self._buf[nb - len(rv):])
-                self._bufpos = nb - len(rv)
-                return bytes(rv)
-            else:
-                rv += list(self._buf)
-
-    # TODO: buffer(/retry) writes as well?
-    def write(self, b: bytes):
-        return self.conn.write_raw(b)
-
-    def __enter__(self):
-        self._conn.__enter__()
-        return self
-
-    def __exit__(self, type, value, tb):
-        self._conn.__exit__(type, value, tb)
+_BACKENDS = [ChardevConn, UsbConn]
 
 
-def connect(conn: Optional[str]) -> Union[DmjDevice, str]:
-    # TODO: some kind of connection backend registration? shrug
+def connect(conn: Optional[str]) -> Union[DevConn, str]:
+    global _BACKENDS
+
     if conn is None:
-        attempt = ChardevConn.try_find()
-        if attempt is not None:
-            return DmjDevice(attempt)
-
-        attempt = UsbConn.try_find()
-        if attempt is not None:
-            return DmjDevice(attempt)
+        for backend in _BACKENDS:
+            attempt = backend.try_find()
+            if attempt is not None:
+                return attempt
 
         return "no device specified, and none could be found"
 
-    if ChardevConn.is_chardev_path(conn):
-        attempt = ChardevConn.try_open(conn)
-        if isinstance(attempt, str):
-            return attempt
-        else:
-            return DmjDevice(attempt)
-
-    if UsbConn.is_usbdev_path(conn):
-        attempt = UsbConn.try_open(conn)
-        if isinstance(attempt, str):
-            return attempt
-        else:
-            return DmjDevice(attempt)
+    for backend in _BACKENDS:
+        if backend.is_path(conn):
+            return backend.try_open(conn)
 
     return "connection string '%s' not recognised" % conn
+
+
+def register_backend(backend):
+    global _BACKENDS
+
+    _BACKENDS.append(backend)
 

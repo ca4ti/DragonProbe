@@ -1,7 +1,7 @@
 
 from typing import *
 
-from .connection import *
+from .protocol import *
 
 
 def get_device_info(conn: DmjDevice) -> int:
