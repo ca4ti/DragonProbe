@@ -248,7 +248,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
-- [ ] Better USB interface stuff, because I2C-Tiny-USB sucks and serprog can only
+- [x] Better USB interface stuff, because I2C-Tiny-USB sucks and serprog can only
       do flash chips instead of being a real spidev. General idea can probably be
       taken from the DLN2 Linux drivers, except better (dynamic interface
       signalled in the protocol (eg. does the device actually have I2C/SPI/..?),
@@ -263,7 +263,7 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 - [ ] JTAG pinout detector
   - https://github.com/cyphunk/JTAGenum
   - https://github.com/travisgoodspeed/goodfet/blob/master/firmware/apps/jscan/jscan.c
-- [ ] Host-side script that is an XVC (or hw_server) cable and communicates
+- [x] Host-side script that is an XVC (or hw_server) cable and communicates
       with the device to perform the JTAG commands, because Vivado no likey
       OpenOCD.
   - CMSIS-DAP interface can be used directly, see CMSIS_5/CMSIS/DoxyGen/DAP/src/dap_USB_cmds.txt
@@ -274,7 +274,6 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
   - https://debugmo.de/2012/02/xvcd-the-xilinx-virtual-cable-daemon/
   - https://github.com/Xilinx/XilinxVirtualCable/
   - https://github.com/derekmulcahy/xvcpi
-  - OpenOCD as XVC client??
 - [x] SUMP logic analyzer mode?
   - see also [this](https://github.com/perexg/picoprobe-sump)
   - [ ] runtime config options for overclocking, logging
