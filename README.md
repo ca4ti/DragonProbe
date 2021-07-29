@@ -222,6 +222,50 @@ Example:
 $ ./dmctl.py --conn cafe:1312 get-device-info
 ```
 
+### SUMP Logic Analyzer mode
+
+The device can act as a logic analyzer, implementing the SUMP protocol. It
+first needs to be put into mode 4, which can be done using the following
+command:
+
+```
+$ ./dmctl.sh set-mode 4
+```
+
+As soon as this is done, the SUMP logic analyzer should be available on the
+first USB-CDC interface of the device. It can be used with a connection string
+such as `ols:conn=/dev/ttyACM0` in sigrok and PulseView.
+
+### XVC2DAP
+
+`xvc2dap.py` is a Python script that implements a Xilinx Virtual Cable server
+and talks to a CMSIS-DAP device, acting like a bridge between the two. This way,
+you can use any CMSIS-DAP device (including this project) as a fake Xilinx
+Platform Cable.
+
+It requires pyOCD as a dependency (for its builtin `pydapaccess` module).
+
+Usage:
+
+```
+$ ./xvc2dap.py --help
+usage: xvc2dap.py [-h] [--serial SERIAL] address [port]
+
+positional arguments:
+  address          Host to bind to, for the XVC server, default localhost
+  port             port to bind to, for the XVC server, default 2542
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --serial SERIAL  Connection string to the CMSIS-DAP device, as a serial
+                   number, defaults to the first device found.
+```
+
+### USB Vendor interface protocol
+
+The USB vendor interface protocol is described
+[here](./wiki/USB-config-%26-command-protocol) in the wiki.
+
 ## License
 
 TinyUSB is licensed under the [MIT license](https://opensource.org/licenses/MIT).

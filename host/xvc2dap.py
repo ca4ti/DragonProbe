@@ -6,8 +6,6 @@ import struct
 
 from typing import *
 
-from pyocd.probe.pydapaccess import *
-
 
 class EndOfStreamException(Exception): pass
 
@@ -67,14 +65,16 @@ def dap_split_jseq(nbits: int, tms: bytes, tdi: bytes) -> List[JtagSeq]:
     return res
 
 
-def get_dap(serial: Optional[str]) -> DAPAccess:
+def get_dap(serial: Optional[str]) -> Any:  #DAPAccess:
+    import pyocd.probe.pydapaccess as pydap
+
     if serial is not None:
         try:
-            return DAPAccess.get_device(serial)
+            return pydap.DAPAccess.get_device(serial)
         except Exception:# as e:
             raise Exception("Could not find CMSIS-DAP device %s" % serial)
     else:
-        devs = DAPAccess.get_connected_devices()
+        devs = pydap.DAPAccess.get_connected_devices()
         if len(devs) == 1:
             return devs[0]
         elif len(devs) == 0:
@@ -97,7 +97,7 @@ def xvc_read_cmd(f) -> bytes:
             r += bv
 
 
-def xvc_do_cmd(cmd, f, dap):
+def xvc_do_cmd(cmd: bytes, f, dap):
     if cmd == b"getinfo":
         # parameter is max vector len (in bits)
         # we use some value here (2k should be good enough), though in reality
@@ -192,13 +192,19 @@ def xvc2dap_do(args: Any) -> int:
 
 
 def main() -> int:
+    try:
+        import pyocd.probe.pydapaccess
+    except ImportError:
+        print("WARNING: pyocd module not found (not installed?), xvc2dap.py "+\
+              "will not work.")
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--serial', type=str, default=None,
                         help="Connection string to the CMSIS-DAP device, as "+\
                         "a serial number, defaults to the first device found.")
 
-    parser.add_argument('address', type=str, default='localhost',
+    parser.add_argument('address', type=str, default='localhost', nargs='?',
                         help="Host to bind to, for the XVC server, default "+\
                              "localhost")
     parser.add_argument('port', type=int, default=2542, nargs='?',
