@@ -136,29 +136,30 @@ Different serial speeds can be used, too. Serprog support is *techincally*
 untested, as in it does output the correct SPI commands as seen by my logic
 analyzer, but I don't have a SPI flash chip to test it on.
 
-### I2C-Tiny-USB
+### SPI, I2C and temperature sensor
 
-The I2C-Tiny-USB functionality can be used as follows: first, load the
-`i2c-dev` and `i2c-tiny-usb` modules (for now you need a patched version of the
-latter, can be found in the `i2c-tiny-usb-misc/` folder in this repo). Then you
-can use the I2C USB bridge as any other I2C device on your computer. For
-example, the `i2cdetect`, `i2cget` and `i2cset` tools from `i2c-tools` should
-all work. You can find which I2C device corresponds to the I2C-Tiny-USB, by
-running `i2cdetect -l`:
+This functionality depends on custom kernel modules being loaded: In the
+`host/modules/` directory, one can find the sources and a Makefile.
+
+After loading the modules (and modprobing `i2c-dev` and `spidev`), devices for
+these interfaces should appear in `/dev`.
+
+SPI and I2C can be controlled using the standard tools for these (eg. the
+utilities from `i2c-tools` package), and the temperature sensor should show
+up in `lm_sensors`.
+
+Using `i2cdetect -l`, you should be able to see which I2C device belongs to
+the tool:
 
 ```
 $ sudo i2cdetect -l
 [...]
 i2c-1	i2c       	i915 gmbus dpb                  	I2C adapter
 i2c-8	i2c       	Radeon i2c bit bus 0x95         	I2C adapter
-i2c-15	i2c       	i2c-tiny-usb at bus 001 device 011	I2C adapter  # <---- !
+i2c-15	i2c       	dmj-i2c-1-1:1.0                 	I2C adapter
 i2c-6	i2c       	Radeon i2c bit bus 0x93         	I2C adapter
 i2c-13	i2c       	AUX C/DDI C/PHY C               	I2C adapter
-[...]
 ```
-
-**NOTE**: I2C functionality sometimes breaks with certain USB hubs. If this is
-the case, try unplugging and replugging the entire hub.
 
 #### I2C temperature sensor emulation
 
@@ -168,7 +169,7 @@ sensor (the exact sensor emulated is the Microchip MCP9808). To have it show
 up in `sensors`, do the following (with `BUSNUM` the number from the above
 `i2cdetect -l` output):
 ```
-$ ./dmctl.py /dev/ttyACM1 --i2ctemp 0x18     # need to give it an address first
+$ ./dmctl.sh tempsensor --set 0x18     # need to give it an address first
 $ sudo modprobe jc42
 $ # now tell the jc42 module that the device can be found at this address
 $ echo "jc42 0x18" | sudo tee /sys/bus/i2c/devices/i2c-BUSNUM/new_device
@@ -185,38 +186,40 @@ Temperature readout may be a bit higher than the ambient temperature.
 ### Runtime configuration
 
 Several settings can be applied at runtime, using the `dmctl` Python script.
-Settings are communicated over the Serprog USB serial port.
-
-The currently implemented options are:
-- `support`: tells you which features this implementation/board supports
-- `ctsrts`: Enable/disable CTS/RTS-based hardware flow control for the UART port
-- `i2ctemp`: Get or set the I2C address of the fake I2C device of the temperature
-             sensor. Use 0 for getting the value, 0xff for disabling, and any
-             other for setting the address. The I2C device emulated is an MCP9808.
-             When setting a value, the old value is printed.
+Settings are communicated over a vendor USB interface.
 
 ```
-usage: dmctl [-h] [-v] [--ctsrts [CTSRTS]] tty
-
-Runtime configuration control for DapperMime-JTAG
-
-positional arguments:
-  tty                Path to DapperMime-JTAG Serprog UART device
+$ ./dmctl.sh --help
+usage: dmctl [-h] [--conn CONN] subcommand ...
 
 optional arguments:
-  -h, --help           show this help message and exit
-  -v, --verbose        Verbose logging (for this utility)
-  --ctsrts [CTSRTS]    Enable or disable CTS/RTS flow control (--ctsrts [true|false])
-  --i2ctemp [I2CTEMP]  Control the builtin I2C temperature controller: get (0),
-                       disable (-1/0xff) or set/enable (other) the current
-                       status and I2C bus address
-  --support            Get list of supported/implemented functionality
+  -h, --help       show this help message and exit
+  --conn CONN      Connection string. Either a dmj-char device in /dev, a USB
+                   bus.device number, or a USB VID:PID pair. Defaults to trying
+                   /dev/dmj-* (if there is only one), and cafe:1312 otherwise.
+
+subcommands:
+  For more info on each subcommand, run the program with 'subcommand --help' as
+  arguments.
+
+  subcommand       Command to send to the device
+    get-device-info
+                   Shows device info
+    get-mode-info  Shows mode info. A mode can optionally be specified, default
+                   is the current mode.
+    set-mode       Set the device mode
+    uart-cts-rts   Get, enable/disable UART hardware flow control
+    tempsensor     Get or set the IRC emulation enable/address of the
+                   temperature sensor.
+    jtag-scan      JTAG pinout scanner
+    sump-overclock
+                   SUMP logic analyzer overclock settings
 ```
 
-example:
+Example:
 
 ```
-$ ./dmctl.py /dev/ttyACM1 --ctsrts true
+$ ./dmctl.py --conn cafe:1312 get-device-info
 ```
 
 ## License
@@ -227,18 +230,15 @@ ARM's CMSIS 5 code is licensed under the [Apache 2.0 license](https://opensource
 
 libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
 
+Some code has been incorporated from the [DapperMime](https://github.com/majbthrd/DapperMime)
+and [picoprobe-sump](https://github.com/perexg/picoprobe-sump)
+projects. These respective licenses can be found in
+[this](./LICENSE.dappermime) and [this](./LICENSE.picoprobe-sump) file.
+
 ## TODO
 
 - [ ] A name
 - [ ] A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf
-- [x] More Pico SDK meta/buildinfo
-- [x] CMSIS-DAP JTAG implementation
-- [x] Flashrom/SPI support using Serprog
-  - Parallel ROM flashing support, too, by having the device switch into a
-    separate mode that temporarily disables all other IO protocols
-    - Not enough IO, rip.
-- [x] UART with CTS/RTS flow control
-  - [x] Needs configurable stuff as well, as some UART interfaces won't use this.
 - [x] Debug interface to send printf stuff directly to USB, instead of having
       to use the UART interface as a loopback thing.
   - [ ] Second UART port for when stdio UART is disabled?
@@ -248,35 +248,11 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
-- [x] Better USB interface stuff, because I2C-Tiny-USB sucks and serprog can only
-      do flash chips instead of being a real spidev. General idea can probably be
-      taken from the DLN2 Linux drivers, except better (dynamic interface
-      signalled in the protocol (eg. does the device actually have I2C/SPI/..?),
-      dynamic I2C and SPI capabilities, add 1wire stuff, maybe yeet the GPIO bc
-      it'll be used for other stuff anyway, etc.). Means a custom Linux driver but
-      oh well, I2C-Tiny-USB needs patching either way.
-- [ ] 1-wire using ↑
-- [x] A proper interface for sending commands etc. instead of shoehorning it
-      into Serprog.
-  - Can probably be included in the "Better USB interface stuff".
+- [ ] 1-wire
 - [ ] make modes persistent?
 - [ ] JTAG pinout detector
   - https://github.com/cyphunk/JTAGenum
   - https://github.com/travisgoodspeed/goodfet/blob/master/firmware/apps/jscan/jscan.c
-- [x] Host-side script that is an XVC (or hw_server) cable and communicates
-      with the device to perform the JTAG commands, because Vivado no likey
-      OpenOCD.
-  - CMSIS-DAP interface can be used directly, see CMSIS_5/CMSIS/DoxyGen/DAP/src/dap_USB_cmds.txt
-  - https://github.com/BerkeleyLab/XVC-FTDI-JTAG
-  - https://www.eevblog.com/forum/fpga/xilinx-jtag-and-tcf/
-  - https://git.eclipse.org/c/tcf/org.eclipse.tcf.git/plain/docs/TCF%20Linux%20Agent%20Prototype.html
-  - http://www.eclipse.org/tcf/
-  - https://debugmo.de/2012/02/xvcd-the-xilinx-virtual-cable-daemon/
-  - https://github.com/Xilinx/XilinxVirtualCable/
-  - https://github.com/derekmulcahy/xvcpi
-- [x] SUMP logic analyzer mode?
-  - see also [this](https://github.com/perexg/picoprobe-sump)
-  - [ ] runtime config options for overclocking, logging
 - [ ] FT2232 emulation mode?
   - watch out, still need a vnd cfg interface! libftdi expects the following stuff: (TODO: acquire detailed protocol description)
     - interface 0 ("A"): index 1, epin 0x02, epout 0x81

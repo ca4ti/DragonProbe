@@ -2,7 +2,10 @@ The below copyright and permission notice applies to portions of the following
 files, which have been modified from their original versions in
 <https://github.com/perexg/picoprobe-sump> (the "picoprobe-sump repository")
 
- - TODO
+ - bsp/rp2040/m_sump/sump_hw.c
+ - bsp/rp2040/m_sump/sump_hw.h
+ - src/m_sump/cdc_sump.c
+ - src/m_sump/sump.h
 
 The below notice does not apply to any modifications made to the above files
 since the versions present in the picoprobe-usb repository, nor to any files
