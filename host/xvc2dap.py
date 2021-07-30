@@ -201,14 +201,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--serial', type=str, default=None,
-                        help="Connection string to the CMSIS-DAP device, as "+\
-                        "a serial number, defaults to the first device found.")
+                        help="Connect to the CMSIS-DAP device with the "+\
+                        "specified serial number, defaults to the first device found.")
 
     parser.add_argument('address', type=str, default='localhost', nargs='?',
                         help="Host to bind to, for the XVC server, default "+\
                              "localhost")
     parser.add_argument('port', type=int, default=2542, nargs='?',
-                        help="port to bind to, for the XVC server, default 2542")
+                        help="Port to bind to, for the XVC server, default 2542")
 
     args = parser.parse_args()
     return xvc2dap_do(args)
