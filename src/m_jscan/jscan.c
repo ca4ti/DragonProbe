@@ -109,16 +109,13 @@ void jscan_task(void) {
 /// JTAG TIME /////////////////////////////////////////////////////////////////
 
 // TODO: generate randomly? also use long ints instead of strings
-#define PATTERN_MATCH_LEN 64
-#define PATTERN_CMP_LEN 34
-static const char PATTERN[PATTERN_MATCH_LEN] = "0110011101001101101000010111001001";
 //static const uint64_t PATTERN = 0xf6c27bd50cec641eULL; // 0b1111011011000010011110111101010100001100111011000110010000011110
-/*#define PATTERN_MATCH_LEN 64
+#define PATTERN_MATCH_LEN 64
 #define PATTERN_CMP_LEN 32
-static const uint32_t PATTERN = 0x7bd50cec; // 01111011110101010000110011101100*/
+static const uint32_t PATTERN = 0x7bd50cec; // 01111011110101010000110011101100
 
-#define TAP_SHIFTIR /*0x3ec*//*0x0df*/"1111101100"
-/*#define TAP_SHIFTIR_LEN 10*/
+#define TAP_SHIFTIR 0x0df
+#define TAP_SHIFTIR_LEN 10
 
 static void init_pins(uint8_t tck, uint8_t tms, uint8_t tdi, uint8_t ntrst) {
     for (int i = startpin; i <= endpin; ++i) {
@@ -134,15 +131,12 @@ static void init_pins(uint8_t tck, uint8_t tms, uint8_t tdi, uint8_t ntrst) {
     }
 }
 
-static void tap_state(const char* /*uint32_t*/ state, /*size_t tslen,*/ uint8_t tck, uint8_t tms) {
-    size_t tslen=strlen(state);
+static void tap_state(uint32_t state, size_t tslen, uint8_t tck, uint8_t tms) {
     for (size_t i = 0; i < tslen; ++i) {
         jscan_delay_half_clk();
         jscan_delay_half_clk();
         jscan_pin_set(tck, 0);
-        jscan_pin_set(tms, state[i] - '0');
-        //printf("tapstate %c\n", state[i]);
-        //jscan_pin_set(tms, (state >> (/*tslen-1 -*/ i)) & 1);
+        jscan_pin_set(tms, (state >> i) & 1);
         jscan_delay_half_clk();
         jscan_pin_set(tck, 1);
     }
@@ -155,47 +149,37 @@ static void pulse_tdi(int tck, int tdi, int s_tdi) {
     }
     jscan_delay_half_clk();
     jscan_pin_set(tdi, s_tdi);
-    //printf("set tdi %d\n", s_tdi);
     if (tck != 0xff) {
         jscan_delay_half_clk();
         jscan_pin_set(tck, 1);
     }
 }
 
-static size_t check_data(/*uint64_t*/const char* pattern, size_t iterations, uint8_t tck, uint8_t tdi, uint8_t tdo, size_t* reg_len) {
+static size_t check_data(uint64_t pattern, size_t iterations, uint8_t tck, uint8_t tdi, uint8_t tdo, size_t* reg_len) {
     size_t w = 0;
-    size_t plen = /*PATTERN_CMP_LEN;*/strlen(pattern);
-    char tdo_read, tdo_prev;
+    int tdo_read, tdo_prev;
     size_t nr_toggle = 0;
-    //uint64_t rcv = 0;
-    char rcv[PATTERN_MATCH_LEN];
+    uint64_t rcv = 0;
 
-    tdo_prev = '0' + (jscan_pin_get(tdo) ? 1 : 0);
+    tdo_prev = jscan_pin_get(tdo) ? 1 : 0;
 
     for (size_t i = 0; i < iterations; ++i) {
-        pulse_tdi(tck, tdi, /*(pattern >> w) & 1*/pattern[w] - '0');
+        pulse_tdi(tck, tdi, (pattern >> w) & 1);
 
         ++w;
-        if (!pattern[w]/*w == PATTERN_CMP_LEN*/) w = 0;
+        if (w == PATTERN_CMP_LEN) w = 0;
 
-        tdo_read = '0' + (jscan_pin_get(tdo) ? 1 : 0);
-        //printf("get tdo %c\n", tdo_read);
+        tdo_read = jscan_pin_get(tdo) ? 1 : 0;
 
         if (tdo_read != tdo_prev) ++nr_toggle;
         tdo_prev = tdo_read;
 
-        if (i < plen/*PATTERN_CMP_LEN*/) rcv[i] = tdo_read;
-        else {
-            memmove(rcv, rcv + 1, plen/*PATTERN_CMP_LEN*/ - 1);
-            rcv[plen/*PATTERN_CMP_LEN*/ - 1] = tdo_read;
-        }
-        //rcv = (rcv >> 1) | ((uint64_t)tdo_read << (PATTERN_MATCH_LEN-1))//(rcv << 1) | tdo_read;
+        rcv = (rcv >> 1) | ((uint64_t)tdo_read << (PATTERN_MATCH_LEN-1));
 
-        if (i >= plen/*PATTERN_CMP_LEN*/ - 1) {
-            //if (pattern == ((rcv >> (PATTERN_MATCH_LEN - PATTERN_CMP_LEN)) & (1uLL << PATTERN_CMP_LEN) - 1))
-            if (!memcmp(pattern, rcv, plen/*PATTERN_CMP_LEN*/))
+        if (i >= PATTERN_CMP_LEN - 1) {
+            if (pattern == ((rcv >> (PATTERN_MATCH_LEN - PATTERN_CMP_LEN)) & ((1uLL << PATTERN_CMP_LEN) - 1)))
             {
-                *reg_len = i + 1 - plen/*PATTERN_CMP_LEN*/;
+                *reg_len = i + 1 - PATTERN_CMP_LEN;
                 return 1;
             }
         }
@@ -226,11 +210,11 @@ static void scan_jtag(void) {
                         if (tdi == tdo) continue;
 
                         init_pins(tck, tms, tdi, ntrst);
-                        tap_state(TAP_SHIFTIR/*, TAP_SHIFTIR_LEN*/, tck, tms);
+                        tap_state(TAP_SHIFTIR, TAP_SHIFTIR_LEN, tck, tms);
                         size_t reg_len;
                         size_t ret = check_data(PATTERN, 2*PATTERN_MATCH_LEN, tck, tdi, tdo, &reg_len);
-                        printf("tck=%hhu tms=%hhu tdi=%hhu tdo=%hhu ntrst=%hhu , ret=%zu rlen=%zu\n",
-                                tck, tms, tdi, tdo, ntrst, ret, reg_len);
+                        /*printf("tck=%hhu tms=%hhu tdi=%hhu tdo=%hhu ntrst=%hhu , ret=%zu rlen=%zu\n",
+                                tck, tms, tdi, tdo, ntrst, ret, reg_len);*/
                         if (ret == 0) {
                             YIELD_AND_CHECK_IF_STOPPED();
                             continue;
@@ -283,7 +267,6 @@ static void pulse_clk(uint8_t swclk) {
 }
 
 static void reset_line(uint8_t swclk, uint8_t swdio) {
-    //printf("rstl\n");
     jscan_pin_set(swdio, 1);
     for (int i = 0; i < RESET_SEQUENCE_LENGTH; ++i) {
         pulse_clk(swclk);
@@ -291,9 +274,8 @@ static void reset_line(uint8_t swclk, uint8_t swdio) {
 }
 
 static void write_bits(uint8_t swclk, uint8_t swdio, uint32_t val, int len) {
-    for (int i = 0; i < len; ++i, val >>= 1) {
-        jscan_pin_set(swdio, (val /*>> i*/) & 1);
-        //printf("wb#%d %lu\n", i, (val /*>> i*/) & 1);
+    for (int i = 0; i < len; ++i) {
+        jscan_pin_set(swdio, (val >> i) & 1);
         pulse_clk(swclk);
     }
 }
@@ -301,26 +283,23 @@ static void write_bits(uint8_t swclk, uint8_t swdio, uint32_t val, int len) {
 static uint32_t read_bits(uint8_t swclk, uint8_t swdio, int len) {
     uint32_t val = 0;
 
-    jscan_pin_mode(swdio, 0); //setup_m_read();
+    jscan_pin_mode(swdio, 0);
 
     for (int i = 0; i < len; ++i) {
         uint32_t bit = jscan_pin_get(swdio) ? 1 : 0;
-        //printf("rb#%d %lu\n", i, bit);
         val |= bit << i;
         pulse_clk(swclk);
     }
 
-    jscan_pin_mode(swdio, 1); //setup_m_write();
+    jscan_pin_mode(swdio, 1);
 
     return val;
 }
 
 inline static uint32_t get_ack(uint32_t val) { return val & 0x7; }
-/*inline static uint32_t get_manuf(uint32_t val) { return (val >> 1) & 0x7ff; }
-inline static uint32_t get_partno(uint32_t val) { return (val >> 12) & 0xffff; }*/
 
 static void turn_around(uint8_t swclk, uint8_t swdio) {
-    jscan_pin_mode(swdio, 0); //setup_m_read();
+    jscan_pin_mode(swdio, 0);
     pulse_clk(swclk);
 }
 
@@ -337,13 +316,12 @@ static uint32_t read_id_code(uint8_t swclk, uint8_t swdio, uint32_t* retv) {
     uint32_t ret = read_bits(swclk, swdio, 4); // ack stuff, + 1bit of ID code
     *retv = read_bits(swclk, swdio, 32);
     turn_around(swclk, swdio);
-    jscan_pin_mode(swdio, 1); //setup_m_write();
+    jscan_pin_mode(swdio, 1);
     write_bits(swclk, swdio, 0x00, 8);
     return ret;
 }
 
 static bool test_swd_lines(uint8_t swclk, uint8_t swdio, uint32_t* idcode) {
-    //set_pins(swclk, swdio); // saves pins to globals
     init_pins(swclk, swdio, 0xff, 0xff);
     switch_jtag_to_swd(swclk, swdio);
     uint32_t readbuf2;
@@ -351,7 +329,7 @@ static bool test_swd_lines(uint8_t swclk, uint8_t swdio, uint32_t* idcode) {
     init_pins(0xff, 0xff, 0xff, 0xff);
     bool result = get_ack(readbuf) == 1;
     uint32_t swd_idcode = ((readbuf >> 3) & 1) | (readbuf2 << 1);
-    printf("swclk=%hhu swdio=%hhu -> %08lx\n", swclk, swdio, swd_idcode);
+    //printf("swclk=%hhu swdio=%hhu -> %08lx\n", swclk, swdio, swd_idcode);
     if (result) *idcode = swd_idcode;
     else *idcode = 0;
     return result;
@@ -359,9 +337,6 @@ static bool test_swd_lines(uint8_t swclk, uint8_t swdio, uint32_t* idcode) {
 
 static void scan_swd(void) {
     init_pins(0xff, 0xff, 0xff, 0xff);
-
-    /*uint16_t manuf, part;
-    test_swd_lines(startpin, startpin+1, &manuf, &part);*/
 
     for (uint8_t swclk = startpin; swclk <= endpin; ++swclk) {
         if (!jscan_pin_get(swclk)) continue;

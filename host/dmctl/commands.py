@@ -173,6 +173,20 @@ def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
             matches = None
             if typ == 'jtag':
                 matches = dev.m3_jtagscan_get_result_jtag(nmatches)
+
+                mat_good, mat_maybe = [], []
+                for e in matches:
+                    (mat_good if e.ntoggle == 0 else mat_maybe).append(e)
+
+                print("Certain matches:")
+                for i in range(len(mat_good)):
+                    print("% 2d\t%s" % (i+1, str(mat_good[i])))
+
+                print("\nPossible matches:")
+                for i in range(len(mat_maybe)):
+                    print("% 2d\t%s" % (i+1+len(mat_good), str(mat_maybe[i])))
+
+                return 0
             elif typ == 'swd':
                 matches = dev.m3_jtagscan_get_result_swd(nmatches)
             else:
