@@ -12,6 +12,7 @@ STAT_ILLCMD     = 0x01
 STAT_BADMODE    = 0x02
 STAT_NOSUCHMODE = 0x03
 STAT_BADARG     = 0x04
+STAT_ILLSTATE   = 0x05
 
 
 def check_statpl(stat, pl, defmsg, minl=None, maxl=None):
@@ -21,6 +22,7 @@ def check_statpl(stat, pl, defmsg, minl=None, maxl=None):
         STAT_BADMODE: "Bad mode for this command",
         STAT_NOSUCHMODE: "No such mode exists or is available",
         STAT_BADARG: "Bad argument"
+        STAT_ILLSTATE: "Wrong state for command"
     }
 
     if stat != STAT_OK:

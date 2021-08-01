@@ -74,12 +74,15 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/cdc_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/tempsensor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/vnd_i2ctinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_jscan/_jscan.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_jscan/jscan.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/cdc_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/spi_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_jscan/jscan_hw.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_sump/sump_hw.c
 )
 if(USE_USBCDC_FOR_STDIO)

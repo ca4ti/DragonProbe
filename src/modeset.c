@@ -5,14 +5,14 @@
 #include "alloc.h"
 #include "mode.h"
 
-extern struct mode m_01_default, m_04_sump;
+extern struct mode m_01_default, m_03_jscan, m_04_sump;
 
 // clang-format off
 const struct mode* const mode_list[16] = {
     NULL, // dummy 0 entry
     &m_01_default, // entry 1 CANNOT be NULL!
-    NULL, // mode 2 (jtag scan) not implemented yet
-    NULL, // mode 3 (hw chip programming stuff) not implemented yet
+    NULL, // mode 2 (hw chip programming stuff) not implemented yet
+    &m_03_jscan,
     &m_04_sump,
     NULL, // terminating entry
 };

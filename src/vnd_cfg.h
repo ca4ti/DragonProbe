@@ -48,7 +48,8 @@ enum cfg_resp {
     cfg_resp_illcmd     = 0x01,
     cfg_resp_badmode    = 0x02,
     cfg_resp_nosuchmode = 0x03,
-    cfg_resp_badarg     = 0x04
+    cfg_resp_badarg     = 0x04,
+    cfg_resp_illstate   = 0x05
 };
 
 void    vnd_cfg_set_itf_num(int itf);

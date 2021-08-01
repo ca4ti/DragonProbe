@@ -9,6 +9,7 @@
 #define DMJ_RESP_STAT_BADMODE     0x02
 #define DMJ_RESP_STAT_NOSUCHMODE  0x03
 #define DMJ_RESP_STAT_BADARG      0x04
+#define DMJ_RESP_STAT_ILLSTATE    0x05
 
 #define DMJ_CMD_CFG_GET_VERSION   0x00
 #define DMJ_CMD_CFG_GET_MODES     0x01
@@ -41,6 +42,7 @@ inline static const char *dmj_get_protoerr(int err)
 	case DMJ_RESP_STAT_BADMODE: return "bad mode";
 	case DMJ_RESP_STAT_NOSUCHMODE: return "no such mode available";
 	case DMJ_RESP_STAT_BADARG: return "illegal argument";
+	case DMJ_RESP_STAT_ILLSTATE: return "wrong state for command";
 	default: return "???";
 	}
 }
