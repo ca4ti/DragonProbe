@@ -1,5 +1,6 @@
 // vim: set et:
 
+#include <stdio.h>
 #include <string.h>
 
 #include "thread.h"
@@ -114,8 +115,8 @@ static const char PATTERN[PATTERN_MATCH_LEN] = "01100111010011011010000101110010
 #define PATTERN_CMP_LEN 32
 static const uint32_t PATTERN = 0x7bd50cec; // 01111011110101010000110011101100*/
 
-#define TAP_SHIFTIR 0x3ec
-#define TAP_SHIFTIR_LEN 10
+#define TAP_SHIFTIR /*0x3ec*//*0x0df*/"1111101100"
+/*#define TAP_SHIFTIR_LEN 10*/
 
 static void init_pins(uint8_t tck, uint8_t tms, uint8_t tdi, uint8_t ntrst) {
     for (int i = startpin; i <= endpin; ++i) {
@@ -131,11 +132,15 @@ static void init_pins(uint8_t tck, uint8_t tms, uint8_t tdi, uint8_t ntrst) {
     }
 }
 
-static void tap_state(uint32_t state, size_t tslen, uint8_t tck, uint8_t tms) {
+static void tap_state(const char* /*uint32_t*/ state, /*size_t tslen,*/ uint8_t tck, uint8_t tms) {
+    size_t tslen=strlen(state);
     for (size_t i = 0; i < tslen; ++i) {
         jscan_delay_half_clk();
+        jscan_delay_half_clk();
         jscan_pin_set(tck, 0);
-        jscan_pin_set(tms, (state >> i) & 1);
+        jscan_pin_set(tms, state[i] - '0');
+        //printf("tapstate %c\n", state[i]);
+        //jscan_pin_set(tms, (state >> (/*tslen-1 -*/ i)) & 1);
         jscan_delay_half_clk();
         jscan_pin_set(tck, 1);
     }
@@ -146,7 +151,9 @@ static void pulse_tdi(int tck, int tdi, int s_tdi) {
         jscan_delay_half_clk();
         jscan_pin_set(tck, 0);
     }
+    jscan_delay_half_clk();
     jscan_pin_set(tdi, s_tdi);
+    //printf("set tdi %d\n", s_tdi);
     if (tck != 0xff) {
         jscan_delay_half_clk();
         jscan_pin_set(tck, 1);
@@ -155,7 +162,7 @@ static void pulse_tdi(int tck, int tdi, int s_tdi) {
 
 static size_t check_data(/*uint64_t*/const char* pattern, size_t iterations, uint8_t tck, uint8_t tdi, uint8_t tdo, size_t* reg_len) {
     size_t w = 0;
-    //size_t plen = PATTERN_CMP_LEN;//strlen(pattern);
+    size_t plen = /*PATTERN_CMP_LEN;*/strlen(pattern);
     char tdo_read, tdo_prev;
     size_t nr_toggle = 0;
     //uint64_t rcv = 0;
@@ -167,25 +174,26 @@ static size_t check_data(/*uint64_t*/const char* pattern, size_t iterations, uin
         pulse_tdi(tck, tdi, /*(pattern >> w) & 1*/pattern[w] - '0');
 
         ++w;
-        if (w == PATTERN_CMP_LEN) w = 0;
+        if (!pattern[w]/*w == PATTERN_CMP_LEN*/) w = 0;
 
         tdo_read = '0' + (jscan_pin_get(tdo) ? 1 : 0);
+        //printf("get tdo %c\n", tdo_read);
 
         if (tdo_read != tdo_prev) ++nr_toggle;
         tdo_prev = tdo_read;
 
-        if (i < PATTERN_CMP_LEN) rcv[i] = tdo_read;
+        if (i < plen/*PATTERN_CMP_LEN*/) rcv[i] = tdo_read;
         else {
-            memmove(rcv, rcv + 1, PATTERN_CMP_LEN - 1);
-            rcv[PATTERN_CMP_LEN - 1] = tdo_read;
+            memmove(rcv, rcv + 1, plen/*PATTERN_CMP_LEN*/ - 1);
+            rcv[plen/*PATTERN_CMP_LEN*/ - 1] = tdo_read;
         }
         //rcv = (rcv >> 1) | ((uint64_t)tdo_read << (PATTERN_MATCH_LEN-1))//(rcv << 1) | tdo_read;
 
-        if (i >= PATTERN_CMP_LEN - 1) {
+        if (i >= plen/*PATTERN_CMP_LEN*/ - 1) {
             //if (pattern == ((rcv >> (PATTERN_MATCH_LEN - PATTERN_CMP_LEN)) & (1uLL << PATTERN_CMP_LEN) - 1))
-            if (!memcmp(pattern, rcv, PATTERN_CMP_LEN))
+            if (!memcmp(pattern, rcv, plen/*PATTERN_CMP_LEN*/))
             {
-                *reg_len = i + 1 - PATTERN_CMP_LEN;
+                *reg_len = i + 1 - plen/*PATTERN_CMP_LEN*/;
                 return 1;
             }
         }
@@ -216,9 +224,11 @@ static void scan_jtag(void) {
                         if (tdi == tdo) continue;
 
                         init_pins(tck, tms, tdi, ntrst);
-                        tap_state(TAP_SHIFTIR, TAP_SHIFTIR_LEN, tck, tms);
+                        tap_state(TAP_SHIFTIR/*, TAP_SHIFTIR_LEN*/, tck, tms);
                         size_t reg_len;
                         size_t ret = check_data(PATTERN, 2*PATTERN_MATCH_LEN, tck, tdi, tdo, &reg_len);
+                        printf("tck=%hhu tms=%hhu tdi=%hhu tdo=%hhu ntrst=%hhu , ret=%zu rlen=%zu\n",
+                                tck, tms, tdi, tdo, ntrst, ret, reg_len);
                         if (ret == 0) {
                             YIELD_AND_CHECK_IF_STOPPED();
                             continue;

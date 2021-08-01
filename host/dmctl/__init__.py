@@ -15,6 +15,7 @@ def dmctl_do(args: Any) -> int:
     def get_device_info(conn, args): return devcmds.get_device_info(conn)
     def get_mode_info(conn, args): return devcmds.get_mode_info(conn, args.mode)
     def set_mode(conn, args): return devcmds.set_mode(conn, args.mode)
+    def bootloader(conn, args): return devcmds.set_mode(conn, 0)
 
     def uart_hw_flowctl(conn, args):
         if args.get: return devcmds.uart_hw_flowctl_get(conn)
@@ -38,7 +39,7 @@ def dmctl_do(args: Any) -> int:
             return 1
         return devcmds.tempsensor_set(conn, tsen)
     def jtag_scan(conn, args):
-        return devcmds.jtag_scan(args.start, args.end)
+        return devcmds.jtag_scan(conn, args.type, args.start, args.end)
     def sump_ovclk(conn, args):
         if args.get: return devcmds.sump_overclock_get(conn)
         oven = args.set
@@ -57,6 +58,7 @@ def dmctl_do(args: Any) -> int:
         'get-device-info': get_device_info,
         'get-mode-info': get_mode_info,
         'set-mode': set_mode,
+        'bootloader': bootloader,
 
         'uart-cts-rts': uart_hw_flowctl,
         'tempsensor': tempsensor,
@@ -138,6 +140,8 @@ def main() -> int:
     setmode = subcmds.add_parser("set-mode", help="Set the device mode")
     setmode.add_argument('mode', type=int, help="Mode to switch to, required.")
 
+    bootloader = subcmds.add_parser("bootloader", help="Set the device in bootloader mode")
+
     # mode 1 commands
     usbhwfctl = subcmds.add_parser("uart-cts-rts", help="Get, enable/disable"+\
                                    " UART hardware flow control")
@@ -168,9 +172,11 @@ def main() -> int:
                              "short for --set true")
 
     jtagscan = subcmds.add_parser("jtag-scan", help="JTAG pinout scanner")
-    jtagscan.add_argument("start-pin", type=int, help="Number of the start "+\
+    jtagscan.add_argument("type", type=str, help="Pinout type to check for.",
+                          choices=['jtag', 'swd'])  # TODO: SBW etc
+    jtagscan.add_argument("start", type=int, help="Number of the start "+\
                           "of the pin range to scan (inclusive)")
-    jtagscan.add_argument("end-pin", type=int, help="Number of the end of "+\
+    jtagscan.add_argument("end", type=int, help="Number of the end of "+\
                           "the pin range to scan (inclusive)")
 
     sumpla = subcmds.add_parser("sump-overclock",

@@ -1,4 +1,6 @@
 
+import sys
+import time
 import traceback
 
 from typing import *
@@ -107,7 +109,7 @@ def tempsensor_get(dev: DmjDevice) -> int:
         return 1
 
 
-def tempsensor_set(dev, v: int) -> int:
+def tempsensor_set(dev: DmjDevice, v: int) -> int:
     try:
         old, new = dev.m1_tempsensor_i2cemul_set(v)
         olds = "disabled" if old is None else ("0x%02x" % old)
@@ -122,31 +124,62 @@ def tempsensor_set(dev, v: int) -> int:
 # ---
 
 
-def jtag_scan(dev: DmjDevice, start_pin: int, end_pin: int) -> int:
-    SCAN_IDLE    = 0x00
-    SCAN_BUSY    = 0x01
-    SCAN_FAIL    = 0x03
-    SCAN_SUCCESS = 0x04
+def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
+    SCAN_IDLE    = 0x7f
+    SCAN_DONE_F  = 0x80
+
+    types = { 0x00: 'jtag', 0x01: 'swd', 0x02: 'sbw' }
+    typei = { 'jtag': 0x00, 'swd': 0x01, 'sbw': 0x02 }
 
     try:
+        assert typ in typei
+
         stat = dev.m3_jtagscan_get_status()
 
-        if stat == SCAN_BUSY:
-            print("Another scan already in progress, aborting")
+        if stat < SCAN_IDLE:
+            print("Another %s scan already in progress, aborting" % types.get(stat, "pinout"))
             return 1
 
-        dev.m3_jtagscan_start(start_pin, end_pin)
+        minstart, maxend = dev.m3_jtagscan_pinrange()
+        if start_pin < minstart:
+            print("Start pin must be at least %d, but is %d" % (minstart, start_pin))
+            return 1
+        if end_pin > maxend:
+            print("End pin must be at most %d, but is %d" % (maxend, end_pin))
+            return 1
+        if start_pin > end_pin:
+            print("WARN: start pin %d greater than end pin %d, swapping the order..." % (start_pin, end_pin))
+            end_pin, start_pin = start_pin, end_pin
 
-        stat = SCAN_BUSY
-        while stat == SCAN_BUSY:  # TODO: timeout?
+        print("Starting %s scan..." % typ.upper())
+        dev.m3_jtagscan_start(typei[typ], start_pin, end_pin)
+
+        stat = typei[typ]
+        while stat < SCAN_IDLE:  # TODO: timeout?
+            if stat != typei[typ]:
+                print("Wut?!! device should be in state %d (%s) but is in %d (%s)" % (typei[typ].upper(), typ, stat, types.get(stat, '???').upper()))
+
             stat = dev.m3_jtagscan_get_status()
+            time.sleep(0.1)
+            sys.stdout.write('.')
+            sys.stdout.flush()
+        sys.stdout.write('\n')
 
-        if stat == SCAN_SUCCESS:
-            result = dev.m3_jtagscan_get_result()
-            print("JTAG scan result: %s" % ', '.join("%s=%d" % kvp for kvp in result.items()))
-            return 0
-        elif stat == SCAN_FAIL:
-            print("JTAG scan failure: %s" % dev.m3_jtagscan_get_Error())
+        if (stat & SCAN_DONE_F) != 0:
+            nmatches = stat & (SCAN_DONE_F - 1)
+            print("JTAG scan finished (%d matches)%s" % \
+                  (nmatches, ':' if nmatches else ''))
+
+            matches = None
+            if typ == 'jtag':
+                matches = dev.m3_jtagscan_get_result_jtag(nmatches)
+            elif typ == 'swd':
+                matches = dev.m3_jtagscan_get_result_swd(nmatches)
+            else:
+                assert False, "wut"
+
+            for i in range(nmatches): print("%02d\t%s" % (i, str(matches[i])))
+
             return 0
         else:
             print("Huh, device replied weird status %d?" % stat)

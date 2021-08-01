@@ -4,6 +4,7 @@
 
 #include "mode.h"
 #include "thread.h"
+#include "usbstdio.h"
 #include "vnd_cfg.h"
 
 #include "m_jscan/bsp-feature.h"

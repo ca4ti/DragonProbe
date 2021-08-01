@@ -1,4 +1,7 @@
 
+from __future__ import annotations
+
+
 import array
 import struct
 
@@ -15,13 +18,67 @@ STAT_BADARG     = 0x04
 STAT_ILLSTATE   = 0x05
 
 
+class JtagMatch(NamedTuple):
+    tck: int
+    tms: int
+    tdi: int
+    tdo: int
+    ntrst: int
+    irlen: int
+    ntoggle: int
+    short_warn: int
+
+    def from_bytes(b: bytes) -> JtagMatch:
+        assert len(b) == 8
+        return JtagMatch(b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7])
+
+    def list_from_bytes(b: bytes) -> List[JtagMatch]:
+        nmatches = len(b) // 8
+        assert nmatches * 8 == len(b)
+
+        r = [None]*nmatches
+        for i in range(nmatches): r[i] = JtagMatch.from_bytes(b[(i*8):((i+1)*8)])
+        return r
+
+    def __str__(self):
+        return "TCK=%d TMS=%d TDI=%d TDO=%d nTRST=%d %s=%d%s" % \
+            (self.tck, self.tms, self.tdi, self.tdo, self.ntrst,
+             "IRLEN" if irlen > 0 else "#toggle", self.irlen if self.irlen > 0 else self.toggle,
+             (" (W: may be short-circuit: %d)" % self.short_warn) if self.short_warn else '')
+
+
+class SwdMatch(NamedTuple):
+    swclk: int
+    swdio: int
+    manuf: int
+    part: int
+
+    def from_bytes(b: bytes) -> SwdMatch:
+        assert len(b) == 6
+
+        clk, dio, m, p = struct.unpack('<BBHH', b)
+        return SwdMatch(clk, dio, m, p)
+
+    def list_from_bytes(b: bytes) -> List[SwdMatch]:
+        nmatches = len(b) // 6
+        assert nmatches * 6 == len(b)
+
+        r = [None]*nmatches
+        for i in range(nmatches): r[i] = SwdMatch.from_bytes(b[(i*6):((i+1)*6)])
+        return r
+
+    def __str__(self):
+        return "SWCLK=%d SWDIO=%d manufacturer=%03x partno=%04x" % \
+            (self.swclk, self.swdio, self.manuf, self.part)
+
+
 def check_statpl(stat, pl, defmsg, minl=None, maxl=None):
     statmsgs = {
         STAT_OK: "ok",
         STAT_ILLCMD: "Illegal/invalid/unknown command",
         STAT_BADMODE: "Bad mode for this command",
         STAT_NOSUCHMODE: "No such mode exists or is available",
-        STAT_BADARG: "Bad argument"
+        STAT_BADARG: "Bad argument",
         STAT_ILLSTATE: "Wrong state for command"
     }
 
@@ -225,28 +282,38 @@ class DmjDevice:
 
         return pl[0]
 
-    def m3_jtagscan_get_result(self) -> Dict[str, int]:
-        pinassign = ['TCK', 'TMS', 'TDI', 'TDO', 'TRST']
-
+    def m3_jtagscan_get_result_jtag(self, nmatches: int) -> List[JtagMatch]:
         self.write(b'\x34')
         stat, pl = self.read_resp()
-        check_statpl(stat, pl, "m3: jtag scan result", 5, 5)
+        check_statpl(stat, pl, "m3: jtag scan result", 8*nmatches, 8*nmatches)
 
-        return { pinassign[i]: pl[i] for i in range(len(pl)) }
+        return JtagMatch.list_from_bytes(pl)
 
-    def m3_jtagscan_get_error(self) -> str:
+    def m3_jtagscan_get_result_swd(self, nmatches: int) -> List[SwdMatch]:
         self.write(b'\x34')
         stat, pl = self.read_resp()
-        check_statpl(stat, pl, "m3: jtag scan error", 1)
+        check_statpl(stat, pl, "m3: swd scan result", 6*nmatches, 6*nmatches)
 
-        return pl.rstrip(b'\0').decode('utf-8')
+        return SwdMatch.list_from_bytes(pl)
 
-    def m3_jtagscan_start(self, min_pin: int, max_pin: int):
-        cmd = bytearray(b'\x35\xff\x00')
-        cmd[1], cmd[2] = min_pin, max_pin
+    def m3_jtagscan_start(self, typ: int, min_pin: int, max_pin: int):
+        cmd = bytearray(b'\x35\xff\xff\x00')
+        cmd[1] = typ
+        cmd[2], cmd[3] = min_pin, max_pin
         self.write(cmd)
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "m3: jtag scan start", 0, 0)
+
+    def m3_jtagscan_pinrange(self) -> Tuple[int, int]:
+        self.write(b'\x36')
+        stat, pl = self.read_resp()
+        check_statpl(stat, pl, "m3: jtag scan get pin range", 2, 2)
+        return tuple(pl)
+
+    def m3_jtagscan_force_stop(self):
+        self.write(b'\x37')
+        stat, pl = self.read_resp()
+        check_statpl(stat, pl, "m3: jtag scan force stop", 0, 0)
 
     # mode 4 commands
 
