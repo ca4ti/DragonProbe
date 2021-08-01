@@ -44,6 +44,7 @@ void jscan_task(void);
 bool jscan_pin_get(uint8_t pin);
 void jscan_pin_set(uint8_t pin, bool v);*/
 // implement these inline in jscan_hw.h
+void jscan_pin_enable(void);
 void jscan_pin_disable(void);
 
 // sleep for 25 microseconds (half a clock cycle of a 20 kHz clock)

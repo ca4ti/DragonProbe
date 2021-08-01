@@ -155,9 +155,9 @@ def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
         dev.m3_jtagscan_start(typei[typ], start_pin, end_pin)
 
         stat = typei[typ]
-        while stat < SCAN_IDLE:  # TODO: timeout?
+        while stat < SCAN_IDLE:  # TODO: timeout?  # TODO: time guess? 50us*some factor*pins!/((pins-portnum)!)
             if stat != typei[typ]:
-                print("Wut?!! device should be in state %d (%s) but is in %d (%s)" % (typei[typ].upper(), typ, stat, types.get(stat, '???').upper()))
+                print("Wut?!! device should be in state %d (%s) but is in %d (%s)" % (typei[typ], typ.upper(), stat, types.get(stat, '???').upper()))
 
             stat = dev.m3_jtagscan_get_status()
             time.sleep(0.1)
@@ -167,8 +167,8 @@ def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
 
         if (stat & SCAN_DONE_F) != 0:
             nmatches = stat & (SCAN_DONE_F - 1)
-            print("JTAG scan finished (%d matches)%s" % \
-                  (nmatches, ':' if nmatches else ''))
+            print("%s scan finished (%d matches)%s" % \
+                  (typ.upper(), nmatches, ':' if nmatches else ''))
 
             matches = None
             if typ == 'jtag':

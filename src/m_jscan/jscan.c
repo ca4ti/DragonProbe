@@ -83,12 +83,14 @@ static void scan_swd(void);
 void jscan_task(void) {
     switch (status) { // should we start something?
     case jscan_type_jtag:
+        jscan_pin_enable();
         scan_jtag();
         if (type != 0xff) // -1 means force-stopped
             status = jscan_mode_done_f | nmatches;
         jscan_pin_disable();
         break;
     case jscan_type_swd:
+        jscan_pin_enable();
         scan_swd();
         if (type != 0xff) // -1 means force-stopped
             status = jscan_mode_done_f | nmatches;
@@ -339,6 +341,7 @@ static bool test_swd_lines(uint8_t swclk, uint8_t swdio, uint16_t* manuf, uint16
     read_id_code(swclk, swdio, &readbuf);
     bool result = get_ack(readbuf) == 1;
     init_pins(0xff, 0xff, 0xff, 0xff);
+    printf("swclk=%hhu swdio=%hhu -> %08llx\n", swclk, swdio, readbuf);
     if (result) {
         *manuf = get_manuf(readbuf);
         *part  = get_partno(readbuf);
