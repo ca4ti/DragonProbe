@@ -43,21 +43,20 @@ class JtagMatch(NamedTuple):
     def __str__(self):
         return "TCK=%d TMS=%d TDI=%d TDO=%d nTRST=%d %s=%d%s" % \
             (self.tck, self.tms, self.tdi, self.tdo, self.ntrst,
-             "IRLEN" if irlen > 0 else "#toggle", self.irlen if self.irlen > 0 else self.toggle,
+             "IRLEN" if self.irlen > 0 else "#toggle", self.irlen if self.irlen > 0 else self.ntoggle,
              (" (W: may be short-circuit: %d)" % self.short_warn) if self.short_warn else '')
 
 
 class SwdMatch(NamedTuple):
     swclk: int
     swdio: int
-    manuf: int
-    part: int
+    idcode: int
 
     def from_bytes(b: bytes) -> SwdMatch:
         assert len(b) == 6
 
-        clk, dio, m, p = struct.unpack('<BBHH', b)
-        return SwdMatch(clk, dio, m, p)
+        clk, dio, id = struct.unpack('<BBI', b)
+        return SwdMatch(clk, dio, id)
 
     def list_from_bytes(b: bytes) -> List[SwdMatch]:
         nmatches = len(b) // 6
@@ -68,8 +67,8 @@ class SwdMatch(NamedTuple):
         return r
 
     def __str__(self):
-        return "SWCLK=%d SWDIO=%d manufacturer=%03x partno=%04x" % \
-            (self.swclk, self.swdio, self.manuf, self.part)
+        return "SWCLK=%d SWDIO=%d idcode=%08x" % \
+            (self.swclk, self.swdio, self.idcode)
 
 
 def check_statpl(stat, pl, defmsg, minl=None, maxl=None):

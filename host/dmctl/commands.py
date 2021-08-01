@@ -178,13 +178,14 @@ def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
             else:
                 assert False, "wut"
 
-            for i in range(nmatches): print("%02d\t%s" % (i, str(matches[i])))
+            for i in range(nmatches): print("% 2d\t%s" % (i+1, str(matches[i])))
 
             return 0
         else:
             print("Huh, device replied weird status %d?" % stat)
             return 1
     except Exception as e:
+        traceback.print_exc()
         print("Could not perform JTAG scan: %s" % str(e))
         return 1
 

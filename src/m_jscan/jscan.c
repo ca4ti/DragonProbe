@@ -14,7 +14,7 @@ struct match_rec_jtag {
 };
 struct match_rec_swd {
     uint8_t swclk, swdio;
-    uint16_t manuf, part;
+    uint16_t idlo, idhi;
 };
 
 #define N_MATCHES_JTAG (JSCAN_MAX_RESULT_BYTES / (sizeof(struct match_rec_jtag)))
@@ -283,34 +283,41 @@ static void pulse_clk(uint8_t swclk) {
 }
 
 static void reset_line(uint8_t swclk, uint8_t swdio) {
+    //printf("rstl\n");
     jscan_pin_set(swdio, 1);
     for (int i = 0; i < RESET_SEQUENCE_LENGTH; ++i) {
         pulse_clk(swclk);
     }
 }
 
-static void write_bits(uint8_t swclk, uint8_t swdio, uint64_t val, int len) {
-    for (int i = 0; i < len; ++i) {
-        jscan_pin_set(swdio, (val >> i) & 1);
+static void write_bits(uint8_t swclk, uint8_t swdio, uint32_t val, int len) {
+    for (int i = 0; i < len; ++i, val >>= 1) {
+        jscan_pin_set(swdio, (val /*>> i*/) & 1);
+        //printf("wb#%d %lu\n", i, (val /*>> i*/) & 1);
         pulse_clk(swclk);
     }
 }
 
-static void read_bits(uint8_t swclk, uint8_t swdio, uint64_t* val, int len) {
+static uint32_t read_bits(uint8_t swclk, uint8_t swdio, int len) {
+    uint32_t val = 0;
+
     jscan_pin_mode(swdio, 0); //setup_m_read();
 
     for (int i = 0; i < len; ++i) {
-        int bit = jscan_pin_get(swdio) ? 1 : 0;
-        *val = (*val & ~(1 << i)) | (bit << i);
+        uint32_t bit = jscan_pin_get(swdio) ? 1 : 0;
+        //printf("rb#%d %lu\n", i, bit);
+        val |= bit << i;
         pulse_clk(swclk);
     }
 
     jscan_pin_mode(swdio, 1); //setup_m_write();
+
+    return val;
 }
 
 inline static uint32_t get_ack(uint32_t val) { return val & 0x7; }
-inline static uint32_t get_manuf(uint32_t val) { return (val >> 4) & 0x7ff; }
-inline static uint32_t get_partno(uint32_t val) { return (val >> 15) & 0xffff; }
+/*inline static uint32_t get_manuf(uint32_t val) { return (val >> 1) & 0x7ff; }
+inline static uint32_t get_partno(uint32_t val) { return (val >> 12) & 0xffff; }*/
 
 static void turn_around(uint8_t swclk, uint8_t swdio) {
     jscan_pin_mode(swdio, 0); //setup_m_read();
@@ -324,33 +331,37 @@ static void switch_jtag_to_swd(uint8_t swclk, uint8_t swdio) {
     write_bits(swclk, swdio, 0x00, 4);
 }
 
-static void read_id_code(uint8_t swclk, uint8_t swdio, uint64_t* buf) {
+static uint32_t read_id_code(uint8_t swclk, uint8_t swdio, uint32_t* retv) {
     write_bits(swclk, swdio, 0xa5, 8);
     turn_around(swclk, swdio);
-    read_bits(swclk, swdio, buf, 36);
+    uint32_t ret = read_bits(swclk, swdio, 4); // ack stuff, + 1bit of ID code
+    *retv = read_bits(swclk, swdio, 32);
     turn_around(swclk, swdio);
     jscan_pin_mode(swdio, 1); //setup_m_write();
     write_bits(swclk, swdio, 0x00, 8);
+    return ret;
 }
 
-static bool test_swd_lines(uint8_t swclk, uint8_t swdio, uint16_t* manuf, uint16_t* part) {
-    uint64_t readbuf = 0;
+static bool test_swd_lines(uint8_t swclk, uint8_t swdio, uint32_t* idcode) {
     //set_pins(swclk, swdio); // saves pins to globals
     init_pins(swclk, swdio, 0xff, 0xff);
     switch_jtag_to_swd(swclk, swdio);
-    read_id_code(swclk, swdio, &readbuf);
-    bool result = get_ack(readbuf) == 1;
+    uint32_t readbuf2;
+    uint32_t readbuf = read_id_code(swclk, swdio, &readbuf2);
     init_pins(0xff, 0xff, 0xff, 0xff);
-    printf("swclk=%hhu swdio=%hhu -> %08llx\n", swclk, swdio, readbuf);
-    if (result) {
-        *manuf = get_manuf(readbuf);
-        *part  = get_partno(readbuf);
-    } else { *manuf = 0; *part = 0; }
+    bool result = get_ack(readbuf) == 1;
+    uint32_t swd_idcode = ((readbuf >> 3) & 1) | (readbuf2 << 1);
+    printf("swclk=%hhu swdio=%hhu -> %08lx\n", swclk, swdio, swd_idcode);
+    if (result) *idcode = swd_idcode;
+    else *idcode = 0;
     return result;
 }
 
 static void scan_swd(void) {
     init_pins(0xff, 0xff, 0xff, 0xff);
+
+    /*uint16_t manuf, part;
+    test_swd_lines(startpin, startpin+1, &manuf, &part);*/
 
     for (uint8_t swclk = startpin; swclk <= endpin; ++swclk) {
         if (!jscan_pin_get(swclk)) continue;
@@ -359,14 +370,14 @@ static void scan_swd(void) {
 
             if (!jscan_pin_get(swdio)) continue;
 
-            uint16_t manuf = 0, part = 0;
-            if (test_swd_lines(swclk, swdio, &manuf, &part)) {
+            uint32_t idcode = 0;
+            if (test_swd_lines(swclk, swdio, &idcode)) {
                 if (nmatches < N_MATCHES_SWD) {
                     //memset(&matches.s[nmatches], 0, sizeof(struct match_rec));
                     matches.s[nmatches].swclk = swclk;
                     matches.s[nmatches].swdio = swdio;
-                    matches.s[nmatches].manuf = manuf;
-                    matches.s[nmatches].part  = part ;
+                    matches.s[nmatches].idlo  = idcode & 0xffff;
+                    matches.s[nmatches].idhi  = (idcode >> 16);
 
                     ++nmatches;
                 }
