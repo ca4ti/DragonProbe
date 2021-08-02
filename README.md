@@ -63,32 +63,38 @@ For detailed usage notes, please visit the [wiki](https://git.lain.faith/sys6473
 
 ## License
 
+The code of this project itself is licensed under the [GPL v3](https://opensource.org/licenses/GPL-3.0).
+
 TinyUSB is licensed under the [MIT license](https://opensource.org/licenses/MIT).
 
 ARM's CMSIS 5 code is licensed under the [Apache 2.0 license](https://opensource.org/licenses/Apache-2.0).
 
-libco is licensed under the [ISC license](https://opensource.org/licenses/ISC)
+libco is licensed under the [ISC license](https://opensource.org/licenses/ISC).
 
-Some code has been incorporated from the [DapperMime](https://github.com/majbthrd/DapperMime)
-and [picoprobe-sump](https://github.com/perexg/picoprobe-sump)
+Some code has been incorporated from the [DapperMime](https://github.com/majbthrd/DapperMime),
+[picoprobe-sump](https://github.com/perexg/picoprobe-sump),
+[JTAGenum](https://github.com/cyphunk/JTAGenum) and
+[SWDscan](https://github.com/szymonh/SWDscan)
 projects. These respective licenses can be found in
-[this](./LICENSE.dappermime) and [this](./LICENSE.picoprobe-sump) file.
+[this](./LICENSE.dappermime), [this](./LICENSE.picoprobe-sump),
+[this](./LICENSE.jtagenum) and [this](./LICENSE.swdscan) file.
 
 ## TODO
 
-- [ ] A name
-- [ ] A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf
+- [ ] **A name**
+- [ ] **A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf**
+- [ ] GPL license headers on every file
 - [x] Debug interface to send printf stuff directly to USB, instead of having
       to use the UART interface as a loopback thing.
   - [ ] Second UART port for when stdio UART is disabled?
-- [x] I2C support by emulating the I2C Tiny USB
+- [x] I2C support ~~by emulating the I2C Tiny USB~~
   - [x] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - [ ] ~~Does SMBus stuff need special treatment here?~~ ~~No.~~  Actually, some
     parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
-- [ ] 1-wire
-- [ ] make modes persistent?
+- [ ] **1-wire**
+- [ ] **make modes persistent?**
 - [ ] FT2232 emulation mode?
   - watch out, still need a vnd cfg interface! libftdi expects the following stuff: (TODO: acquire detailed protocol description)
     - interface 0 ("A"): index 1, epin 0x02, epout 0x81
@@ -117,6 +123,7 @@ projects. These respective licenses can be found in
 - iCE40 programming??
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
+  - https://github.com/szymonh/rl78check is something at least
 - Maybe steal other features from the Bus Pirate, [HydraBus](https://github.com/hydrabus/hydrafw) or Glasgow or so
   - 3-wire? Never seen this one in the wild
   - CAN? LIN? MOD? If I'd first be able to find a CAN device to test it with, sure

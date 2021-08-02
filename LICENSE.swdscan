@@ -1,0 +1,10 @@
+The GNU GPL v3 applies to portions of the following files, which have
+been modified from their original versions in <https://github.com/szymonh/SWDscan>
+(the "SWDscan repository")
+
+ - src/m_jscan/jscan.c
+
+To comply with the GPL, this repository has also been made available under
+version 3 of the GPL.
+
+For the full text of the GNU GPL v3, please refer to the `COPYING' file.

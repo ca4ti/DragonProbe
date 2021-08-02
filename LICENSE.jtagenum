@@ -1,0 +1,10 @@
+The below copyright and permission notice applies to portions of the following files, which have
+been modified from their original versions in <https://github.com/cyphunk/JTAGenum>
+(the "JTAGEnum repository")
+
+ - src/m_jscan/jscan.c
+
+The below notice does not apply to any modifications made to the above files since the versions
+present in the JTAGenum repository, nor to any files not present in the JTAGenum repository.
+
+This license for this code is whatever you want it to be
