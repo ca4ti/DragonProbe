@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "alloc.h"
+#include "board.h" /* bsp_reset_bootloader() */
 #include "mode.h"
 
 extern struct mode m_01_default, m_03_jscan, m_04_sump;
@@ -93,8 +94,10 @@ void modes_switch(uint8_t newmode) {
     // maybe wait a second or so for the host to notice this
     sleep_ms(500/2);
 
+    if (newmode == 0) bsp_reset_bootloader();
+
     // now apply the new tusb settings
-    mode_current_id = (newmode >= 16 || newmode == 0) ? (-1) : newmode;
+    mode_current_id = (newmode >= 16) ? (-1) : newmode;
     //mode_next_id = -1;
     if (mode_current) {
         // clang-format off

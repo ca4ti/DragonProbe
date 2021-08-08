@@ -8,6 +8,13 @@ from typing import *
 from .protocol import *
 
 
+FEATURES_OF_MODE = {
+    1: ["UART", "CMSIS-DAP", "SPI", "I2C", "temperature sensor", "1-wire"],
+    3: ["JTAG", "SWD"],
+    4: ["SUMP"]
+}
+
+
 def get_device_info(dev: DmjDevice) -> int:
     print("%s: protocol version: %02x.%02x, currently in mode %d (%s)" % \
           (dev.infotext, dev.protocol_version >> 8, dev.protocol_version & 0xff,
@@ -39,19 +46,23 @@ def get_mode_info(dev: DmjDevice, mode: Optional[str]) -> int:
 
     if mode == "all" or (is_int(mode) and int(mode) < 0):
         for mi, mv in dev.mode_info.items():
+            featlist = FEATURES_OF_MODE.get(mi, "01234567")
+
             print("mode % 2d: %s: version %02x.%02x with %sfeatures %s" % \
                   (mi, mv.infotext, mv.version >> 8, mv.version & 0xff,
                    ("no " if len(mv.features) == 0 else ""),
-                   ', '.join(str(x) for x in mv.features))  # TODO: better features display?
+                   ', '.join(featlist[x] for x in mv.features))  # TODO: better features display?
             )
     elif is_int(mode):
         mode = int(mode)
+        featlist = FEATURES_OF_MODE.get(mode, "01234567")
+
         if mode in dev.mode_info:
             mv = dev.mode_info[mode]
             print("mode %d: %s: version %02x.%02x with %sfeatures %s" % \
                   (mode, mv.infotext, mv.version >> 8, mv.version & 0xff,
                    ("no " if len(mv.features) == 0 else ""),
-                   ', '.join(str(x) for x in list(mv.features)))  # TODO: better features display?
+                   ', '.join(featlist[x] for x in list(mv.features)))  # TODO: better features display?
             )
             return 0
         else:

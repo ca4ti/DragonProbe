@@ -177,7 +177,10 @@ void vnd_cfg_task(void) {
             verbuf[0] = vnd_cfg_read_byte();
             if (verbuf[0] == 0) {
                 // reset
-                bsp_reset_bootloader();
+                // don't do this here, see the comment below in the 'else' branch
+                //bsp_reset_bootloader();
+                mode_next_id = 0;
+                vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
             } else if (verbuf[0] >= 0x10 || mode_list[verbuf[0]] == NULL) {
                 vnd_cfg_write_resp(cfg_resp_nosuchmode, 0, NULL);
             } else {

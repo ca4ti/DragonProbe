@@ -12,7 +12,7 @@ setup(
     url='',
     author='sys64738',
     author_email='sys64738@disroot.org',
-    license='???',
+    license='GPL-3.0',
     packages=['dmctl'],
     install_requires=[
         "pyusb>=1.1.1"
@@ -20,7 +20,7 @@ setup(
     python_requires=">=3.9",
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: GNU Affero General Public License v3",
+        "License :: OSI Approved :: GNU General Public License v3",
         "Operating System :: Unix",
         "Topic :: Software Development :: User Interfaces",
         "Topic :: System :: Hardware :: Hardware Drivers",

@@ -234,7 +234,7 @@ class DmjDevice:
         stat, pl = self.read_resp()
         check_statpl(stat, pl, "get mode features", 1, 1)
 
-        return { i for i in range(1, 8) if (pl[0] & (1<<i)) != 0 }
+        return { i for i in range(0, 8) if (pl[0] & (1<<i)) != 0 }
 
     # mode 1 commands
 
