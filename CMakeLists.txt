@@ -79,6 +79,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/cdc_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swo.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/spi_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
@@ -95,11 +96,12 @@ target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Driver/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
 )
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror=implicit-function-declaration")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror=implicit-function-declaration -Werror=return-type")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 add_custom_target(fix_db ALL WORKING_DIRECTORY ${OUTPUT_DIR}
@@ -126,6 +128,8 @@ if(FAMILY STREQUAL "rp2040")
 
     target_link_libraries(${PROJECT} pico_stdio)
   endif()
+
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/uart_rx.pio)
 
   pico_add_extra_outputs(${PROJECT})
 

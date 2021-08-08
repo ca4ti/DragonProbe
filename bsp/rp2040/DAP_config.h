@@ -68,6 +68,7 @@ This information includes:
 
 #define PINOUT_SWCLK PINOUT_JTAG_TCK
 #define PINOUT_SWDIO PINOUT_JTAG_TMS
+#define PINOUT_SWO   PINOUT_JTAG_TDO
 
 #define PINOUT_SWCLK_MASK (1UL << PINOUT_SWCLK)
 #define PINOUT_SWDIO_MASK (1UL << PINOUT_SWDIO)
@@ -128,10 +129,14 @@ This information includes:
 
 /// Indicate that UART Serial Wire Output (SWO) trace is available.
 /// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
-#define SWO_UART 0  ///< SWO UART:  1 = available, 0 = not available.
+#define SWO_UART 1  ///< SWO UART:  1 = available, 0 = not available.
+
+// should cause a linker error, because we're not using a hardware UART on the pico for SWO
+#define SWO_UART_DRIVER 9999
 
 /// Maximum SWO UART Baudrate.
 #define SWO_UART_MAX_BAUDRATE 10000000U  ///< SWO UART Maximum Baudrate in Hz.
+// ^ 10 MHz
 
 /// Indicate that Manchester Serial Wire Output (SWO) trace is available.
 /// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
@@ -148,7 +153,7 @@ This information includes:
 #define DAP_UART 0  ///< DAP UART:  1 = available, 0 = not available.
 
 /// USART Driver instance number for the UART Communication Port.
-#define DAP_UART_DRIVER 1  ///< USART Driver instance number (Driver_USART#).
+#define DAP_UART_DRIVER 0  ///< USART Driver instance number (Driver_USART#).
 
 /// UART Receive Buffer Size.
 #define DAP_UART_RX_BUFFER_SIZE 64U  ///< Uart Receive Buffer Size in bytes (must be 2^n).

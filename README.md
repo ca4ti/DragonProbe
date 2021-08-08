@@ -95,6 +95,10 @@ projects. These respective licenses can be found in
         supports 7-bit ones).
 - [ ] **1-wire**
 - [ ] **make modes persistent?**
+- [ ] CMSIS-DAP SWO support?
+  - ~~Needs edits in the CMSIS-DAP code~~ ok no theyre weak symbols
+  - needs PIO stuff tho
+    - SWO = TDO !
 - [ ] FT2232 emulation mode?
   - watch out, still need a vnd cfg interface! libftdi expects the following stuff: (TODO: acquire detailed protocol description)
     - interface 0 ("A"): index 1, epin 0x02, epout 0x81

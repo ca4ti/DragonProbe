@@ -5,7 +5,7 @@
 
 #include <libco.h>
 
-#define THREAD_STACK_SIZE 1024
+#define THREAD_STACK_SIZE 512
 
 void thread_init (void);
 void thread_yield(void);
