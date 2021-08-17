@@ -51,7 +51,7 @@ uint8_t get_unique_id_u16(uint16_t* desc_str) {
 bi_decl(bi_program_name(INFO_PRODUCT(INFO_BOARDNAME)));
 bi_decl(bi_program_description("USB hardware hacking multitool"));
 bi_decl(bi_program_version_string("00.10"));
-bi_decl(bi_program_url("https://git.lain.faith/sys64738/DapperMime-JTAG/"));
+bi_decl(bi_program_url("https://git.lain.faith/sys64738/DapperMime/"));
 #ifdef PICO_NO_FLASH
 bi_decl(bi_program_build_attribute("Not in flash"));
 #elif defined(PICO_COPY_TO_RAM)

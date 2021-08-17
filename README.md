@@ -57,7 +57,7 @@ Other options are:
 
 ## Usage
 
-For detailed usage notes, please visit the [wiki](https://git.lain.faith/sys64738/DapperMime-JTAG/wiki/Home).
+For detailed usage notes, please visit the [wiki](https://git.lain.faith/sys64738/DragonProbe/wiki/Home).
 
 ## License
 
