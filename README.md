@@ -1,6 +1,4 @@
-# DapperMime-JTAG
-
-(name is still WIP)
+# Dragon Probe
 
 This project attempts to add Bus Pirate/...-like functionality to a number of
 MCUs, mainly the Raspberry Pi Pico. It was originally based on [Dapper
@@ -81,7 +79,6 @@ projects. These respective licenses can be found in
 
 ## TODO
 
-- [ ] **A name**
 - [ ] **A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf**
 - [ ] GPL license headers on every file
 - [x] Debug interface to send printf stuff directly to USB, instead of having
@@ -102,6 +99,8 @@ projects. These respective licenses can be found in
     - interface 2 ("C"): index 3, epin 0x06, epout 0x85
     - interface 3 ("D"): index 4, epin 0x08, epout 0x87
   - ~~or, FX2 emulation mode??? (useful links: https://sigrok.org/wiki/Fx2lafw ; https://sigrok.org/wiki/CWAV_USBee_SX/Info )~~ has a ROM/fw and everything, so, maybe not
+- [ ] "Complex Trigger" mode for aiding with glitching triggers, by turning
+      UART/SPI/I2C/eMMC/... sequences into a GPIO toggle
 - [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????
   - Maybe also with code that auto-reacts to stuff from the environment?
 - [ ] Facedancer implementation by connecting two picos via GPIO, one doing host

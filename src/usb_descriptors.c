@@ -185,15 +185,17 @@ const uint16_t* mode_std_descriptor_string_cb(uint8_t index, uint16_t langid) {
         chr_count = 1;
     } else if (index == STRID_SERIAL) {
         chr_count = get_unique_id_u16(_desc_str + 1);
-    } else if (index > STRID_CONFIG && mode_current != NULL && mode_current->string_desc != NULL) {
-        if (index >= mode_current->n_string_desc) return NULL;
+    } else if (mode_current != NULL && mode_current->string_desc != NULL) {
+        if (index >= mode_current->n_string_desc) goto fallback;
 
         const char* str = mode_current->string_desc[index];
+        if (!str) goto fallback;
 
         chr_count = TU_MIN(strlen(str), 31);
 
         for (int i = 0; i < chr_count; i++) { _desc_str[1 + i] = str[i]; }
     } else {
+    fallback:
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Driver for the DapperMime-JTAG USB multitool: base MFD driver
+ * Driver for the Dragon Probe USB multitool: base MFD driver
  *
  * Copyright (c) 2021 sys64738 and haskal
  *
@@ -20,23 +20,23 @@
 #include <linux/rculist.h>
 
 #if 0
-#include <linux/mfd/dmj.h>
+#include <linux/mfd/dragonprobe.h>
 #else
-#include "dmj.h"
+#include "dragonprobe.h"
 #endif
 
-#define HARDWARE_NAME "DapperMime-JTAG"
-#define HARDWARE_NAME_SYMBOLIC "dappermime-jtag"
+#define HARDWARE_NAME "Dragon Probe"
+#define HARDWARE_NAME_SYMBOLIC "dragonprobe"
 
-#define DMJ_USB_TIMEOUT 500
+#define DP_USB_TIMEOUT 500
 
-#define DMJ_RESP_HDR_SIZE 4
+#define DP_RESP_HDR_SIZE 4
 
 /* endpoint indices, not addresses */
-#define DMJ_VND_CFG_EP_OUT 0
-#define DMJ_VND_CFG_EP_IN  1
+#define DP_VND_CFG_EP_OUT 0
+#define DP_VND_CFG_EP_IN  1
 
-struct dmj_dev {
+struct dp_dev {
 	struct usb_device *usb_dev;
 	struct usb_interface *interface;
 	uint8_t ep_in;
@@ -45,12 +45,12 @@ struct dmj_dev {
 	spinlock_t disconnect_lock;
 	bool disconnect;
 
-	uint8_t dmj_mode, dmj_m1feature;
+	uint8_t dp_mode, dp_m1feature;
 };
 
 /* USB transfers */
 
-static void *dmj_prep_buf(int cmd, const void *wbuf, int *wbufsize, gfp_t gfp)
+static void *dp_prep_buf(int cmd, const void *wbuf, int *wbufsize, gfp_t gfp)
 {
 	int len;
 	uint8_t *buf;
@@ -79,41 +79,41 @@ static void *dmj_prep_buf(int cmd, const void *wbuf, int *wbufsize, gfp_t gfp)
 
 	return buf;
 }
-static int dmj_send_wait(struct dmj_dev *dmj, int cmd, const void *wbuf, int wbufsize)
+static int dp_send_wait(struct dp_dev *dp, int cmd, const void *wbuf, int wbufsize)
 {
 	int ret = 0;
 	int len = wbufsize, actual;
 	void *buf;
 
-	buf = dmj_prep_buf(cmd, wbuf, &len, GFP_KERNEL);
+	buf = dp_prep_buf(cmd, wbuf, &len, GFP_KERNEL);
 	if (!buf) return -ENOMEM;
 
-	ret = usb_bulk_msg(dmj->usb_dev, usb_sndbulkpipe(dmj->usb_dev, dmj->ep_out),
-			buf, len, &actual, DMJ_USB_TIMEOUT);
+	ret = usb_bulk_msg(dp->usb_dev, usb_sndbulkpipe(dp->usb_dev, dp->ep_out),
+			buf, len, &actual, DP_USB_TIMEOUT);
 
 	kfree(buf);
 
 	return ret;
 }
 
-int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
+int dp_xfer_internal(struct dp_dev *dp, int cmd, int recvflags,
 		const void *wbuf, int wbufsize, void **rbuf, int *rbufsize)
 {
 	int ret = 0, actual, pl_off, todo;
-	struct device *dev = &dmj->interface->dev;
+	struct device *dev = &dp->interface->dev;
 	uint32_t pl_len;
 	void *tmpbuf = NULL, *longbuf = NULL;
 	uint8_t *bbuf;
 	uint8_t respstat;
 
-	spin_lock(&dmj->disconnect_lock);
-	if (dmj->disconnect) ret = -ENODEV;
-	spin_unlock(&dmj->disconnect_lock);
+	spin_lock(&dp->disconnect_lock);
+	if (dp->disconnect) ret = -ENODEV;
+	spin_unlock(&dp->disconnect_lock);
 
 	if (ret) return ret;
 
 	if ((cmd >= 0 && cmd <= 0xff) || (wbufsize && wbuf)) {
-		ret = dmj_send_wait(dmj, cmd, wbuf, wbufsize);
+		ret = dp_send_wait(dp, cmd, wbuf, wbufsize);
 		if (ret < 0) {
 			dev_err(dev, "USB write failed: %d\n", ret);
 			return ret;
@@ -122,7 +122,7 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 
 	if (rbuf) *rbuf = NULL;
 
-	if (recvflags & DMJ_XFER_FLAGS_PARSE_RESP) {
+	if (recvflags & DP_XFER_FLAGS_PARSE_RESP) {
 		/*
 		 * if we do want to parse the response, we'll split the reads into
 		 * blocks of 64 bytes, first to read the response header, and then
@@ -136,8 +136,8 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 		tmpbuf = kmalloc(64, GFP_KERNEL);
 		if (!tmpbuf) return -ENOMEM;
 		/* first read: 64b, with header data to parse */
-		ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
-				tmpbuf, 64, &actual, DMJ_USB_TIMEOUT);
+		ret = usb_bulk_msg(dp->usb_dev, usb_rcvbulkpipe(dp->usb_dev, dp->ep_in),
+				tmpbuf, 64, &actual, DP_USB_TIMEOUT);
 		if (ret < 0) goto err_freetmp;
 		if (actual < 0) { ret = -EREMOTEIO; goto err_freetmp; }
 
@@ -195,8 +195,8 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 			actual = 64;
 			if (todo < actual) actual = todo;
 
-			ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
-					tmpbuf, actual, &actual, DMJ_USB_TIMEOUT);
+			ret = usb_bulk_msg(dp->usb_dev, usb_rcvbulkpipe(dp->usb_dev, dp->ep_in),
+					tmpbuf, actual, &actual, DP_USB_TIMEOUT);
 			if (ret < 0) goto err_freelong;
 			if (actual < 0) { ret = -EREMOTEIO; goto err_freelong; }
 			if (actual > todo) {
@@ -223,7 +223,7 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 	} else {
 		/*
 		 * otherwise, read max. rbufsize bytes (if using
-		 * DMJ_XFER_FLAGS_FILL_RECVBUF, will try to fill it exactly, but it
+		 * DP_XFER_FLAGS_FILL_RECVBUF, will try to fill it exactly, but it
 		 * will error when going beyond!). also done in 64b chunks
 		 */
 
@@ -232,7 +232,7 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 			return 0;
 		}
 
-		if (recvflags & DMJ_XFER_FLAGS_FILL_RECVBUF) {
+		if (recvflags & DP_XFER_FLAGS_FILL_RECVBUF) {
 			tmpbuf = kmalloc(64, GFP_KERNEL);
 			if (!tmpbuf) return -ENOMEM;
 			longbuf = kmalloc(*rbufsize, GFP_KERNEL);
@@ -244,8 +244,8 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 				actual = 64;
 				if (todo < actual) actual = todo;
 
-				ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
-						tmpbuf, actual, &actual, DMJ_USB_TIMEOUT);
+				ret = usb_bulk_msg(dp->usb_dev, usb_rcvbulkpipe(dp->usb_dev, dp->ep_in),
+						tmpbuf, actual, &actual, DP_USB_TIMEOUT);
 				if (ret < 0) goto err_freelong;
 				if (actual < 0) { ret = -EREMOTEIO; goto err_freelong; }
 				if (actual > todo) { ret = -EMSGSIZE; goto err_freelong; }
@@ -265,8 +265,8 @@ int dmj_xfer_internal(struct dmj_dev *dmj, int cmd, int recvflags,
 			longbuf = kmalloc(*rbufsize, GFP_KERNEL);
 			if (!longbuf) return -ENOMEM;
 
-			ret = usb_bulk_msg(dmj->usb_dev, usb_rcvbulkpipe(dmj->usb_dev, dmj->ep_in),
-					longbuf, *rbufsize, rbufsize, DMJ_USB_TIMEOUT);
+			ret = usb_bulk_msg(dp->usb_dev, usb_rcvbulkpipe(dp->usb_dev, dp->ep_in),
+					longbuf, *rbufsize, rbufsize, DP_USB_TIMEOUT);
 			if (ret < 0) goto err_freelong;
 			if (*rbufsize < 0) {
 				//dev_warn(dev, "remoteio\n");
@@ -290,37 +290,37 @@ err_freetmp:
 	return ret;
 }
 
-int dmj_transfer(struct platform_device *pdev, int cmd, int recvflags,
+int dp_transfer(struct platform_device *pdev, int cmd, int recvflags,
 		const void *wbuf, int wbufsize, void **rbuf, int *rbufsize)
 {
-	struct dmj_dev *dmj;
+	struct dp_dev *dp;
 
-	dmj = dev_get_drvdata(pdev->dev.parent);
+	dp = dev_get_drvdata(pdev->dev.parent);
 
-	return dmj_xfer_internal(dmj, cmd, recvflags, wbuf, wbufsize, rbuf, rbufsize);
+	return dp_xfer_internal(dp, cmd, recvflags, wbuf, wbufsize, rbuf, rbufsize);
 }
-EXPORT_SYMBOL(dmj_transfer);
+EXPORT_SYMBOL(dp_transfer);
 
 /* stuff on init */
 
-static int dmj_check_hw(struct dmj_dev *dmj)
+static int dp_check_hw(struct dp_dev *dp)
 {
-	struct device *dev = &dmj->interface->dev;
+	struct device *dev = &dp->interface->dev;
 
 	int ret, len;
 	uint16_t protover;
 	uint8_t *buf = NULL;
 
-	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_VERSION,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "version check", true, sizeof(protover), sizeof(protover));
+	ret = dp_xfer_internal(dp, DP_CMD_CFG_GET_VERSION,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "version check", true, sizeof(protover), sizeof(protover));
 	if (ret < 0 || !buf) goto out;
 
 	protover = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 
-	if (protover != DMJ_USB_CFG_PROTO_VER) {
-		dev_err(&dmj->interface->dev, HARDWARE_NAME " config protocol version 0x%04x too %s\n",
-				protover, (protover > DMJ_USB_CFG_PROTO_VER) ? "new" : "old");
+	if (protover != DP_USB_CFG_PROTO_VER) {
+		dev_err(&dp->interface->dev, HARDWARE_NAME " config protocol version 0x%04x too %s\n",
+				protover, (protover > DP_USB_CFG_PROTO_VER) ? "new" : "old");
 
 		ret = -ENODEV;
 	} else
@@ -330,19 +330,19 @@ out:
 	if (buf) kfree(buf);
 	return ret;
 }
-static int dmj_print_info(struct dmj_dev *dmj)
+static int dp_print_info(struct dp_dev *dp)
 {
 	int ret, i, j, len;
 	uint16_t modes, mversion;
 	uint8_t curmode, features;
-	struct device *dev = &dmj->interface->dev;
+	struct device *dev = &dp->interface->dev;
 	uint8_t *buf;
 	char modeinfo[16], namebuf[64];
 
 	/* info string */
-	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_INFOSTR,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(namebuf)-1);
+	ret = dp_xfer_internal(dp, DP_CMD_CFG_GET_INFOSTR,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "get info", true, -1, sizeof(namebuf)-1);
 	if (ret < 0 || !buf) goto out;
 	memcpy(namebuf, buf, len);
 	namebuf[len] = 0;
@@ -350,17 +350,17 @@ static int dmj_print_info(struct dmj_dev *dmj)
 	kfree(buf); buf = NULL;
 
 	/* cur mode */
-	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_CUR_MODE,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(curmode), sizeof(curmode));
+	ret = dp_xfer_internal(dp, DP_CMD_CFG_GET_CUR_MODE,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "get info", true, sizeof(curmode), sizeof(curmode));
 	if (ret < 0 || !buf) goto out;
-	dmj->dmj_mode = curmode = buf[0];
+	dp->dp_mode = curmode = buf[0];
 	kfree(buf); buf = NULL;
 
 	/* map of available modes */
-	ret = dmj_xfer_internal(dmj, DMJ_CMD_CFG_GET_MODES,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(modes), sizeof(modes));
+	ret = dp_xfer_internal(dp, DP_CMD_CFG_GET_MODES,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "get info", true, sizeof(modes), sizeof(modes));
 	if (ret < 0 || !buf) goto out;
 	modes = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 	kfree(buf); buf = NULL;
@@ -379,31 +379,31 @@ static int dmj_print_info(struct dmj_dev *dmj)
 		if (!(modes & (1<<i))) continue; /* not available */
 
 		/* name */
-		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_NAME,
-				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-		ret = dmj_check_retval(ret, len, dev, "get info", true, -1, sizeof(namebuf)-1);
+		ret = dp_xfer_internal(dp, (i<<4) | DP_CMD_MODE_GET_NAME,
+				DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+		ret = dp_check_retval(ret, len, dev, "get info", true, -1, sizeof(namebuf)-1);
 		if (ret < 0 || !buf) goto out;
 		memcpy(namebuf, buf, len);
 		namebuf[len] = 0;
 		kfree(buf); buf = NULL;
 
 		/* version */
-		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_VERSION,
-				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(mversion), sizeof(mversion));
+		ret = dp_xfer_internal(dp, (i<<4) | DP_CMD_MODE_GET_VERSION,
+				DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+		ret = dp_check_retval(ret, len, dev, "get info", true, sizeof(mversion), sizeof(mversion));
 		if (ret < 0 || !buf) goto out;
 		mversion = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 		kfree(buf); buf = NULL;
 
 		/* features */
-		ret = dmj_xfer_internal(dmj, (i<<4) | DMJ_CMD_MODE_GET_FEATURES,
-				DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-		ret = dmj_check_retval(ret, len, dev, "get info", true, sizeof(features), sizeof(features));
+		ret = dp_xfer_internal(dp, (i<<4) | DP_CMD_MODE_GET_FEATURES,
+				DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+		ret = dp_check_retval(ret, len, dev, "get info", true, sizeof(features), sizeof(features));
 		if (ret < 0 || !buf) goto out;
 		features = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
 		kfree(buf); buf = NULL;
 
-		if (i == 1) dmj->dmj_m1feature = features;
+		if (i == 1) dp->dp_m1feature = features;
 
 		for (j = 0; j < 8; ++j) {
 			if (features & (1<<j)) modeinfo[j] = '0'+j;
@@ -421,39 +421,39 @@ out:
 	if (buf) kfree(buf);
 	return ret;
 }
-static int dmj_hw_init(struct dmj_dev *dmj)
+static int dp_hw_init(struct dp_dev *dp)
 {
 	int ret;
 
-	ret = dmj_check_hw(dmj);
+	ret = dp_check_hw(dp);
 	if (ret < 0) return ret;
 
-	return dmj_print_info(dmj);
+	return dp_print_info(dp);
 }
 
 /* MFD stuff */
 
-static const struct mfd_cell dmj_mfd_char[] = {
-	{ .name = "dmj-char" },
+static const struct mfd_cell dp_mfd_char[] = {
+	{ .name = "dragonprobe-char" },
 };
-static const struct mfd_cell dmj_mfd_spi[] = {
-	{ .name = "dmj-spi" },
+static const struct mfd_cell dp_mfd_spi[] = {
+	{ .name = "dragonprobe-spi" },
 };
-static const struct mfd_cell dmj_mfd_i2c[] = {
-	{ .name = "dmj-i2c" },
+static const struct mfd_cell dp_mfd_i2c[] = {
+	{ .name = "dragonprobe-i2c" },
 };
-static const struct mfd_cell dmj_mfd_hwmon[] = {
-	{ .name = "dmj-hwmon" },
+static const struct mfd_cell dp_mfd_hwmon[] = {
+	{ .name = "dragonprobe-hwmon" },
 };
 
 /* USB device control */
 
-static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_id)
+static int dp_probe(struct usb_interface *itf, const struct usb_device_id *usb_id)
 {
 	struct usb_host_interface *hostitf = itf->cur_altsetting;
 	struct usb_endpoint_descriptor *epin = NULL, *epout = NULL, *curep;
 	struct device *dev = &itf->dev;
-	struct dmj_dev *dmj;
+	struct dp_dev *dp;
 	int ret, i;
 
 	if (hostitf->desc.bNumEndpoints < 2) {
@@ -479,46 +479,46 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 		return -ENODEV;
 	}
 
-	dmj = kzalloc(sizeof(*dmj), GFP_KERNEL);
-	if (!dmj) return -ENOMEM;
+	dp = kzalloc(sizeof(*dp), GFP_KERNEL);
+	if (!dp) return -ENOMEM;
 
-	dmj->ep_out = epout->bEndpointAddress;
-	dmj->ep_in = epin->bEndpointAddress;
-	dmj->usb_dev = usb_get_dev(interface_to_usbdev(itf));
-	dmj->interface = itf;
-	usb_set_intfdata(itf, dmj);
+	dp->ep_out = epout->bEndpointAddress;
+	dp->ep_in = epin->bEndpointAddress;
+	dp->usb_dev = usb_get_dev(interface_to_usbdev(itf));
+	dp->interface = itf;
+	usb_set_intfdata(itf, dp);
 
-	spin_lock_init(&dmj->disconnect_lock);
+	spin_lock_init(&dp->disconnect_lock);
 
-	ret = dmj_hw_init(dmj);
+	ret = dp_hw_init(dp);
 	if (ret < 0) {
 		dev_err(dev, "failed to initialize hardware\n");
 		goto out_free;
 	}
 
-	ret = mfd_add_hotplug_devices(dev, dmj_mfd_char, ARRAY_SIZE(dmj_mfd_char));
+	ret = mfd_add_hotplug_devices(dev, dp_mfd_char, ARRAY_SIZE(dp_mfd_char));
 	if (ret) {
 		dev_err(dev, "failed to add MFD character devices\n");
 		goto out_free;
 	}
 
-	if (dmj->dmj_mode == 1) {
-		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_SPI) {
-			ret = mfd_add_hotplug_devices(dev, dmj_mfd_spi, ARRAY_SIZE(dmj_mfd_spi));
+	if (dp->dp_mode == 1) {
+		if (dp->dp_m1feature & DP_FEATURE_MODE1_SPI) {
+			ret = mfd_add_hotplug_devices(dev, dp_mfd_spi, ARRAY_SIZE(dp_mfd_spi));
 			if (ret) {
 				dev_err(dev, "failed to add MFD SPI devices\n");
 				goto out_free;
 			}
 		}
-		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_I2C) {
-			ret = mfd_add_hotplug_devices(dev, dmj_mfd_i2c, ARRAY_SIZE(dmj_mfd_i2c));
+		if (dp->dp_m1feature & DP_FEATURE_MODE1_I2C) {
+			ret = mfd_add_hotplug_devices(dev, dp_mfd_i2c, ARRAY_SIZE(dp_mfd_i2c));
 			if (ret) {
 				dev_err(dev, "failed to add MFD I2C devices\n");
 				goto out_free;
 			}
 		}
-		if (dmj->dmj_m1feature & DMJ_FEATURE_MODE1_TEMPSENSOR) {
-			ret = mfd_add_hotplug_devices(dev, dmj_mfd_hwmon, ARRAY_SIZE(dmj_mfd_hwmon));
+		if (dp->dp_m1feature & DP_FEATURE_MODE1_TEMPSENSOR) {
+			ret = mfd_add_hotplug_devices(dev, dp_mfd_hwmon, ARRAY_SIZE(dp_mfd_hwmon));
 			if (ret) {
 				dev_err(dev, "failed to add MFD hwmon devices\n");
 				goto out_free;
@@ -529,69 +529,69 @@ static int dmj_probe(struct usb_interface *itf, const struct usb_device_id *usb_
 	return 0;
 
 out_free:
-	usb_put_dev(dmj->usb_dev);
-	kfree(dmj);
+	usb_put_dev(dp->usb_dev);
+	kfree(dp);
 
 	return ret;
 }
-static void dmj_disconnect(struct usb_interface *itf)
+static void dp_disconnect(struct usb_interface *itf)
 {
-	struct dmj_dev *dmj = usb_get_intfdata(itf);
+	struct dp_dev *dp = usb_get_intfdata(itf);
 
-	spin_lock(&dmj->disconnect_lock);
-	dmj->disconnect = true;
-	spin_unlock(&dmj->disconnect_lock);
+	spin_lock(&dp->disconnect_lock);
+	dp->disconnect = true;
+	spin_unlock(&dp->disconnect_lock);
 
 	mfd_remove_devices(&itf->dev);
 
-	usb_put_dev(dmj->usb_dev);
+	usb_put_dev(dp->usb_dev);
 
-	kfree(dmj);
+	kfree(dp);
 }
 
-static int dmj_suspend(struct usb_interface *itf, pm_message_t message)
+static int dp_suspend(struct usb_interface *itf, pm_message_t message)
 {
-	struct dmj_dev *dmj = usb_get_intfdata(itf);
+	struct dp_dev *dp = usb_get_intfdata(itf);
 
 	(void)message;
 
-	spin_lock(&dmj->disconnect_lock);
-	dmj->disconnect = true;
-	spin_unlock(&dmj->disconnect_lock);
+	spin_lock(&dp->disconnect_lock);
+	dp->disconnect = true;
+	spin_unlock(&dp->disconnect_lock);
 
 	return 0;
 }
-static int dmj_resume(struct usb_interface *itf)
+static int dp_resume(struct usb_interface *itf)
 {
-	struct dmj_dev *dmj = usb_get_intfdata(itf);
+	struct dp_dev *dp = usb_get_intfdata(itf);
 
-	dmj->disconnect = false;
+	dp->disconnect = false;
 
 	return 0;
 }
 
-static const struct usb_device_id dmj_table[] = {
+static const struct usb_device_id dp_table[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(0xcafe, 0x1312, USB_CLASS_VENDOR_SPEC, 42, 69) },
 	{ }
 };
-MODULE_DEVICE_TABLE(usb, dmj_table);
+MODULE_DEVICE_TABLE(usb, dp_table);
 
-static struct usb_driver dmj_driver = {
+static struct usb_driver dp_driver = {
 	.name = HARDWARE_NAME_SYMBOLIC,
-	.probe = dmj_probe,
-	.disconnect = dmj_disconnect,
-	.id_table = dmj_table,
-	.suspend = dmj_suspend,
-	.resume = dmj_resume,
+	.probe = dp_probe,
+	.disconnect = dp_disconnect,
+	.id_table = dp_table,
+	.suspend = dp_suspend,
+	.resume = dp_resume,
 };
-module_usb_driver(dmj_driver);
+module_usb_driver(dp_driver);
 
 MODULE_AUTHOR("sys64738 <sys64738@disroot.org>");
 MODULE_AUTHOR("haskal <haskal@awoo.systems>");
 MODULE_DESCRIPTION("Core driver for the " HARDWARE_NAME " USB multitool");
 MODULE_LICENSE("GPL v2");
 
-MODULE_SOFTDEP("post: dmj-char");
-MODULE_SOFTDEP("post: i2c-dmj");
-MODULE_SOFTDEP("post: spi-dmj");
-MODULE_SOFTDEP("post: dmj-hwmon");
+MODULE_SOFTDEP("post: dragonprobe-char");
+MODULE_SOFTDEP("post: dragonprobe-i2c");
+MODULE_SOFTDEP("post: dragonprobe-spi");
+MODULE_SOFTDEP("post: dragonprobe-hwmon");

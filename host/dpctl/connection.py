@@ -179,7 +179,7 @@ class UsbConn(DevConn):
 
 
 class ChardevConn(DevConn):
-    _DEVCLASSNAME = "dmj"
+    _DEVCLASSNAME = "dragonprobe"
 
     def try_find() -> Optional[ChardevConn]:
         if sys.platform != 'linux':

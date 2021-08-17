@@ -5,7 +5,7 @@
 #include "bsp-info.h"
 
 #define INFO_MANUFACTURER   "BLAHAJ CTF"
-#define INFO_PRODUCT_BARE   "CMSIS-DAP"
+#define INFO_PRODUCT_BARE   "DragonProbe"
 #define INFO_PRODUCT(board) INFO_PRODUCT_BARE " (" board ")"
 
 #endif

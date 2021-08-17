@@ -3,7 +3,7 @@ set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use
 set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
 
 # use directory name for project id # FIXME: use fixed project name
-get_filename_component(PROJECT ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+get_filename_component(PROJECT "Dragon Probe" NAME)
 set(PROJECT ${BOARD}-${PROJECT})
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

@@ -1,0 +1,10 @@
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="cafe", ATTRS{idProduct}=="1312", MODE:="0666", ENV{IS_DRAGONPROBE}:="yes"
+
+# TODO: redo all this here once the interface has settled a bit more
+# (it needs the regular UART, SUMP CDC, SPI2 CDC (to be implemented), ...)
+#ENV{IS_DRAGONPROBE}=="yes", ATTRS{interface}=="stdio CDC interface (debug)", ENV{DRAGONPROBE_INTERFACE_TYPE}:="debug"
+#ENV{IS_DRAGONPROBE}=="yes", ATTRS{interface}=="Serprog CDC interface", ENV{DRAGONPROBE_INTERFACE_TYPE}:="serprog"
+#ENV{IS_DRAGONPROBE}=="yes", ATTRS{interface}=="CMSIS-DAP HID interface", ENV{DRAGONPROBE_INTERFACE_TYPE}:="dap"
+#ENV{DRAGONPROBE_INTERFACE_TYPE}=="debug", SUBSYSTEM=="tty", SYMLINK+="dragnbus-dbg"
+#ENV{DRAGONPROBE_INTERFACE_TYPE}=="serprog", SUBSYSTEM=="tty", SYMLINK+="dragnbus-serprog"
+#ENV{DRAGONPROBE_INTERFACE_TYPE}=="dap", SUBSYSTEM=="usbmisc", SYMLINK+="dragnbus-dap"

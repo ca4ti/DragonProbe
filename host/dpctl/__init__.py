@@ -6,12 +6,12 @@ import traceback
 
 from typing import *
 
-import dmctl.connection as devconn
-import dmctl.protocol   as devproto
-import dmctl.commands   as devcmds
+import dpctl.connection as devconn
+import dpctl.protocol   as devproto
+import dpctl.commands   as devcmds
 
 
-def dmctl_do(args: Any) -> int:
+def dpctl_do(args: Any) -> int:
     def get_device_info(conn, args): return devcmds.get_device_info(conn)
     def get_mode_info(conn, args): return devcmds.get_mode_info(conn, args.mode)
     def set_mode(conn, args): return devcmds.set_mode(conn, args.mode)
@@ -80,12 +80,12 @@ def dmctl_do(args: Any) -> int:
         print("Could not connect to a device: %s." % conn)
         return 1
 
-    with devproto.DmjDevice(conn) as dev:
+    with devproto.DPDevice(conn) as dev:
         return subfn(dev, args)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="dmctl")
+    parser = argparse.ArgumentParser(prog="dpctl")
 
     def auto_int(x):
         return int(x, 0)
@@ -114,10 +114,10 @@ def main() -> int:
     # * mode 5 (ftdi/fx2 emul): probably nothing
 
     parser.add_argument('--conn', type=str, default=None,
-                        help="Connection string. Either a dmj-char device in"+\
-                        " /dev, a USB bus.device number, or a USB VID:PID " + \
-                        "pair. Defaults to trying /dev/dmj-* (if there is " + \
-                        "only one), and cafe:1312 otherwise.")
+                        help="Connection string. Either a dragonprobe-char "+\
+                        "device in /dev, a USB bus.device number, or a USB " + \
+                        "VID:PID pair. Defaults to trying /dev/dragonprobe-* " + \
+                        "(if there is only one), and cafe:1312 otherwise.")
     #parser.descripiton = ...
 
     subcmds = parser.add_subparsers(required=True, metavar="subcommand",
@@ -192,5 +192,5 @@ def main() -> int:
                           help="Disable overclocking, short for --set 0")
 
     args = parser.parse_args()
-    return dmctl_do(args)
+    return dpctl_do(args)
 

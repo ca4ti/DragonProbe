@@ -304,11 +304,14 @@ static const uint8_t desc_configuration[] = {
 #endif
 };
 static const char* string_desc_arr[] = {
-    /*[STRID_LANGID] = (const char[]){0x09, 0x04},  // supported language is English (0x0409)
-    [STRID_MANUFACTURER] = "BLAHAJ CTF",     // Manufacturer
-    [STRID_PRODUCT]      = "Dragnbus (RP2040 Pico)",  // Product*/
     NULL,
 
+    // no hw info here, or the name will be too long >__>
+    // CMSIS-DAP spec:
+    // "The Product String must contain 'CMSIS-DAP' somewhere in the string.
+    //  This is used by the debuggers to identify a CMSIS-DAP compliant Debug
+    //  Unit that is connected to a host computer."
+    [STRID_PRODUCT]           = INFO_PRODUCT_BARE " CMSIS-DAP",
     [STRID_CONFIG]            = "Configuration descriptor",
     // max string length check:  |||||||||||||||||||||||||||||||
     [STRID_IF_VND_CFG  ]      = "Device cfg/ctl interface",

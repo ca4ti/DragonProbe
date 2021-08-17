@@ -19,27 +19,27 @@
 #include <linux/slab.h>
 
 #if 0
-#include <linux/mfd/dmj.h>
+#include <linux/mfd/dragonprobe.h>
 #else
-#include "dmj.h"
+#include "dragonprobe.h"
 #endif
 
-#define HARDWARE_NAME "DapperMime-JTAG"
-#define HWMON_NAME "dmj"
+#define HARDWARE_NAME "Dragon Probe"
+#define HWMON_NAME "dragonprobe"
 
-#define DMJ_TEMP_CMD_GET_ADDR 0x00
-#define DMJ_TEMP_CMD_SET_ADDR 0x01
-#define DMJ_TEMP_CMD_GET_TEMP 0x02
-#define DMJ_TEMP_CMD_GET_MIN  0x03
-#define DMJ_TEMP_CMD_GET_MAX  0x04
-#define DMJ_TEMP_CMD_GET_CRIT 0x05
+#define DP_TEMP_CMD_GET_ADDR 0x00
+#define DP_TEMP_CMD_SET_ADDR 0x01
+#define DP_TEMP_CMD_GET_TEMP 0x02
+#define DP_TEMP_CMD_GET_MIN  0x03
+#define DP_TEMP_CMD_GET_MAX  0x04
+#define DP_TEMP_CMD_GET_CRIT 0x05
 
-struct dmj_hwmon {
+struct dp_hwmon {
 	struct platform_device *pdev;
 	struct device *hwmon_dev;
 };
 
-static umode_t dmj_hwmon_is_visible(const void *data, enum hwmon_sensor_types type,
+static umode_t dp_hwmon_is_visible(const void *data, enum hwmon_sensor_types type,
 		uint32_t attr, int ch)
 {
 	switch (attr) {
@@ -53,10 +53,10 @@ static umode_t dmj_hwmon_is_visible(const void *data, enum hwmon_sensor_types ty
 		return 0;
 	}
 }
-static int dmj_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
+static int dp_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 		uint32_t attr, int ch, long *val)
 {
-	struct dmj_hwmon *dmjh = dev_get_drvdata(dev);
+	struct dp_hwmon *dph = dev_get_drvdata(dev);
 	uint8_t subcmd, *rbuf;
 	uint16_t rval;
 	int ret, rlen;
@@ -66,25 +66,25 @@ static int dmj_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 		*val = 1;
 		return 0;
 	case hwmon_temp_input:
-		subcmd = DMJ_TEMP_CMD_GET_TEMP;
+		subcmd = DP_TEMP_CMD_GET_TEMP;
 		break;
 	case hwmon_temp_min:
-		subcmd = DMJ_TEMP_CMD_GET_MIN;
+		subcmd = DP_TEMP_CMD_GET_MIN;
 		break;
 	case hwmon_temp_max:
-		subcmd = DMJ_TEMP_CMD_GET_MAX;
+		subcmd = DP_TEMP_CMD_GET_MAX;
 		break;
 	case hwmon_temp_crit:
-		subcmd = DMJ_TEMP_CMD_GET_CRIT;
+		subcmd = DP_TEMP_CMD_GET_CRIT;
 		break;
 	default:
 		return -ENOTSUPP;
 	}
 
-	ret = dmj_transfer(dmjh->pdev, DMJ_CMD_MODE1_TEMPSENSOR,
-	                   DMJ_XFER_FLAGS_PARSE_RESP, &subcmd, sizeof(subcmd),
+	ret = dp_transfer(dph->pdev, DP_CMD_MODE1_TEMPSENSOR,
+	                   DP_XFER_FLAGS_PARSE_RESP, &subcmd, sizeof(subcmd),
 	                   (void**)&rbuf, &rlen);
-	ret = dmj_check_retval(ret, rlen, dev, "hwmon read", true, 2, 2);
+	ret = dp_check_retval(ret, rlen, dev, "hwmon read", true, 2, 2);
 	if (!ret) {
 		/* rval is 8.4 fixed point, bit 0x1000 is the sign bit, 0xe000 are flags */
 		rval = (uint16_t)rbuf[0] | ((uint16_t)rbuf[1] << 8);
@@ -98,22 +98,22 @@ static int dmj_hwmon_read(struct device *dev, enum hwmon_sensor_types type,
 	return ret;
 }
 
-static const struct hwmon_channel_info *dmj_hwmon_info[] = {
+static const struct hwmon_channel_info *dp_hwmon_info[] = {
 	HWMON_CHANNEL_INFO(temp, HWMON_T_TYPE | HWMON_T_INPUT | HWMON_T_MIN |
 	                         HWMON_T_MAX | HWMON_T_CRIT),
 	NULL
 };
-static const struct hwmon_ops dmj_hwmon_ops = {
-	.is_visible = dmj_hwmon_is_visible,
-	.read = dmj_hwmon_read,
-	.write = NULL/*dmj_hwmon_write*/
+static const struct hwmon_ops dp_hwmon_ops = {
+	.is_visible = dp_hwmon_is_visible,
+	.read = dp_hwmon_read,
+	.write = NULL/*dp_hwmon_write*/
 };
-static const struct hwmon_chip_info dmj_chip_info = {
-	.ops = &dmj_hwmon_ops,
-	.info = dmj_hwmon_info
+static const struct hwmon_chip_info dp_chip_info = {
+	.ops = &dp_hwmon_ops,
+	.info = dp_hwmon_info
 };
 
-static int dmj_hwmon_check_hw(struct platform_device *pdev)
+static int dp_hwmon_check_hw(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	uint16_t m1ver;
@@ -122,9 +122,9 @@ static int dmj_hwmon_check_hw(struct platform_device *pdev)
 	int ret = 0, len;
 	uint8_t *buf = NULL;
 
-	ret = dmj_transfer(pdev, DMJ_CMD_CFG_GET_CUR_MODE,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "hwmon test 1", true, sizeof(curmode), sizeof(curmode));
+	ret = dp_transfer(pdev, DP_CMD_CFG_GET_CUR_MODE,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "hwmon test 1", true, sizeof(curmode), sizeof(curmode));
 	if (ret < 0 || !buf) goto out;
 
 	curmode = buf[0];
@@ -135,9 +135,9 @@ static int dmj_hwmon_check_hw(struct platform_device *pdev)
 		goto out;
 	}
 
-	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_VERSION,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "hwmon test 2", true, sizeof(m1ver), sizeof(m1ver));
+	ret = dp_transfer(pdev, (1<<4) | DP_CMD_MODE_GET_VERSION,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "hwmon test 2", true, sizeof(m1ver), sizeof(m1ver));
 	if (ret < 0 || !buf) goto out;
 
 	m1ver = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
@@ -149,13 +149,13 @@ static int dmj_hwmon_check_hw(struct platform_device *pdev)
 		goto out;
 	}
 
-	ret = dmj_transfer(pdev, (1<<4) | DMJ_CMD_MODE_GET_FEATURES,
-			DMJ_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
-	ret = dmj_check_retval(ret, len, dev, "hwmon test 3", true, sizeof(m1feat), sizeof(m1feat));
+	ret = dp_transfer(pdev, (1<<4) | DP_CMD_MODE_GET_FEATURES,
+			DP_XFER_FLAGS_PARSE_RESP, NULL, 0, (void**)&buf, &len);
+	ret = dp_check_retval(ret, len, dev, "hwmon test 3", true, sizeof(m1feat), sizeof(m1feat));
 	if (ret < 0 || !buf) goto out;
 	m1feat = buf[0];
 	kfree(buf); buf = NULL;
-	if (!(m1feat & DMJ_FEATURE_MODE1_I2C)) {
+	if (!(m1feat & DP_FEATURE_MODE1_I2C)) {
 		dev_err(dev, "device's mode 1 does not support hwmon tempsensor\n");
 		ret = -EIO;
 		goto out;
@@ -167,55 +167,55 @@ out:
 	return ret;
 }
 
-static int dmj_hwmon_probe(struct platform_device *pdev)
+static int dp_hwmon_probe(struct platform_device *pdev)
 {
-	struct dmj_hwmon *dmjh;
+	struct dp_hwmon *dph;
 	struct device *dev = &pdev->dev;
 	int ret;
 
-	ret = dmj_hwmon_check_hw(pdev);
+	ret = dp_hwmon_check_hw(pdev);
 	if (ret) {
 		dev_err(dev, "hw check failed: %d\n", ret);
 		return -ENODEV;
 	}
 
-	dmjh = devm_kzalloc(dev, sizeof(*dmjh), GFP_KERNEL);
-	if (!dmjh) return -ENOMEM;
+	dph = devm_kzalloc(dev, sizeof(*dph), GFP_KERNEL);
+	if (!dph) return -ENOMEM;
 
-	dmjh->pdev = pdev;
+	dph->pdev = pdev;
 
-	platform_set_drvdata(pdev, dmjh);
+	platform_set_drvdata(pdev, dph);
 
-	dmjh->hwmon_dev = hwmon_device_register_with_info(dev, HWMON_NAME, dmjh,
-	                                                  &dmj_chip_info, NULL);
-	if (IS_ERR(dmjh->hwmon_dev)) {
-		ret = PTR_ERR(dmjh->hwmon_dev);
+	dph->hwmon_dev = hwmon_device_register_with_info(dev, HWMON_NAME, dph,
+	                                                  &dp_chip_info, NULL);
+	if (IS_ERR(dph->hwmon_dev)) {
+		ret = PTR_ERR(dph->hwmon_dev);
 		dev_err(dev, "hwmon device registration failed\n");
 	}
 
 	return ret;
 }
-static int dmj_hwmon_remove(struct platform_device *pdev)
+static int dp_hwmon_remove(struct platform_device *pdev)
 {
-	struct dmj_hwmon *dmjh = platform_get_drvdata(pdev);
+	struct dp_hwmon *dph = platform_get_drvdata(pdev);
 
-	hwmon_device_unregister(dmjh->hwmon_dev);
+	hwmon_device_unregister(dph->hwmon_dev);
 
 	return 0;
 }
 
-static struct platform_driver dmj_hwmon_driver = {
+static struct platform_driver dp_hwmon_driver = {
 	.driver = {
-		"dmj-hwmon",
+		"dragonprobe-hwmon",
 	},
-	.probe = dmj_hwmon_probe,
-	.remove = dmj_hwmon_remove
+	.probe = dp_hwmon_probe,
+	.remove = dp_hwmon_remove
 };
-module_platform_driver(dmj_hwmon_driver);
+module_platform_driver(dp_hwmon_driver);
 
 MODULE_AUTHOR("sys64738 <sys64738@disroot.org>");
 MODULE_AUTHOR("haskal <haskal@awoo.systems>");
 MODULE_DESCRIPTION("Hwmon driver for the " HARDWARE_NAME " USB multitool");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:dmj-hwmon");
+MODULE_ALIAS("platform:dragonprobe-hwmon");
 

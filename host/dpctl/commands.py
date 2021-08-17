@@ -15,7 +15,7 @@ FEATURES_OF_MODE = {
 }
 
 
-def get_device_info(dev: DmjDevice) -> int:
+def get_device_info(dev: DPDevice) -> int:
     print("%s: protocol version: %02x.%02x, currently in mode %d (%s)" % \
           (dev.infotext, dev.protocol_version >> 8, dev.protocol_version & 0xff,
            dev.current_mode, dev.mode_info[dev.current_mode].infotext)
@@ -31,7 +31,7 @@ def get_device_info(dev: DmjDevice) -> int:
     return 0
 
 
-def get_mode_info(dev: DmjDevice, mode: Optional[str]) -> int:
+def get_mode_info(dev: DPDevice, mode: Optional[str]) -> int:
     def try_parse(s: str):
         try: return int(s)
         except ValueError: return None
@@ -73,7 +73,7 @@ def get_mode_info(dev: DmjDevice, mode: Optional[str]) -> int:
         return 1
 
 
-def set_mode(dev: DmjDevice, mode: int) -> int:
+def set_mode(dev: DPDevice, mode: int) -> int:
     try:
         dev.set_mode(mode)
         return 0
@@ -85,7 +85,7 @@ def set_mode(dev: DmjDevice, mode: int) -> int:
 # ---
 
 
-def uart_hw_flowctl_get(dev: DmjDevice) -> int:
+def uart_hw_flowctl_get(dev: DPDevice) -> int:
     try:
         res = dev.m1_usb_hw_flowctl_get()
         print("Flow control %sabled" % ("en" if res else "dis"))
@@ -95,7 +95,7 @@ def uart_hw_flowctl_get(dev: DmjDevice) -> int:
         return 1
 
 
-def uart_hw_flowctl_set(dev: DmjDevice, v: bool) -> int:
+def uart_hw_flowctl_set(dev: DPDevice, v: bool) -> int:
     try:
         dev.m1_usb_hw_flowctl_set(v)
         return 0
@@ -107,7 +107,7 @@ def uart_hw_flowctl_set(dev: DmjDevice, v: bool) -> int:
 # ---
 
 
-def tempsensor_get(dev: DmjDevice) -> int:
+def tempsensor_get(dev: DPDevice) -> int:
     try:
         res = dev.m1_tempsensor_i2cemul_get()
         if res is None:
@@ -120,7 +120,7 @@ def tempsensor_get(dev: DmjDevice) -> int:
         return 1
 
 
-def tempsensor_set(dev: DmjDevice, v: int) -> int:
+def tempsensor_set(dev: DPDevice, v: int) -> int:
     try:
         old, new = dev.m1_tempsensor_i2cemul_set(v)
         olds = "disabled" if old is None else ("0x%02x" % old)
@@ -135,7 +135,7 @@ def tempsensor_set(dev: DmjDevice, v: int) -> int:
 # ---
 
 
-def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
+def jtag_scan(dev: DPDevice, typ: str, start_pin: int, end_pin: int) -> int:
     SCAN_IDLE    = 0x7f
     SCAN_DONE_F  = 0x80
 
@@ -218,7 +218,7 @@ def jtag_scan(dev: DmjDevice, typ: str, start_pin: int, end_pin: int) -> int:
 # ---
 
 
-def sump_overclock_get(dev: DmjDevice) -> int:
+def sump_overclock_get(dev: DPDevice) -> int:
     try:
         stat = dev.m4_sump_overclock_get()
         print("SUMP overclocking mode: %d" % stat)
@@ -228,7 +228,7 @@ def sump_overclock_get(dev: DmjDevice) -> int:
         return 1
 
 
-def sump_overclock_set(dev: DmjDevice, v: int) -> int:
+def sump_overclock_set(dev: DPDevice, v: int) -> int:
     try:
         stat = dev.m4_sump_overclock_set(v)
         return 0

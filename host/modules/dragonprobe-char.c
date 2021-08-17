@@ -23,16 +23,16 @@
 #include <linux/types.h>
 
 #if 0
-#include <linux/mfd/dmj.h>
+#include <linux/mfd/dragonprobe.h>
 #else
-#include "dmj.h"
+#include "dragonprobe.h"
 #endif
 
-#define HARDWARE_NAME "DapperMime-JTAG"
-#define DEVICE_NAME "dmj-char"
-#define CLASS_NAME "dmj"
+#define HARDWARE_NAME "Dragon Probe"
+#define DEVICE_NAME "dragonprobe-char"
+#define CLASS_NAME "dragonprobe"
 
-struct dmj_char_dev {
+struct dp_char_dev {
 	struct cdev cdev;
 	struct device *dev;
 	struct platform_device *pdev;
@@ -42,22 +42,22 @@ struct dmj_char_dev {
 static int n_cdevs = 0;
 static spinlock_t ndevs_lock;
 
-static int dmj_char_major;
-static struct class *dmj_char_class;
+static int dp_char_major;
+static struct class *dp_char_class;
 
-static ssize_t dmj_char_read(struct file *file, char *buf, size_t len, loff_t *loff)
+static ssize_t dp_char_read(struct file *file, char *buf, size_t len, loff_t *loff)
 {
 	int res, ilen;
 	unsigned long ret;
-	struct dmj_char_dev *dmjch = file->private_data;
+	struct dp_char_dev *dpch = file->private_data;
 	void *kbuf = NULL;
-	struct device *dev = dmjch->dev;
+	struct device *dev = dpch->dev;
 
 	if (len > INT_MAX) return -EINVAL;
 	ilen = (int)len;
 
 	/* no flags: act like libusb read */
-	res = dmj_transfer(dmjch->pdev, -1, 0/*DMJ_XFER_FLAGS_FILL_RECVBUF*/, NULL, 0, &kbuf, &ilen);
+	res = dp_transfer(dpch->pdev, -1, 0/*DP_XFER_FLAGS_FILL_RECVBUF*/, NULL, 0, &kbuf, &ilen);
 	if (res < 0 || ilen < 0 || !kbuf) {
 		//dev_warn(dev, "err res=%d ilen=%d kbuf=%p\n", res, ilen, kbuf);
 		if (kbuf) kfree(kbuf);
@@ -71,11 +71,11 @@ static ssize_t dmj_char_read(struct file *file, char *buf, size_t len, loff_t *l
 
 	return (ssize_t)ilen;
 }
-static ssize_t dmj_char_write(struct file *file, const char *buf, size_t len, loff_t *off)
+static ssize_t dp_char_write(struct file *file, const char *buf, size_t len, loff_t *off)
 {
 	unsigned long ret;
 	int res;
-	struct dmj_char_dev *dmjch = file->private_data;
+	struct dp_char_dev *dpch = file->private_data;
 	void *kbuf;
 
 	kbuf = kmalloc(len, GFP_KERNEL);
@@ -87,47 +87,47 @@ static ssize_t dmj_char_write(struct file *file, const char *buf, size_t len, lo
 		return -EFAULT;
 	}
 
-	res = dmj_transfer(dmjch->pdev, -1, 0, kbuf, len, NULL, NULL);
+	res = dp_transfer(dpch->pdev, -1, 0, kbuf, len, NULL, NULL);
 
 	kfree(kbuf);
 	return (res < 0) ? res : len;
 }
 
-static int dmj_char_open(struct inode *inode, struct file *file)
+static int dp_char_open(struct inode *inode, struct file *file)
 {
-	struct dmj_char_dev *dmjch;
+	struct dp_char_dev *dpch;
 
-	dmjch = container_of(inode->i_cdev, struct dmj_char_dev, cdev);
+	dpch = container_of(inode->i_cdev, struct dp_char_dev, cdev);
 
-	file->private_data = dmjch;
+	file->private_data = dpch;
 
 	return 0;
 }
-static int dmj_char_release(struct inode *inode, struct file *file)
+static int dp_char_release(struct inode *inode, struct file *file)
 {
-	struct dmj_char_dev *dmjch;
+	struct dp_char_dev *dpch;
 
-	dmjch = container_of(inode->i_cdev, struct dmj_char_dev, cdev);
+	dpch = container_of(inode->i_cdev, struct dp_char_dev, cdev);
 
 	return 0;
 }
 
-static const struct file_operations dmj_char_fops = {
+static const struct file_operations dp_char_fops = {
 	.owner = THIS_MODULE,
 	.llseek = no_llseek,
-	.read = dmj_char_read,
-	.write = dmj_char_write,
+	.read = dp_char_read,
+	.write = dp_char_write,
 	.unlocked_ioctl = NULL,
-	.open = dmj_char_open,
-	.release = dmj_char_release
+	.open = dp_char_open,
+	.release = dp_char_release
 };
 
-static int dmj_char_probe(struct platform_device *pdev)
+static int dp_char_probe(struct platform_device *pdev)
 {
 	int ret, minor;
 	struct device *device;
 	struct device *pd = &pdev->dev;
-	struct dmj_char_dev *dmjch;
+	struct dp_char_dev *dpch;
 
 	spin_lock(&ndevs_lock);
 	minor = n_cdevs;
@@ -135,57 +135,57 @@ static int dmj_char_probe(struct platform_device *pdev)
 	spin_unlock(&ndevs_lock);
 
 	dev_info(pd, HARDWARE_NAME " /dev entries driver, major=%d, minor=%d\n",
-			dmj_char_major, minor);
+			dp_char_major, minor);
 
-	dmjch = devm_kzalloc(pd, sizeof(*dmjch), GFP_KERNEL);
-	if (!dmjch) return -ENOMEM;
+	dpch = devm_kzalloc(pd, sizeof(*dpch), GFP_KERNEL);
+	if (!dpch) return -ENOMEM;
 
-	platform_set_drvdata(pdev, dmjch);
+	platform_set_drvdata(pdev, dpch);
 
-	cdev_init(&dmjch->cdev, &dmj_char_fops);
-	ret = cdev_add(&dmjch->cdev, MKDEV(dmj_char_major, minor), 1);
+	cdev_init(&dpch->cdev, &dp_char_fops);
+	ret = cdev_add(&dpch->cdev, MKDEV(dp_char_major, minor), 1);
 	if (ret < 0) {
 		dev_err(pd, "failed to create cdev: %d\n", ret);
 		return ret;
 	}
 
-	device = device_create(dmj_char_class, pd, MKDEV(dmj_char_major, minor), dmjch, "dmj-%d", minor);
+	device = device_create(dp_char_class, pd, MKDEV(dp_char_major, minor), dpch, "dragonprobe-%d", minor);
 	if (IS_ERR(device)) {
 		ret = PTR_ERR(device);
 		dev_err(pd, "failed to create device: %d\n", ret);
-		cdev_del(&dmjch->cdev);
+		cdev_del(&dpch->cdev);
 		return ret;
 	}
 
-	dev_notice(device, "created device /dev/dmj-%d\n", minor);
+	dev_notice(device, "created device /dev/dragonprobe-%d\n", minor);
 
-	dmjch->dev = device;
-	dmjch->minor = minor;
-	dmjch->pdev = pdev;
+	dpch->dev = device;
+	dpch->minor = minor;
+	dpch->pdev = pdev;
 
 	return 0;
 }
-static int dmj_char_remove(struct platform_device *pdev)
+static int dp_char_remove(struct platform_device *pdev)
 {
-	struct dmj_char_dev *dmjch = platform_get_drvdata(pdev);
+	struct dp_char_dev *dpch = platform_get_drvdata(pdev);
 
-	device_destroy(dmj_char_class, MKDEV(dmj_char_major, dmjch->minor));
-	cdev_del(&dmjch->cdev);
-	unregister_chrdev(MKDEV(dmj_char_major, dmjch->minor), CLASS_NAME);
+	device_destroy(dp_char_class, MKDEV(dp_char_major, dpch->minor));
+	cdev_del(&dpch->cdev);
+	unregister_chrdev(MKDEV(dp_char_major, dpch->minor), CLASS_NAME);
 
 	return 0;
 }
 
-static struct platform_driver dmj_char_driver = {
+static struct platform_driver dp_char_driver = {
 	.driver = {
-		.name = "dmj-char"
+		.name = "dragonprobe-char"
 	},
-	.probe  = dmj_char_probe,
-	.remove = dmj_char_remove
+	.probe  = dp_char_probe,
+	.remove = dp_char_remove
 };
-/*module_platform_driver(dmj_char_driver);*/
+/*module_platform_driver(dp_char_driver);*/
 
-static int __init dmj_char_init(void)
+static int __init dp_char_init(void)
 {
 	int ret, major;
 	struct class *class;
@@ -213,33 +213,33 @@ static int __init dmj_char_init(void)
 	}
 	printk(KERN_DEBUG DEVICE_NAME " created class\n");
 
-	dmj_char_major = major;
-	dmj_char_class = class;
+	dp_char_major = major;
+	dp_char_class = class;
 
-	platform_driver_register(&dmj_char_driver);
+	platform_driver_register(&dp_char_driver);
 
 	return 0;
 }
-static void __exit dmj_char_exit(void)
+static void __exit dp_char_exit(void)
 {
-	platform_driver_unregister(&dmj_char_driver);
+	platform_driver_unregister(&dp_char_driver);
 
 	spin_lock(&ndevs_lock);
 	n_cdevs = 0;
 	spin_unlock(&ndevs_lock);
 
-	class_destroy(dmj_char_class);
-	unregister_chrdev(dmj_char_major, CLASS_NAME);
+	class_destroy(dp_char_class);
+	unregister_chrdev(dp_char_major, CLASS_NAME);
 
-	dmj_char_major = -1;
-	dmj_char_class = NULL;
+	dp_char_major = -1;
+	dp_char_class = NULL;
 }
 
-module_init(dmj_char_init);
-module_exit(dmj_char_exit);
+module_init(dp_char_init);
+module_exit(dp_char_exit);
 
 MODULE_AUTHOR("sys64738 <sys64738@disroot.org>");
 MODULE_AUTHOR("haskal <haskal@awoo.systems>");
 MODULE_DESCRIPTION("Character device for the " HARDWARE_NAME " USB multitool");
 MODULE_LICENSE("GPL v2");
-MODULE_ALIAS("platform:dmj-char");
+MODULE_ALIAS("platform:dragonprobe-char");

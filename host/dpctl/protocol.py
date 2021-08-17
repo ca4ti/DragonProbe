@@ -104,7 +104,7 @@ class ModeInfo(NamedTuple):
     features: Set[int]
 
 
-class DmjDevice:
+class DPDevice:
     def __init__(self, conn: DevConn):
         self._conn = conn
         self._buf = array.array('B')

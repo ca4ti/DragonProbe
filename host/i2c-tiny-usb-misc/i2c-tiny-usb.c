@@ -160,7 +160,7 @@ static const struct i2c_algorithm usb_algorithm = {
 static const struct usb_device_id i2c_tiny_usb_table[] = {
 	{ USB_DEVICE(0x0403, 0xc631) },   /* FTDI */
 	{ USB_DEVICE(0x1c40, 0x0534) },   /* EZPrototypes */
-	{ /* TinyUSB DapperMime: we want the Vendor interface on I2C-enabled ones */
+	{ /* Dragon Probe: we want the Vendor interface on I2C-enabled ones */
 	  .match_flags = USB_DEVICE_ID_MATCH_DEVICE_AND_VERSION | USB_DEVICE_ID_MATCH_INT_CLASS,
 	  .idVendor = 0xcafe, .idProduct = 0x1312,
 	  .bcdDevice_lo = 0x6000, .bcdDevice_hi = 0x6fff,

@@ -4,9 +4,9 @@ with open("../README.md", "r") as f:
     long_description = f.read()
 
 setup(
-    name='dmctl',
+    name='dpctl',
     version='0.1.0',
-    description='Tool for controlling a dmj device',
+    description='Tool for controlling a Dragon Probe device',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='',
@@ -31,7 +31,7 @@ setup(
     include_package_data=True,
     entry_points={
         'console_scripts': [
-            "dmctl=dmctl:main"
+            "dpctl=dpctl:main"
         ]
     },
     zip_safe=False

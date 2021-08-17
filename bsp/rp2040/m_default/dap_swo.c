@@ -22,18 +22,24 @@ static bool mode_enabled = false;
 //   enable: enable flag
 //   return: 1 - Success, 0 - Error
 uint32_t SWO_Mode_UART(uint32_t enable) {
+    //for(;;);//printf("SWO mode %lu\n", enable);
     if (enable) {
         swo_sm = pio_claim_unused_sm(SWO_PIO, false);
-        if (swo_sm == -1) return 0;
+        if (swo_sm == -1) {
+            //for(;;);//printf("E: no PIO\n");
+            return 0;
+        }
 
         swo_dmach = dma_claim_unused_channel(false);
         if (swo_dmach == -1) {
+            //for(;;);//printf("E: no DMA\n");
             pio_sm_unclaim(SWO_PIO, swo_sm);
             swo_sm = -1;
             return 0;
         }
 
         if (!pio_can_add_program(SWO_PIO, &uart_rx_program)) {
+            //for(;;);//printf("E: no prg\n");
             dma_channel_unclaim(swo_dmach);
             swo_dmach = -1;
             pio_sm_unclaim(SWO_PIO, swo_sm);
@@ -75,6 +81,7 @@ uint32_t SWO_Mode_UART(uint32_t enable) {
 //   baudrate: requested baudrate
 //   return: actual baudrate or 0 when not configured
 uint32_t SWO_Baudrate_UART(uint32_t baudrate) {
+    //for(;;);//printf("SWO baudrate %lu\n", baudrate);
     if (!mode_enabled) return 0;
 
     uart_rx_program_init(SWO_PIO, swo_sm, swo_pio_off, PINOUT_SWO, baudrate);
@@ -86,6 +93,7 @@ uint32_t SWO_Baudrate_UART(uint32_t baudrate) {
 //   active: active flag
 //   return: 1 - Success, 0 - Error
 uint32_t SWO_Control_UART(uint32_t active) {
+    //for(;;);//printf("SWO control %lu\n", active);
     if (!mode_enabled) return 0;
 
     if (active) {
@@ -105,6 +113,7 @@ uint32_t SWO_Control_UART(uint32_t active) {
 //   buf: pointer to buffer for capturing
 //   num: number of bytes to capture
 void SWO_Capture_UART(uint8_t* buf, uint32_t num) {
+    //for(;;);//printf("SWO capture %p 0x%lx\n", buf, num);
     if (!mode_enabled) return;
 
     swo_num = num;
@@ -128,6 +137,7 @@ uint32_t SWO_GetCount_UART(void) {
     if (!mode_enabled || swo_num == 0) return 0; // not initialized
 
     uint32_t remaining = dma_hw->ch[swo_dmach].transfer_count;
+    //for(;;);//printf("SWO getcount -> 0x%lx\n", swo_num - remaining);
     return swo_num - remaining;
 }
 

@@ -1,5 +1,5 @@
 
-obj-m  := dmj.o dmj-char.o i2c-dmj.o spi-dmj.o dmj-hwmon.o
+obj-m  := dragonprobe.o dragonprobe-char.o i2c-dragonprobe.o spi-dragonprobe.o dragonprobe-hwmon.o
 KDIR   := /lib/modules/$(shell uname -r)/build
 PWD    := $(shell pwd)
 
@@ -9,18 +9,18 @@ default:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 clean:
-	$(RM) -v *.o *.ko *.mod *.mod.c Module.symvers modules.order
+	$(RM) -v *.o *.ko *.mod *.mod.c Module.symvers modules.order .*.cmd .*.d
 
 load:
-	sudo insmod ./dmj.ko
-	sudo insmod ./dmj-char.ko
-	sudo insmod ./i2c-dmj.ko
-	sudo insmod ./spi-dmj.ko
-	sudo insmod ./dmj-hwmon.ko
+	sudo insmod ./dragonprobe.ko
+	sudo insmod ./dragonprobe-char.ko
+	sudo insmod ./i2c-dragonprobe.ko
+	sudo insmod ./spi-dragonprobe.ko
+	sudo insmod ./dragonprobe-hwmon.ko
 
 unload:
-	sudo rmmod dmj-hwmon
-	sudo rmmod spi-dmj
-	sudo rmmod i2c-dmj
-	sudo rmmod dmj-char
-	sudo rmmod dmj
+	sudo rmmod dragonprobe-hwmon
+	sudo rmmod spi-dragonprobe
+	sudo rmmod i2c-dragonprobe
+	sudo rmmod dragonprobe-char
+	sudo rmmod dragonprobe
