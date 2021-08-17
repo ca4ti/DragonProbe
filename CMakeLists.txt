@@ -2,8 +2,9 @@ option(USE_USBCDC_FOR_STDIO "Export an extra USB-CDC interface for stdio, instea
 set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use. Set to RP2040 by default.")
 set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
 
-# use directory name for project id # FIXME: use fixed project name
-get_filename_component(PROJECT "Dragon Probe" NAME)
+# use directory name for project id
+#get_filename_component(PROJECT "Dragon Probe" NAME)
+set(PROJECT "DragonProbe")
 set(PROJECT ${BOARD}-${PROJECT})
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
