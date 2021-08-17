@@ -7,8 +7,8 @@
 
 /* the configuration vendor interface has a specific subclass and protocol
  * number that can be useful for identification */
-#define VND_CFG_SUBCLASS 42
-#define VND_CFG_PROTOCOL 69
+#define VND_CFG_SUBCLASS 'D'
+#define VND_CFG_PROTOCOL 'P'
 #define TUD_VENDOR_DESCRIPTOR_EX(_itfnum, _stridx, _epout, _epin, _epsize, _subclass, _protocol) \
   /* Interface */\
   9, TUSB_DESC_INTERFACE, _itfnum, 0, 2, TUSB_CLASS_VENDOR_SPECIFIC, _subclass, _protocol, _stridx,\

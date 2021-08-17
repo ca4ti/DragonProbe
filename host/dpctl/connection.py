@@ -26,8 +26,8 @@ class DevConn:
 class UsbConn(DevConn):
     _USB_DEFAULT_VID = 0xcafe
     _USB_DEFAULT_PID = 0x1312
-    _SUBCLASS = 42
-    _PROTOCOL = 69
+    _SUBCLASS = ord('D')
+    _PROTOCOL = ord('P')
     def _open_dev(dev) -> Union[UsbConn, str]:
         import usb, usb.core
 

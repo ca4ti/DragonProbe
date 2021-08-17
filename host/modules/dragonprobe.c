@@ -571,7 +571,7 @@ static int dp_resume(struct usb_interface *itf)
 }
 
 static const struct usb_device_id dp_table[] = {
-	{ USB_DEVICE_AND_INTERFACE_INFO(0xcafe, 0x1312, USB_CLASS_VENDOR_SPEC, 42, 69) },
+	{ USB_DEVICE_AND_INTERFACE_INFO(0xcafe, 0x1312, USB_CLASS_VENDOR_SPEC, 'D', 'P') },
 	{ }
 };
 MODULE_DEVICE_TABLE(usb, dp_table);
