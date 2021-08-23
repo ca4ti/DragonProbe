@@ -7,6 +7,7 @@
 #include "tusb.h"
 
 #include "mode.h"
+#include "storage.h"
 #include "thread.h"
 #include "usbstdio.h"
 #include "vnd_cfg.h"
@@ -31,7 +32,9 @@ int main() {
     vndcfg_thread = co_derive(vndcfg_stack, sizeof vndcfg_stack, vndcfg_thread_fn);
     thread_enter(vndcfg_thread);
 
-    modes_init();
+    storage_init(); // sets mode_next_id
+
+    modes_init(mode_next_id);
     if (mode_current) mode_current->enter();
 
     tusb_init();

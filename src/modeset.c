@@ -37,9 +37,13 @@ enum tusbgot_index {
 
 #define ORDEF(a,b) ((a != NULL) ? a : b)
 
-void modes_init(void) {
-    // switch to the default mode, but without doing a USB reboot thing
-    mode_current_id = &mode_default - mode_list;
+void modes_init(int newid) {
+    if (newid < 0 || newid >= 16 || mode_list[newid] == NULL) {
+        // switch to the default mode, but without doing a USB reboot thing
+        mode_current_id = &mode_default - mode_list;
+    } else {
+        mode_current_id = newid;
+    }
     mode_next_id = -1;
 
     //if (!mode_default) return;

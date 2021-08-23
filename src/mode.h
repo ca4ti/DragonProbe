@@ -9,6 +9,8 @@
 #include "tusb_config.h"
 #include <tusb.h>
 
+#include "storage.h"
+
 // clang-format off
 
 struct mode {
@@ -18,6 +20,8 @@ struct mode {
 
     const uint8_t* usb_desc;
     const char** string_desc;
+
+    struct mode_storage storage;
 
     void (*enter)(void); // claim required hardware. no tusb calls here please
     void (*leave)(void); // release current in-use hardware. no tusb calls here please
@@ -46,8 +50,9 @@ struct mode {
 };
 
 // call this BEFORE tusb_init!
-void modes_init(void);
+void modes_init(int init_mode);
 
+// IMMEDIATELY switches mode. use "mode_next_id' to do a graceful switch
 void modes_switch(uint8_t newmode);
 
 extern int mode_current_id;

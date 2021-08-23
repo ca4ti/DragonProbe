@@ -22,4 +22,9 @@
 #endif
 #define CFG_TUD_VENDOR 1
 
+/* don't access storage for RAM-only builds */
+#ifndef PICO_NO_FLASH
+#define BOARD_HAS_STORAGE
+#endif
+
 #endif

@@ -69,6 +69,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/modeset.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/storage.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/storage_save.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/thread.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/tusb_plt.S
   ${CMAKE_CURRENT_SOURCE_DIR}/src/usb_descriptors.c
