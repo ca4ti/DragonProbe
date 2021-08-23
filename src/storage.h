@@ -19,8 +19,8 @@ enum mode_storage_class {
 // mode callbacks used by the storage subsystem
 struct mode_storage {
     enum mode_storage_class stclass;
-    uint32_t (*get_size)(void);
-    void     (*get_data)(void* dst);
+    uint16_t (*get_size)(void);
+    void     (*get_data)(void* dst, size_t offset, size_t maxsize);
     bool     (*is_dirty)(void); // if data was changed since last mode_read/get_data call
 };
 
@@ -37,7 +37,7 @@ void storage_mode_read(int mode, void* dst);
 // global functions
 
 // reads all data, creates table if needed
-void storage_init(void);
+int storage_init(void);
 
 // flush edits if anything has been edited
 void storage_flush_data(void);

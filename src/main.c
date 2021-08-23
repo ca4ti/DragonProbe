@@ -32,9 +32,9 @@ int main() {
     vndcfg_thread = co_derive(vndcfg_stack, sizeof vndcfg_stack, vndcfg_thread_fn);
     thread_enter(vndcfg_thread);
 
-    storage_init(); // sets mode_next_id
+    int startupmode = storage_init();
 
-    modes_init(mode_next_id);
+    modes_init(startupmode);
     if (mode_current) mode_current->enter();
 
     tusb_init();

@@ -5,8 +5,8 @@
 #include "mode.h"
 #include "storage.h"
 
-#ifndef BOARD_HAS_STORAGE
-void storage_init(void) { }
+#ifndef DBOARD_HAS_STORAGE
+int storage_init(void) { return -1; }
 void storage_flush_data(void) { }
 struct mode_info storage_mode_get_size(int _) {
     (void)_; return (struct mode_info){ .size = 0, .version = 0 };
@@ -16,10 +16,20 @@ void storage_mode_read(int _, void* __) { (void)_; (void)__; }
 
 #include "storage_internal.h"
 
+uint32_t str_hash_djb2_digest(uint32_t hash, const void* data, size_t len) {
+    const uint8_t* d = data;
+
+    for (size_t i = 0; i < len; ++i) hash += hash * 33 + d[i];
+
+    return hash;
+}
+
 bool header_valid = false;
 struct storage_header header_tmp;
-uint8_t data_tmp[1024 - sizeof(struct storage_header)];
+uint8_t data_tmp[256];
 uint16_t mode_bad = 0;
+
+static int in_init = 0;
 
 static void storage_init_defaults(void) {
     memcpy(header_tmp.magic, STORAGE_MAGIC, STORAGE_MAGIC_LEN);
@@ -34,8 +44,8 @@ static void storage_init_defaults(void) {
     header_valid = true;
 }
 
-void storage_init(void) {
-    mode_next_id = -1; // by default, boot to default mode
+int storage_init(void) {
+    ++in_init;
 
     mode_bad = 0;
     storage_read(&header_tmp, STORAGE_SIZE - sizeof(struct storage_header),
@@ -44,14 +54,16 @@ void storage_init(void) {
     bool bad = false;
     if (memcmp(header_tmp.magic, STORAGE_MAGIC, STORAGE_MAGIC_LEN)) {
         storage_init_defaults();
-        storage_flush_data();
-        return;
+        if (in_init == 1) storage_flush_data();
+        --in_init;
+        return -1;
     }
 
     if (header_tmp.fwversion != STORAGE_VER) {
         // TODO: migrate... if there were any older versions
         header_valid = false;
-        return;
+        --in_init;
+        return -1;
     }
 
     if (header_tmp.nmodes >= 16) bad = true;
@@ -64,13 +76,14 @@ void storage_init(void) {
 
     if (bad) {
         storage_init_defaults();
-        storage_flush_data();
-        return;
+        if (in_init == 1) storage_flush_data();
+        --in_init;
+        return -1;
     }
 
-    mode_next_id = header_tmp.curmode;
-
     header_valid = true;
+    --in_init;
+    return header_tmp.curmode;
 }
 
 struct mode_info storage_mode_get_info(int mode) {
@@ -89,7 +102,7 @@ struct mode_info storage_mode_get_info(int mode) {
         uint32_t mdoffset = md.offsetandmode & ((1<<28)-1);
 
         if (mdmode != mode) continue;
-        if (~mdsize == 0 || ~md.version == 0 || ~offsetandmode == 0)
+        if (mdsize == 0xffff || md.version == 0xffff || md.offsetandmode == 0xffffffffu)
             continue; // empty (wut?)
 
         // found it!
@@ -141,7 +154,7 @@ void storage_mode_read(int mode, void* dst) {
         uint32_t mdoffset = md.offsetandmode & ((1<<28)-1);
 
         if (mdmode != mode) continue;
-        if (~mdsize == 0 || ~md.version == 0 || ~offsetandmode == 0)
+        if (mdsize == 0xffff || md.version == 0xffff || md.offsetandmode == 0xffffffffu)
             continue; // empty (wut?)
 
         // found it!

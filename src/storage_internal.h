@@ -8,7 +8,7 @@ inline static uint32_t str_hash_djb2_init(void) {
 }
 uint32_t str_hash_djb2_digest(uint32_t hash, const void* data, size_t len);
 inline static uint32_t str_hash_djb2(const void* data, size_t len) {
-    return str_hash_djb2_digestt(str_hash_djb2_init(), data, len);
+    return str_hash_djb2_digest(str_hash_djb2_init(), data, len);
 }
 
 /*
@@ -62,7 +62,7 @@ __attribute__((__packed__)) struct storage_header {
 
 extern bool header_valid;
 extern struct storage_header header_tmp;
-extern uint8_t data_tmp[1024 - sizeof(struct storage_header)];
+extern uint8_t data_tmp[256];
 extern uint16_t mode_bad;
 
 #endif
