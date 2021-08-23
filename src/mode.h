@@ -39,7 +39,7 @@ struct mode {
     void (*tud_cdc_line_coding_cb)(uint8_t itf, cdc_line_coding_t const* line_coding);
 #endif
 //#if CFG_TUD_VENDOR > 0
-    bool (*tud_vendor_control_xfer_cb)(uint8_t rhport, uint8_t ep_addr,
+    bool (*tud_vendor_control_xfer_cb)(uint8_t rhport, uint8_t stage,
             tusb_control_request_t const* req);
 //#endif
 
