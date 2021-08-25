@@ -184,6 +184,18 @@ static const char* string_desc_arr[] = {
 };
 // clang-format on
 
+#if CFG_TUD_CDC > 0
+static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
+    switch (itf) {
+#ifdef USE_USBCDC_FOR_STDIO
+        case CDC_N_STDIO:
+            stdio_usb_line_coding_cb(line_coding);
+            break;
+#endif
+    }
+}
+#endif
+
 extern struct mode m_03_jscan;
 // clang-format off
 struct mode m_03_jscan = {
@@ -198,6 +210,10 @@ struct mode m_03_jscan = {
     .leave = leave_cb,
     .task  = task_cb,
     .handle_cmd = handle_cmd_cb,
+
+#if CFG_TUD_CDC > 0
+    .tud_cdc_line_coding_cb = my_cdc_line_coding_cb,
+#endif
 };
 // clang-format on
 

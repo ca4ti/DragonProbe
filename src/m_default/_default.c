@@ -373,6 +373,7 @@ static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_cod
 #endif
 #ifdef USE_USBCDC_FOR_STDIO
         case CDC_N_STDIO:
+            stdio_usb_line_coding_cb(line_coding);
             break;
 #endif
     }

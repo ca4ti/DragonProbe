@@ -50,6 +50,7 @@ extern "C" {
 #define UART_RX_PIN PICO_DEFAULT_UART_RX_PIN
 #endif
 
+// (not actually for TinyUSB overrides)
 // Reset to bootloader
 #define bsp_reset_bootloader() reset_usb_boot(0, 0)
 
