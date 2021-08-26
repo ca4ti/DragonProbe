@@ -148,7 +148,11 @@ struct mode_info storage_mode_get_info(int mode) {
     #undef DEF_RETVAL
 }
 void storage_mode_read(int mode, void* dst, size_t offset, size_t maxlen) {
+<<<<<<< HEAD
     if (mode >= 16 || !header_valid || mode <= 0 || header_tmp.nmodes == 0) return;
+=======
+    if (mode >= 16 || !header_valid || mode <= 0) return;
+>>>>>>> 62e3181 (PERSISTENT_STORAGE usage flag)
 
     for (size_t i = 0; i < header_tmp.nmodes; ++i) {
         struct mode_data md = header_tmp.mode_data_table[i];
