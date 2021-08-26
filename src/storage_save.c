@@ -28,6 +28,7 @@ static size_t storage_allocate_new(void) {
 
     memcpy(header_tmp.magic, STORAGE_MAGIC, STORAGE_MAGIC_LEN);
     memset(header_tmp.reserved, 0xff, sizeof(header_tmp.reserved));
+    memset(header_tmp.reserved2, 0xff, sizeof(header_tmp.reserved2));
     memset(header_tmp.mode_data_table, 0xff, sizeof(header_tmp.mode_data_table));
 
     header_tmp.fwversion = STORAGE_VER;

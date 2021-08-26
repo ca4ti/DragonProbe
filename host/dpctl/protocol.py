@@ -53,7 +53,7 @@ class StorageInfo(NamedTuple):
 
         mag = b[:16]
         ver, cm, nm = struct.unpack('<HBB', b[16:20])
-        res = b[20:28]
+        res = b[20:28] + b[245-32:]
         d2tab = struct.unpack('<I', b[28:32])
 
         mdat = StorageInfoMode.list_from_bytes(b[32:256-32])

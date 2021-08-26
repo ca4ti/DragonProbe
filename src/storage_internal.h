@@ -48,13 +48,18 @@ __attribute__((__packed__)) struct mode_data {
 #define MAX_MDT_ELEMENTS ((256 - 64) / sizeof(struct mode_data)) /* should be 16 */
 
 __attribute__((__packed__)) struct storage_header {
+    // +0
     uint8_t magic[STORAGE_MAGIC_LEN];
+    // +16
     uint16_t fwversion;
     uint8_t curmode;
     uint8_t nmodes; // *stored* modes, not modes it knows of
     uint8_t reserved[8];
     uint32_t table_djb2;
-    struct mode_data mode_data_table[MAX_MDT_ELEMENTS];
+    // +32
+    struct mode_data mode_data_table[MAX_MDT_ELEMENTS]; // 192 bytes in size
+    // +224
+    uint8_t reserved2[32];
 };
 
 // TODO: static assert sizeof(struct storage_header) == 256
