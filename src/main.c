@@ -38,6 +38,11 @@ int main() {
     int startupmode = -1;
 #endif
 
+    // FIXME: put elsewhere?
+#ifdef USE_USBCDC_FOR_STDIO
+    stdio_usb_set_itf_num(0);
+#endif
+
     modes_init(startupmode);
     if (mode_current) mode_current->enter();
 
@@ -45,8 +50,6 @@ int main() {
 
     // FIXME: put elsewhere?
 #ifdef USE_USBCDC_FOR_STDIO
-    stdio_usb_set_itf_num(0);
-
     stdio_usb_init();
 #endif
 
