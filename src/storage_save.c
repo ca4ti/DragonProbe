@@ -48,7 +48,7 @@ static size_t storage_allocate_new(void) {
             uint16_t dsize = mode_list[mode]->storage.get_size();
             if (dsize > stclass_sz[stcls]) continue;
 
-            if (current_wrhead + dsize > current_page_end) { // welp
+            if (current_wrhead + dsize > current_page_end) { // FIXME: data that is >1 page size (do we want to support this?)
                 current_page_end = current_page;
                 current_page -= STORAGE_ERASEWRITE_ALIGN;
                 current_wrhead = current_page;

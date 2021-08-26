@@ -20,6 +20,7 @@ enum mode_storage_class {
 struct mode_storage {
     enum mode_storage_class stclass;
     uint16_t (*get_size)(void);
+    // if stclass < 512b, offset & maxsize can be ignored
     void     (*get_data)(void* dst, size_t offset, size_t maxsize);
     bool     (*is_dirty)(void); // if data was changed since last mode_read/get_data call
 };

@@ -3,6 +3,7 @@
 #include <tusb.h>
 
 #include "mode.h"
+#include "storage.h"
 #include "thread.h"
 #include "usbstdio.h"
 #include "vnd_cfg.h"
@@ -19,6 +20,8 @@ enum m_sump_cmds {
 enum m_sump_feature {
     msump_feat_sump      = 1<<0,
 };
+
+static bool data_dirty = false;
 
 #ifdef DBOARD_HAS_SUMP
 static cothread_t sumpthread;
@@ -44,6 +47,16 @@ static void enter_cb(void) {
     sumpthread = co_derive(sumpstack, sizeof sumpstack, sump_thread_fn);
     thread_enter(sumpthread);
 #endif
+
+    if (!data_dirty) { // only read when not read yet
+        struct mode_info mi = storage_mode_get_info(4);
+        if (mi.size != 0 && mi.version == 0x0010 /* TODO: version migration? */) {
+            uint8_t dst[1];
+            storage_mode_read(4, dst, 0, 1);
+
+            sump_hw_set_overclock(dst[0]);
+        }
+    }
 }
 static void leave_cb(void) {
 #ifdef DBOARD_HAS_SUMP
@@ -133,7 +146,6 @@ enum {
 #define EPNUM_CDC_STDIO_NOTIF   0x85
 
 // clang-format off
-// TODO: replace magic 64s by actual buffer size macros
 static const uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM__TOTAL, STRID_CONFIG, CONFIG_TOTAL_LEN,
         TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
@@ -178,6 +190,17 @@ static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_cod
 }
 #endif
 
+static uint16_t my_get_size(void) { return 1; }
+static void my_get_data(void* dst, size_t offset, size_t maxsize) {
+    (void)offset; (void)maxsize;
+
+    uint8_t* d = dst;
+    d[0] = sump_hw_get_overclock();
+
+    data_dirty = false;
+}
+static bool my_is_dirty(void) { return data_dirty; }
+
 extern struct mode m_04_sump;
 // clang-format off
 struct mode m_04_sump = {
@@ -187,6 +210,13 @@ struct mode m_04_sump = {
 
     .usb_desc = desc_configuration,
     .string_desc = string_desc_arr,
+
+    .storage = {
+        .stclass = mode_storage_32b,
+        .get_size = my_get_size,
+        .get_data = my_get_data,
+        .is_dirty = my_is_dirty
+    },
 
     .enter = enter_cb,
     .leave = leave_cb,

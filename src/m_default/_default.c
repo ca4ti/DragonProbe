@@ -3,6 +3,7 @@
 #include <tusb.h>
 
 #include "mode.h"
+#include "storage.h"
 #include "thread.h"
 #include "usbstdio.h"
 #include "vnd_cfg.h"
@@ -34,6 +35,8 @@ enum m_default_feature {
     mdef_feat_i2c       = 1<<3,
     mdef_feat_tempsense = 1<<4,
 };
+
+static bool data_dirty = false;
 
 #ifdef DBOARD_HAS_UART
 static cothread_t uartthread;
@@ -81,6 +84,17 @@ static void enter_cb(void) {
     serprogthread = co_derive(serprogstack, sizeof serprogstack, serprog_thread_fn);
     thread_enter(serprogthread);  // will call cdc_serprog_init() on correct thread
 #endif
+
+    if (!data_dirty) { // only read when not read yet
+        struct mode_info mi = storage_mode_get_info(1);
+        if (mi.size != 0 && mi.version == 0x0010 /* TODO: version migration? */) {
+            uint8_t dst[2];
+            storage_mode_read(1, dst, 0, 2);
+
+            cdc_uart_set_hwflow(dst[0]);
+            tempsense_set_addr(dst[1]);
+        }
+    }
 }
 static void leave_cb(void) {
     // TODO: CMSISDAP?
@@ -144,7 +158,12 @@ static void handle_cmd_cb(uint8_t cmd) {
         break;
     case mdef_cmd_tempsense:
 #ifdef DBOARD_HAS_TEMPSENSOR
-        tempsense_bulk_cmd();
+        {
+            uint8_t addra = tempsense_get_addr();
+            tempsense_bulk_cmd();
+            uint8_t addrb = tempsense_get_addr();
+            data_dirty |= addra != addrb;
+        }
 #else
         vnd_cfg_write_str(cfg_resp_illcmd, "temperature sensor not implemented on this device");
 #endif
@@ -156,9 +175,10 @@ static void handle_cmd_cb(uint8_t cmd) {
             resp = cdc_uart_get_hwflow() ? 1 : 0;
             vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
         } else {
-            if (cdc_uart_set_hwflow(resp != 0))
+            if (cdc_uart_set_hwflow(resp != 0)) {
                 vnd_cfg_write_resp(cfg_resp_ok, 0, NULL);
-            else
+                data_dirty = true;
+            } else
                 vnd_cfg_write_str(cfg_resp_illcmd, "UART flow control setting not supported on this device");
         }
 #else
@@ -387,6 +407,19 @@ static bool my_vendor_control_xfer_cb(uint8_t rhport, uint8_t ep_addr,
 }
 #endif
 
+static uint16_t my_get_size(void) { return 2; }
+static void my_get_data(void* dst, size_t offset, size_t maxsize) {
+    (void)offset; (void)maxsize;
+
+    uint8_t* d = dst;
+
+    d[0] = cdc_uart_get_hwflow() ? 1 : 0;
+    d[1] = tempsense_get_addr();
+
+    data_dirty = false;
+}
+static bool my_is_dirty(void) { return data_dirty; }
+
 extern struct mode m_01_default;
 // clang-format off
 struct mode m_01_default = {
@@ -401,6 +434,13 @@ struct mode m_01_default = {
     .leave = leave_cb,
     .task  = task_cb,
     .handle_cmd = handle_cmd_cb,
+
+    .storage = {
+        .stclass = mode_storage_32b,
+        .get_size = my_get_size,
+        .get_data = my_get_data,
+        .is_dirty = my_is_dirty
+    },
 
 #if defined(DBOARD_HAS_CMSISDAP) && CFG_TUD_HID > 0
 #if 0

@@ -6,14 +6,14 @@
 #include "storage.h"
 
 #if !defined(PERSISTENT_STORAGE) || !defined(DBOARD_HAS_STORAGE)
-/*int storage_init(void) { return -1; }
+int storage_init(void) { return -1; }
 bool storage_flush_data(void) { return false; }
-struct mode_info storage_mode_get_size(int _) {
+struct mode_info storage_mode_get_info(int _) {
     (void)_; return (struct mode_info){ .size = 0, .version = 0 };
 }
 void storage_mode_read(int _, void* __, size_t ___, size_t ____) {
     (void)_; (void)__; (void)___; (void)____;
-}*/
+}
 #else
 
 #include "storage_internal.h"
