@@ -52,6 +52,26 @@ def dpctl_do(args: Any) -> int:
             return 1
         return devcmds.sump_overclock_set(conn, oven)
 
+    def sto_info(conn, args):
+        return devcmds.storage_info(conn)
+    def sto_flush(conn, args):
+        return devcmds.storage_flush(conn)
+    def sto_get(conn, args):
+        return devcmds.storage_get(mode)
+
+    def storage(conn, args):
+        scmds = {
+            'info', sto_info,
+            'flush', sto_flush,
+            'get', sto_get
+        }
+
+        ssubfn = stocmds.get(args.storage, None)
+        if ssubfn is None:
+            print("Unknown 'storage' subcommand '%s'" % args.storage)
+            return 1
+
+        return ssubfn(conn, args)
 
     #print(repr(args))
     cmds = {
@@ -64,6 +84,8 @@ def dpctl_do(args: Any) -> int:
         'tempsensor': tempsensor,
         'jtag-scan': jtag_scan,
         'sump-overclock': sump_ovclk,
+
+        'storage': storage,
     }
 
     if args.subcmd is None:
@@ -141,6 +163,16 @@ def main() -> int:
     setmode.add_argument('mode', type=int, help="Mode to switch to, required.")
 
     bootloader = subcmds.add_parser("bootloader", help="Set the device in bootloader mode")
+
+    # persistent storage commands
+    storage = subcmds.add_parser("storage", help="Persistent storage commands")
+    storagecmd = parser.add_subparsers(required=False, metavar="storage",
+                                    dest="storage", help="Persistent storage subcommand")
+    storagehdr = storagecmd.add_parser("info", help="Get persistent storage info")
+    storageflush = storagecmd.add_parser("flush", help="Flush persistent storage data to storage medium")
+    storageget = storagecmd.add_parser("get", help="Get data of a particular mode")
+    storageget.add_arguments('mode', default=None, nargs='?',
+                             help="Mode to get data of. Defaults to the current mode, 'all' means all modes.")
 
     # mode 1 commands
     usbhwfctl = subcmds.add_parser("uart-cts-rts", help="Get, enable/disable"+\

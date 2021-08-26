@@ -85,6 +85,38 @@ def set_mode(dev: DPDevice, mode: int) -> int:
 # ---
 
 
+def storage_info(dev: DPDevice) -> int:
+    try:
+        res = dev.storage_info()
+        print(repr(res)) # TODO
+        return 0
+    except Exception as e:
+        print("Could not get storage info: %s" % str(e))
+        return 1
+
+
+def storage_flush(dev: DPDevice) -> int:
+    try:
+        dev.storage_flush()
+        return 0
+    except Exception as e:
+        print("Could not flush persistent storage: %s" % str(e))
+        return 1
+
+
+def storage_get(dev: DPDevice, mode: int) -> int:
+    try:
+        res = dev.storage_get(mode)
+        print(repr(res)) # TODO
+        return 0
+    except Exception as e:
+        print("Could not get storage data of mode %d: %s" % (mode, str(e)))
+        return 1
+
+
+# ---
+
+
 def uart_hw_flowctl_get(dev: DPDevice) -> int:
     try:
         res = dev.m1_usb_hw_flowctl_get()
