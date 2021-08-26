@@ -85,11 +85,39 @@ static size_t storage_allocate_new(void) {
     return npages;
 }
 
-static void STORAGE_RAM_FUNC(storage_serialize_xip)(size_t pageid,
-        size_t pagestart, size_t pageend, void* dest) {
-    (void)pageid; (void)pagestart; (void)pageend; (void)dest;
+static void st_safe_memcpy(void* dst, const void* src, size_t size) {
+    const uint64_t* s = src;
+    uint64_t* d = dst;
+    for (size_t i = 0; i < (size>>3); ++i) {
+        d[i] = s[i];
+        asm volatile("":::"memory");
+    }
 
-    // BIG TODO
+    if (size & 7) {
+        for (size_t i = (size>>3)<<3; i < size; ++i) {
+            ((uint8_t*)dst)[i] = ((const uint8_t*)src)[i];
+            asm volatile("":::"memory");
+        }
+    }
+}
+
+static void STORAGE_RAM_FUNC(storage_serialize_xip)(size_t page,
+        size_t pagestart, size_t pageend, void* dest) {
+    if (page == 0) {
+        st_safe_memcpy((uint8_t*)dest + pageend - pagestart,
+                &header_tmp, sizeof(struct storage_header));
+    }
+
+    for (size_t i = 0; i < header_tmp.nmodes; ++i) {
+        struct mode_data* md = &header_tmp.mode_data_table[i];
+        uint32_t mdoffset = md->offsetandmode & ((1<<28)-1);
+        uint32_t mdsize = md->datasize;
+
+        if (mdoffset < pagestart || mdoffset + mdsize >= pageend)
+            continue; // must be fully within the page
+
+        msto[i].get_data((uint8_t*)dest + mdoffset - pagestart, 0, mdsize);
+    }
 }
 
 static void STORAGE_RAM_FUNC(storage_write_data)(void) {
@@ -100,15 +128,14 @@ static void STORAGE_RAM_FUNC(storage_write_data)(void) {
     }
 
     storage_extra_ram_temp_t ramtmp = storage_extra_ram_enable();
+    void* base = storage_extra_ram_get_base();
 
     size_t current_page = STORAGE_SIZE - STORAGE_ERASEWRITE_ALIGN,
            current_page_end = STORAGE_SIZE - sizeof(struct storage_header);
     for (size_t page = 0; page < npages; ++page) {
-        storage_serialize_xip(page, current_page, current_page_end,
-                storage_extra_ram_get_base());
+        storage_serialize_xip(page, current_page, current_page_end, base);
 
-        storage_erasewrite(current_page, storage_extra_ram_get_base(),
-                STORAGE_ERASEWRITE_ALIGN);
+        storage_erasewrite(current_page, base, STORAGE_ERASEWRITE_ALIGN);
 
         current_page_end = current_page;
         current_page -= STORAGE_ERASEWRITE_ALIGN;
