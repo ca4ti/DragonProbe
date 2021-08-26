@@ -57,21 +57,7 @@ def dpctl_do(args: Any) -> int:
     def sto_flush(conn, args):
         return devcmds.storage_flush(conn)
     def sto_get(conn, args):
-        return devcmds.storage_get(mode)
-
-    def storage(conn, args):
-        scmds = {
-            'info', sto_info,
-            'flush', sto_flush,
-            'get', sto_get
-        }
-
-        ssubfn = stocmds.get(args.storage, None)
-        if ssubfn is None:
-            print("Unknown 'storage' subcommand '%s'" % args.storage)
-            return 1
-
-        return ssubfn(conn, args)
+        return devcmds.storage_get(conn, args.mode)
 
     #print(repr(args))
     cmds = {
@@ -79,13 +65,14 @@ def dpctl_do(args: Any) -> int:
         'get-mode-info': get_mode_info,
         'set-mode': set_mode,
         'bootloader': bootloader,
+        'storage-info': sto_info,
+        'storage-flush': sto_flush,
+        'storage-get': sto_get,
 
         'uart-cts-rts': uart_hw_flowctl,
         'tempsensor': tempsensor,
         'jtag-scan': jtag_scan,
         'sump-overclock': sump_ovclk,
-
-        'storage': storage,
     }
 
     if args.subcmd is None:
@@ -165,13 +152,12 @@ def main() -> int:
     bootloader = subcmds.add_parser("bootloader", help="Set the device in bootloader mode")
 
     # persistent storage commands
-    storage = subcmds.add_parser("storage", help="Persistent storage commands")
-    storagecmd = parser.add_subparsers(required=False, metavar="storage",
-                                    dest="storage", help="Persistent storage subcommand")
-    storagehdr = storagecmd.add_parser("info", help="Get persistent storage info")
-    storageflush = storagecmd.add_parser("flush", help="Flush persistent storage data to storage medium")
-    storageget = storagecmd.add_parser("get", help="Get data of a particular mode")
-    storageget.add_arguments('mode', default=None, nargs='?',
+    storagehdr = subcmds.add_parser("storage-info", help="Get persistent storage info")
+
+    storageflush = subcmds.add_parser("storage-flush", help="Flush persistent storage data to storage medium")
+
+    storageget = subcmds.add_parser("storage-get", help="Get data of a particular mode")
+    storageget.add_argument('mode', default=None, nargs='?',
                              help="Mode to get data of. Defaults to the current mode, 'all' means all modes.")
 
     # mode 1 commands

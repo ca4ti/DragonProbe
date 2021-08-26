@@ -28,7 +28,7 @@ class StorageInfoMode(NamedTuple):
     def from_bytes(b: bytes) -> StorageInfoMode:
         assert len(b) == 12
         v, ds, oam, d = struct.unpack('<HHII', b)
-        return StorageInfoMode(v, ds, o & ((1<<28)-1), (o >> 28) & 15, d)
+        return StorageInfoMode(v, ds, oam & ((1<<28)-1), (oam >> 28) & 15, d)
 
     def list_from_bytes(b: bytes) -> List[StorageInfoMode]:
         nelem = len(b) // 12
@@ -56,7 +56,7 @@ class StorageInfo(NamedTuple):
         res = b[20:28]
         d2tab = struct.unpack('<I', b[28:32])
 
-        mdat = StorageModeInfo.list_from_bytes(b[32:])
+        mdat = StorageInfoMode.list_from_bytes(b[32:256-32])
 
         assert len(mdat) == nm
 
@@ -189,11 +189,11 @@ class DPDevice:
 
         if (plen & 0x80) != 0:
             plen &= 0x7f
-            plen |= self.read(1) << 7
+            plen |= self.read(1)[0] << 7
 
             if (plen & 0x4000) != 0:
                 plen &= 0x3fff
-                plen |= self.read(1) << 14
+                plen |= self.read(1)[0] << 14
 
         bs = self.read(plen)
         #print("==> got resp %d res %s" % (resp, repr(bs)))
@@ -291,10 +291,11 @@ class DPDevice:
 
         return StorageInfo.from_bytes(pl)
 
-    def storage_flush(self):
+    def storage_flush(self) -> bool:
         self.write(b'\x0e')
         stat, pl = self.read_resp()
-        check_statpl(stat, pl, "flush storage", 0, 0)
+        check_statpl(stat, pl, "flush storage", 1, 1)
+        return pl[0]
 
     def storage_get(self, mode: int) -> bytes:
         cmd = bytearray(b'\x0d\x00')

@@ -90,12 +90,13 @@ int storage_init(void) {
 
 struct mode_info storage_mode_get_info(int mode) {
     #define DEF_RETVAL ({ \
-        if (mode < 16 && mode > 0 && header_valid) mode_bad |= 1<<mode; \
+        if (mode < 16 && mode > 0 && header_valid && header_tmp.nmodes != 0) mode_bad |= 1<<mode; \
         (struct mode_info){ .size = 0, .version = 0 }; \
     }) \
 
 
-    if (mode >= 16 || !header_valid || mode <= 0) return DEF_RETVAL;
+    if (mode >= 16 || !header_valid || mode <= 0 || header_tmp.nmodes == 0)
+        return DEF_RETVAL;
 
     for (size_t i = 0; i < header_tmp.nmodes; ++i) {
         struct mode_data md = header_tmp.mode_data_table[i];
@@ -147,7 +148,7 @@ struct mode_info storage_mode_get_info(int mode) {
     #undef DEF_RETVAL
 }
 void storage_mode_read(int mode, void* dst, size_t offset, size_t maxlen) {
-    if (mode >= 16 || !header_valid || mode <= 0) return;
+    if (mode >= 16 || !header_valid || mode <= 0 || header_tmp.nmodes == 0) return;
 
     for (size_t i = 0; i < header_tmp.nmodes; ++i) {
         struct mode_data md = header_tmp.mode_data_table[i];

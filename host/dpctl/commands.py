@@ -92,20 +92,31 @@ def storage_info(dev: DPDevice) -> int:
         return 0
     except Exception as e:
         print("Could not get storage info: %s" % str(e))
+        traceback.print_exc()
         return 1
 
 
 def storage_flush(dev: DPDevice) -> int:
     try:
-        dev.storage_flush()
+        res = dev.storage_flush()
+        print("storage saved" if res else "no write needed")
         return 0
     except Exception as e:
         print("Could not flush persistent storage: %s" % str(e))
         return 1
 
 
-def storage_get(dev: DPDevice, mode: int) -> int:
+def storage_get(dev: DPDevice, mode: str) -> int:
     try:
+        if mode == 'all':
+            for m in dev.mode_info.keys():
+                res = dev.storage_get(mode)
+                print(repr(res)) # TODO
+            return 0
+        elif mode is None:
+            mode = dev.current_mode
+        else: mode = int(mode,0)
+
         res = dev.storage_get(mode)
         print(repr(res)) # TODO
         return 0

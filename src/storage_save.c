@@ -104,7 +104,7 @@ static void st_safe_memcpy(void* dst, const void* src, size_t size) {
     }
 }
 
-static void STORAGE_RAM_FUNC(storage_serialize_xip)(size_t page,
+static void storage_serialize_xip(size_t page,
         size_t pagestart, size_t pageend, void* dest) {
     if (page == 0) {
         st_safe_memcpy((uint8_t*)dest + pageend - pagestart,
@@ -123,32 +123,30 @@ static void STORAGE_RAM_FUNC(storage_serialize_xip)(size_t page,
     }
 }
 
-static void STORAGE_RAM_FUNC(storage_write_data)(void) {
+static void storage_write_data(void) {
     size_t npages = storage_allocate_new();
     if (npages == 0) {
         storage_init();
         return; // TODO: error, somehow
     }
 
-    storage_extra_ram_temp_t ramtmp = storage_extra_ram_enable();
-    void* base = storage_extra_ram_get_base();
+    static uint8_t base[STORAGE_ERASEWRITE_ALIGN]; // TODO FIXME: HUGE RAM HOG!
 
     size_t current_page = STORAGE_SIZE - STORAGE_ERASEWRITE_ALIGN,
            current_page_end = STORAGE_SIZE - sizeof(struct storage_header);
     for (size_t page = 0; page < npages; ++page) {
         storage_serialize_xip(page, current_page, current_page_end, base);
 
-        storage_erasewrite(current_page, base, STORAGE_ERASEWRITE_ALIGN);
+        if (!storage_erasewrite(current_page, base, STORAGE_ERASEWRITE_ALIGN)) {
+            storage_init();
+            return; // TODO: error, somehow
+        }
 
         current_page_end = current_page;
         current_page -= STORAGE_ERASEWRITE_ALIGN;
     }
 
-    storage_extra_ram_disable(ramtmp);
-
-    // also TODO:
-    // * call storage_flush_data on vnd cfg command
-    // * vnd cfg command to read storage data
+    // TODO:
     // * save on a timer event?
     // * try to save when unplugging???
 }
