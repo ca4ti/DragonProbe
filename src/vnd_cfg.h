@@ -30,6 +30,12 @@ enum cfg_cmd {
     cfg_cmd_get_cur_mode = 0x02,
     cfg_cmd_set_cur_mode = 0x03,
     cfg_cmd_get_infostr  = 0x04,
+
+#if defined(PERSISTENT_STORAGE) && defined(DBOARD_HAS_STORAGE)
+    cfg_cmd_storage_get_header   = 0x0c,
+    cfg_cmd_storage_get_modedata = 0x0d,
+    cfg_cmd_storage_flush_data   = 0x0e,
+#endif
 };
 
 // common commands for every mode

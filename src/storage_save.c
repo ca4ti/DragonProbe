@@ -5,17 +5,20 @@
 #include "mode.h"
 #include "storage.h"
 
-#ifdef DBOARD_HAS_STORAGE
+#if defined(PERSISTENT_STORAGE) && defined(DBOARD_HAS_STORAGE)
 
 #include "storage_internal.h"
 
-static bool storage_mode_has(int i) {
+bool storage_priv_mode_has(int i) {
     if (mode_list[i]->storage.stclass == mode_storage_none) return false;
     if (mode_list[i]->storage.get_size == NULL) return false;
     if (mode_list[i]->storage.get_data == NULL) return false;
     if (mode_list[i]->storage.is_dirty == NULL) return false;
 
     return true;
+}
+void* storage_priv_get_header_ptr(void) {
+    return &header_tmp;
 }
 
 static struct mode_storage msto[16];
@@ -38,7 +41,7 @@ static size_t storage_allocate_new(void) {
 
     for (enum mode_storage_class stcls = mode_storage_32b; stcls <= mode_storage_big; ++stcls) {
         for (int mode = 1; mode < 16; ++mode) {
-            if (mode_list[mode] == NULL || !storage_mode_has(mode)) continue;
+            if (mode_list[mode] == NULL || !storage_priv_mode_has(mode)) continue;
             if (mode_list[mode]->storage.stclass != stcls) continue;
 
             // too big for the class? don't write the data, then
@@ -150,17 +153,20 @@ static void STORAGE_RAM_FUNC(storage_write_data)(void) {
     // * try to save when unplugging???
 }
 
-void storage_flush_data(void) {
+bool storage_flush_data(void) {
     if (mode_bad != 0 || mode_current_id != header_tmp.curmode) {
         storage_write_data();
+        return true;
     } else for (int i = 1; i < 16; ++i) {
-        if (mode_list[i] == NULL || !storage_mode_has(i)) continue;
+        if (mode_list[i] == NULL || !storage_priv_mode_has(i)) continue;
 
         if (mode_list[i]->storage.is_dirty()) {
             storage_write_data();
-            return;
+            return true;
         }
     }
+
+    return false;
 }
 
 #endif

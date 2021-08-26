@@ -5,13 +5,15 @@
 #include "mode.h"
 #include "storage.h"
 
-#ifndef DBOARD_HAS_STORAGE
-int storage_init(void) { return -1; }
-void storage_flush_data(void) { }
+#if !defined(PERSISTENT_STORAGE) || !defined(DBOARD_HAS_STORAGE)
+/*int storage_init(void) { return -1; }
+bool storage_flush_data(void) { return false; }
 struct mode_info storage_mode_get_size(int _) {
     (void)_; return (struct mode_info){ .size = 0, .version = 0 };
 }
-void storage_mode_read(int _, void* __) { (void)_; (void)__; }
+void storage_mode_read(int _, void* __, size_t ___, size_t ____) {
+    (void)_; (void)__; (void)___; (void)____;
+}*/
 #else
 
 #include "storage_internal.h"
@@ -144,7 +146,7 @@ struct mode_info storage_mode_get_info(int mode) {
 
     #undef DEF_RETVAL
 }
-void storage_mode_read(int mode, void* dst) {
+void storage_mode_read(int mode, void* dst, size_t offset, size_t maxlen) {
     if (mode >= 16 || !header_valid || mode <= 0) return;
 
     for (size_t i = 0; i < header_tmp.nmodes; ++i) {
@@ -175,8 +177,10 @@ void storage_mode_read(int mode, void* dst) {
             mode_bad |= 1<<mode; return;
         }
 
+        if (offset >= mdsize) return;
+
         // skip hash check in this case
-        storage_read(dst, mdoffset, mdsize);
+        storage_read(dst, mdoffset + offset, mdsize < maxlen ? mdsize : maxlen);
         return;
     }
 }

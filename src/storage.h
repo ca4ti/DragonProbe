@@ -32,7 +32,7 @@ struct mode_info {
 // functions mode-specific code can use to retrieve the save data
 
 struct mode_info storage_mode_get_info(int mode); // returns size=0 for none found
-void storage_mode_read(int mode, void* dst);
+void storage_mode_read(int mode, void* dst, size_t offset, size_t maxlen);
 
 // global functions
 
@@ -40,7 +40,10 @@ void storage_mode_read(int mode, void* dst);
 int storage_init(void);
 
 // flush edits if anything has been edited
-void storage_flush_data(void);
+bool storage_flush_data(void);
+
+bool storage_priv_mode_has(int mode);
+void* storage_priv_get_header_ptr(void);
 
 #endif
 

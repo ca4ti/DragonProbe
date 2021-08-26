@@ -5,6 +5,7 @@
 #include "alloc.h"
 #include "board.h" /* bsp_reset_bootloader() */
 #include "mode.h"
+#include "storage.h"
 
 extern struct mode m_01_default, m_03_jscan, m_04_sump;
 
@@ -170,4 +171,14 @@ void modes_switch(uint8_t newmode) {
 
     if (mode_current) mode_current->enter();
 }
+
+#if defined(PERSISTENT_STORAGE) && defined(DBOARD_HAS_STORAGE)
+void tud_umount_cb(void) {
+    storage_flush_data();
+}
+void tud_suspend_cb(bool remote_wakeup_en) {
+    (void)remote_wakeup_en;
+    storage_flush_data();
+}
+#endif
 

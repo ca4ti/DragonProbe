@@ -18,6 +18,8 @@ static uint32_t rxavail, rxpos, txpos;
 
 static int VND_N_CFG = 0;
 
+extern uint8_t data_tmp[256];
+
 void vnd_cfg_init(void) {
     rxavail = 0;
     rxpos   = 0;
@@ -191,6 +193,47 @@ void vnd_cfg_task(void) {
         case cfg_cmd_get_infostr:
             vnd_cfg_write_str(cfg_resp_ok, INFO_PRODUCT(INFO_BOARDNAME));
             break;
+#if defined(PERSISTENT_STORAGE) && defined(DBOARD_HAS_STORAGE)
+        case cfg_cmd_storage_get_header:
+            vnd_cfg_write_resp(cfg_resp_ok, 256, storage_priv_get_header_ptr());
+            break;
+        case cfg_cmd_storage_get_modedata:
+            verbuf[0] = vnd_cfg_read_byte();
+            if (verbuf[0] == 0 || verbuf[0] >= 16 || mode_list[verbuf[0]] == NULL) {
+                vnd_cfg_write_resp(cfg_resp_nosuchmode, 0, NULL);
+            } else if (!storage_priv_mode_has(verbuf[0])) {
+                vnd_cfg_write_resp(cfg_resp_badarg, 0, NULL);
+            } else {
+                uint32_t len = storage_mode_get_info(verbuf[0]).size;
+                vnd_cfg_write_byte(cfg_resp_ok);
+                if (len < (1<<7)) {
+                    vnd_cfg_write_byte(len);
+                } else if (len < (1<<14)) {
+                    vnd_cfg_write_byte((len & 0x7f) | 0x80);
+                    vnd_cfg_write_byte((len >> 7) & 0x7f);
+                } else {
+                    vnd_cfg_write_byte((len & 0x7f) | 0x80);
+                    vnd_cfg_write_byte(((len >> 7) & 0x7f) | 0x80);
+                    vnd_cfg_write_byte(((len >> 14) & 0x7f));
+                }
+
+                for (size_t i = 0; i < len; i += sizeof data_tmp) {
+                    size_t tosend = sizeof data_tmp;
+                    if (tosend > len - i) tosend = len - i;
+                    storage_mode_read(verbuf[0], data_tmp, i, tosend);
+
+                    for (size_t ii = 0; ii < tosend; ++ii)
+                        vnd_cfg_write_byte(data_tmp[ii]);
+                }
+
+                vnd_cfg_write_flush();
+            }
+            break;
+        case cfg_cmd_storage_flush_data:
+            verbuf[0] = storage_flush_data() ? 1 : 0;
+            vnd_cfg_write_resp(cfg_resp_ok, 1, verbuf);
+            break;
+#endif
         default:
             vnd_cfg_write_resp(cfg_resp_illcmd, 0, NULL);
             break;

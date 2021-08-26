@@ -1,4 +1,5 @@
 option(USE_USBCDC_FOR_STDIO "Export an extra USB-CDC interface for stdio, instead of echoing it to a UART port (and requiring UART loopback for receiving stdio output on a host computer)." OFF)
+option(PERSISTENT_STORAGE "Use persistent storage (usually on-chip/on-board flash) to save the current mode, and settings of modes" ON)
 set(FAMILY "rp2040" CACHE STRING "Board/MCU family, decides which drivers to use. Set to RP2040 by default.")
 set(BOARD "raspberry_pi_pico" CACHE STRING "Board used, determines the pinout. Defaults to the Raspberry Pi Pico.")
 
@@ -45,10 +46,10 @@ if(FAMILY STREQUAL "rp2040")
   # need uart stdio, usb is busy doing other stuff
   if(USE_USBCDC_FOR_STDIO)
     # we're going to manually implement this case
-	#pico_enable_stdio_uart(${PROJECT} 0)
-    target_compile_definitions(${PROJECT} PUBLIC USE_USBCDC_FOR_STDIO=1 PICO_STDIO_USB=1)
+    #pico_enable_stdio_uart(${PROJECT} 0)
+    target_compile_definitions(${PROJECT} PUBLIC USE_USBCDC_FOR_STDIO=1)
   else()
-	  #pico_enable_stdio_uart(${PROJECT} 1)
+    #pico_enable_stdio_uart(${PROJECT} 1)
   endif()
   pico_enable_stdio_uart(${PROJECT} 1)
   pico_enable_stdio_usb(${PROJECT} 0)
@@ -95,9 +96,13 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_sump/sump_hw.c
 )
 if(USE_USBCDC_FOR_STDIO)
+  target_compile_definitions(${PROJECT} PUBLIC USE_USBCDC_FOR_STDIO=1)
   target_sources(${PROJECT} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/cdc_stdio.c
   )
+endif()
+if (PERSISTENT_STORAGE)
+  target_compile_definitions(${PROJECT} PUBLIC PERSISTENT_STORAGE=1)
 endif()
 target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/

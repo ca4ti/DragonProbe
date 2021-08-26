@@ -32,7 +32,11 @@ int main() {
     vndcfg_thread = co_derive(vndcfg_stack, sizeof vndcfg_stack, vndcfg_thread_fn);
     thread_enter(vndcfg_thread);
 
+#if defined(PERSISTENT_STORAGE) && defined(DBOARD_HAS_STORAGE)
     int startupmode = storage_init();
+#else
+    int startupmode = -1;
+#endif
 
     modes_init(startupmode);
     if (mode_current) mode_current->enter();
