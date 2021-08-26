@@ -54,13 +54,18 @@ class StorageInfo(NamedTuple):
         mag = b[:16]
         ver, cm, nm = struct.unpack('<HBB', b[16:20])
         res = b[20:28] + b[245-32:]
-        d2tab = struct.unpack('<I', b[28:32])
+        d2tab = struct.unpack('<I', b[28:32])[0]
 
         mdat = StorageInfoMode.list_from_bytes(b[32:256-32])
 
         assert len(mdat) == nm
 
         return StorageInfo(mag, ver, cm, nm, res, d2tab, mdat)
+
+    def __str__(self):
+        return "StorageInfo(magic=%s, version=%d, curmode=%d, nmodes=%d, table_djb2=%d, mode_data=%s)" \
+            % (' '.join(hex(b) for b in self.magic), self.version,
+               self.curmode, self.nmodes, self.table_djb2, repr(self.mode_data))
 
 
 class JtagMatch(NamedTuple):
@@ -302,7 +307,7 @@ class DPDevice:
         cmd[1] = mode
         self.write(cmd)
         stat, pl = self.read_resp()
-        check_statpl(stat, pl, "get storage data", -1, -1)
+        check_statpl(stat, pl, "get storage data", None, None)
 
         return pl # TODO: parse
 

@@ -88,7 +88,14 @@ def set_mode(dev: DPDevice, mode: int) -> int:
 def storage_info(dev: DPDevice) -> int:
     try:
         res = dev.storage_info()
-        print(repr(res)) # TODO
+        print("magic: %s, version=%04x, current mode=%d, #modes=%d, DJB2(table)=%d" \
+              % (('OK' if res.magic == b'\xf0\x9f\x8f\xb3\xef\xb8\x8f\xe2\x80\x8d\xe2\x9a\xa7\xef\xb8\x8f' else 'BAD!'),
+                 res.version, res.curmode, res.nmodes, res.table_djb2))
+        for md in res.mode_data:
+            print("\tmode %d version %04x: 0x%x..+0x%x, DJB2=%d" % \
+                (md.mode, md.version, md.offset, md.datasize, md.data_djb2))
+        if len(res.mode_data) == 0:
+            print("No mode data");
         return 0
     except Exception as e:
         print("Could not get storage info: %s" % str(e))
