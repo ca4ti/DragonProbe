@@ -88,6 +88,10 @@ void ftdi_init(void) {
     ftdi_eeprom[10] = 0x0000; // internal chip
     ftdi_eeprom[0x7f] = ftdi_eeprom_checksum_calc(ftdi_eeprom, 0x7f);
 
+    memset(ftdi_ifa, 0, sizeof ftdi_ifa);
+    memset(ftdi_ifb, 0, sizeof ftdi_ifb);
+    ftdi_ifa.lineprop = sio_bits_8 | sio_stop_1; // 8n1
+    ftdi_ifb.lineprop = sio_bits_8 | sio_stop_1; // 8n1
     ftdi_ifa.index = 0;
     ftdi_ifb.index = 1;
     ftdi_if_init(&ftdi_ifa);
@@ -95,6 +99,26 @@ void ftdi_init(void) {
 }
 void ftdi_deinit(void) {
     // TODO: ???
+}
+
+static uint8_t vnd_read_byte(struct ftdi_inteface* itf, int itfnum) {
+    while (itf->rxavail <= 0) {
+        if (!tud_vendor_n_mounted(itfnum) || !tud_vendor_n_available(itfnum)) {
+            thread_yield();
+            continue;
+        }
+
+        itf->rxpos   = 0;
+        itf->rxavail = tud_vendor_n_read(itfnum, itf->bufbuf, sizeof itf->bufbuf);
+
+        if (itf->rxavail == 0) thread_yield();
+    }
+
+    uint8_t rv = itf->bufbuf[itf->rxpos];
+    ++itf->rxpos;
+    --itf->rxavail;
+
+    return rv;
 }
 
 typedef void (*ftfifo_write_fn)(struct ftdi_interface*, const uint8_t*, size_t);
@@ -221,10 +245,24 @@ bool ftdi_control_xfer_cb(uint8_t rhport, uint8_t stage,
 
     switch (req->bRequest) {
     case sio_cmd:
-        if (req->wValue == sio_reset) ftdi_if_sio_reset(itf);
-        else if (req->wValue == sio_tciflush) ftdi_if_sio_tciflush(itf);
-        else if (req->wValue == sio_tcoflush) ftdi_if_sio_tcoflush(itf);
-        else return false; // unk
+        if (req->wValue == sio_reset) {
+            itf->modem_mask = 0;
+            itf->modem_data = 0;
+            itf->flow = ftflow_none;
+            itf->lineprop = sio_bits_8 | sio_stop_1; // 8n1
+            itf->charen = 0;
+            itf->bb_dir = 0;
+            itf->bb_mode = sio_mode_reset;
+            itf->mcu_addr_latch = 0;
+            itf->rxavail = 0; itf->rxpos = 0;
+            ftdi_if_sio_reset(itf);
+        } else if (req->wValue == sio_tciflush) {
+            itf->rxavail = 0; itf->rxpos = 0;
+            ftdi_if_sio_tciflush(itf);
+        } else if (req->wValue == sio_tcoflush) {
+            // nothing extra to clear here I think
+            ftdi_if_sio_tcoflush(itf);
+        } else return false; // unk
         return tud_control_status(rhport, req);
     case sio_setmodemctrl:
         ftdi_if_set_modemctrl(itf,

@@ -143,6 +143,66 @@ enum ftdi_eep_defmode {
     fteep_mode_ft1284 = 8, // not impl. on 2232d, 232h-only
 };
 
+// mpsse, mcuhost commands
+
+// if bit 7 of an MPSSE command byte 
+
+enum ftdi_mpsse_cflg {
+    ftmpsse_negedge_wr = 1<<0, // if 0, output bits on positive clock edige
+    ftmpsse_bitmode    = 1<<1, // if 0, byte mode
+    ftmpsse_negedge_rd = 1<<2, // if 0, input bits on positive clock edge
+    ftmpsse_lsbfirst   = 1<<3, // if 0, msb first
+    ftmpsse_tdiwrite   = 1<<4, // 1 == do perform output
+    ftmpsse_tdoread    = 1<<5, // 1 == do perform input
+    ftmpsse_tmswrite   = 1<<6  // 1 == do perform output?
+};
+// bitmode: 1 length byte, max=7 (#bits = length+1) for separate bits
+// bytemode: 2 length bytes == number of bytes that follow
+// both tdiwrite and tdoread high: only one length value/equal number of bits in/out!
+// if both tdiwrite and tdoread are high, negedge_wr and negedge_rd must differ
+// tms read/writes: readback is from tdo, bit7 in databyte is tdi output, held constant
+// tdiwrite always 0, bitmode 1 in impls, can be ignored I guess
+// also always lsbfirst, but not too hard to support msbfirst too
+// idle levels (of eg. tms/cs) -> set_dirval?
+
+enum ftdi_mpssemcu_cmd {
+    ftmpsse_set_dirval_lo = 0x80, // sets initial clock level!
+    ftmpsse_set_dirval_hi = 0x82,
+    ftmpsse_read_lo       = 0x81,
+    ftmpsse_read_hi       = 0x83,
+    ftmpsse_loopback_on   = 0x84,
+    ftmpsse_loopback_off  = 0x85,
+    ftmpsse_set_clkdiv    = 0x86, // period = 12MHz / ((1 + value16) * 2)
+
+    ftmpsse_flush      = 0x87, // flush dev->host usb buffer
+    ftmpsse_wait_io_hi = 0x88, // wait for gpiol1/io1 to be high
+    ftmpsse_wait_io_lo = 0x89, // wait for gpiol1/io1 to be low
+
+    // technically ft2232h-only but we can support these, too
+    ftmpsse_div5_disable = 0x8a, // ft2232h internally has a 5x faster clock, but slows it down by default
+    ftmpsse_div5_enable  = 0x8b, // for backwards compat. these two commands enable/disable that slowdown
+    ftmpsse_data_3ph_en  = 0x8c, // enable 3-phase data
+    ftmpsse_data_3ph_dis = 0x8d, // disable 3-phase data
+    ftmpsse_clockonly_bits  = 0x8e, // enable clock for n bits, no data xfer
+    ftmpsse_clockonly_bytes = 0x8f, // enable clock for n bytes, no data xfer
+    ftmpsse_clock_wait_io_hi = 0x94, // wait_io_hi + clockonly
+    ftmpsse_clock_wait_io_lo = 0x95, // wait_io_lo + clockonly
+    ftmpsse_adapclk_enable  = 0x96, // enable ARM JTAG adaptive clocking (rtck gpiol3 input)
+    ftmpsse_adapclk_disable = 0x97, // disable ARM JTAG adaptive clocking (rtck gpiol3 input)
+    ftmpsse_clock_bits_wait_io_hi = 0x9c, // clock_wait_io_hi + clockonly_bits
+    ftmpsse_clock_bits_wait_io_lo = 0x9d, // clock_wait_io_lo + clockonly_bits
+    ftmpsse_hi_is_tristate = 0x9e, // turns 1 output to tristate for selected outputs
+
+    ftmcu_flush      = 0x87, // flush dev->host usb buffer
+    ftmcu_wait_io_hi = 0x88, // wait for gpiol1/io1 to be high
+    ftmcu_wait_io_lo = 0x89, // wait for gpiol1/io1 to be low
+
+    ftmcu_read8   = 0x90,
+    ftmcu_read16  = 0x91,
+    ftmcu_write8  = 0x92,
+    ftmcu_write16 = 0x93
+};
+
 // internal use only types
 
 enum ftdi_mode { // combines EEPROM setting + bitmode
@@ -167,6 +227,7 @@ enum ftdi_flowctrl {
 };
 
 struct ftdi_interface {
+    // TODO soft fields maybe, because it's a mess with lots of padding right now
     int index;
 
     uint8_t modem_mask;
@@ -174,7 +235,7 @@ struct ftdi_interface {
 
     enum ftdi_flowctrl flow;
 
-    uint32_t baudrate; // TODO: what are the clock units of this? clock ticks of a 48MHz clock divided by 16?
+    uint32_t baudrate;
     enum ftdi_sio_lineprop lineprop;
 
     enum ftdi_sio_modemstat modemstat;
@@ -187,10 +248,14 @@ struct ftdi_interface {
     uint8_t bb_dir; // high/1 bit = output, 0=input
     enum ftdi_sio_bitmode bb_mode;
 
+    uint16_t mcu_addr_latch;
+
     // "write" means write to hardware output pins
     // "read" means read from hardware input pins
     uint8_t writebuf[CFG_TUD_VENDOR_RX_BUFSIZE];
     uint8_t readbuf [CFG_TUD_VENDOR_TX_BUFSIZE];
+    uint8_t bufbuf  [CFG_TUD_VENDOR_RX_BUFSIZE]; // for buffered IO
+    uint32_t rxavail, rxpos;
 };
 
 extern struct ftdi_interface ftdi_ifa, ftdi_ifb;
@@ -241,7 +306,39 @@ size_t ftdi_if_asyncbb_read (struct ftdi_interface* itf,       uint8_t* data, si
 void   ftdi_if_syncbb_write (struct ftdi_interface* itf, const uint8_t* data, size_t datasize);
 size_t ftdi_if_syncbb_read  (struct ftdi_interface* itf,       uint8_t* data, size_t  maxsize);
 
-// TODO: mpsse, mcuhost
+
+void ftdi_if_mpsse_flush(struct ftdi_interface* itf);
+void ftdi_if_mpsse_wait_io(struct ftdi_interface* itf, bool level);
+
+void ftdi_if_mpsse_set_dirval_lo(struct ftdi_interface* itf, uint8_t dir, uint8_t val);
+void ftdi_if_mpsse_set_dirval_hi(struct ftdi_interface* itf, uint8_t dir, uint8_t val);
+uint8_t ftdi_if_mpsse_read_lo(struct ftdi_interface* itf);
+uint8_t ftdi_if_mpsse_read_hi(struct ftdi_interface* itf);
+void ftdi_if_mpsse_loopback_on(struct ftdi_interface* itf);
+void ftdi_if_mpsse_loopback_off(struct ftdi_interface* itf);
+void ftdi_if_mpsse_set_clkdiv(struct ftdi_interface* itf, uint16_t div);
+
+uint8_t ftdi_if_mpsse_xfer_bits(struct ftdi_interface* itf, int flags, size_t nbits, uint8_t value);
+void ftdi_if_mpsse_xfer_bytes(struct ftdi_interface* itf, int flags, size_t nbytes, uint8_t* dst, const uint8_t* src);
+uint8_t ftdi_if_mpsse_tms_xfer(struct ftdi_interface* itf, int flags, size_t nbits, uint8_t value);
+
+void ftdi_if_mpsse_div5(struct ftdi_interface* itf, bool enable);
+void ftdi_if_mpsse_data_3ph(struct ftdi_interface* itf, bool enable);
+void ftdi_if_mpsse_adaptive(struct ftdi_interface* itf, bool enable);
+
+void ftdi_if_mpsse_clockonly(struct ftdi_interface* itf, uint32_t cycles);
+void ftdi_if_mpsse_clock_wait_io(struct ftdi_interface* itf, bool level);
+void ftdi_if_mpsse_clockonly_wait_io(struct ftdi_interface* itf, bool level, uint32_t cycles);
+void ftdi_if_mpsse_hi_is_tristate(struct ftdi_interface* itf, uint16_t pinmask);
+
+
+void ftdi_if_mcu_flush(struct ftdi_interface* itf);
+void ftdi_if_mcu_wait_io(struct ftdi_interface* itf, bool level);
+
+uint8_t ftdi_if_mcu_read8 (struct ftdi_interface* itf, uint8_t  addr);
+uint8_t ftdi_if_mcu_read16(struct ftdi_interface* itf, uint16_t addr);
+void ftdi_if_mcu_write8 (struct ftdi_interface* itf, uint8_t  addr, uint8_t value);
+void ftdi_if_mcu_write16(struct ftdi_interface* itf, uint16_t addr, uint8_t value);
 
 #endif
 
