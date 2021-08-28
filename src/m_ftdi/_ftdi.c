@@ -8,18 +8,25 @@
 #include "vnd_cfg.h"
 
 #include "m_ftdi/bsp-feature.h"
+#include "m_ftdi/ftdi.h"
 
-#include "ftdi.h"
+static bool data_dirty = false;
+void ftdi_eeprom_dirty_set(bool v) { data_dirty = true; }
+bool ftdi_eeprom_dirty_get(void) { return data_dirty; }
 
 #ifdef DBOARD_HAS_FTDI
-static cothread_t ftdithread;
-static uint8_t    ftdistack[THREAD_STACK_SIZE];
+static cothread_t ftdithread_ifa, ftdithread_ifb;
+static uint8_t    ftdistack_ifa[THREAD_STACK_SIZE>>1], ftdistack_ifb[THREAD_STACK_SIZE>>1];
 
-static void ftdi_thread_fn(void) {
-    ftdi_init();
-    thread_yield();
+static void ftdi_thread_fn_ifa(void) {
     while (1) {
-        ftdi_task();
+        ftdi_task_ifa();
+        thread_yield();
+    }
+}
+static void ftdi_thread_fn_ifb(void) {
+    while (1) {
+        ftdi_task_ifb();
         thread_yield();
     }
 }
@@ -32,9 +39,16 @@ static void enter_cb(void) {
     vnd_cfg_set_itf_num(VND_N_CFG);
 
 #ifdef DBOARD_HAS_FTDI
-    ftdithread = co_derive(ftdistack, sizeof ftdistack, ftdi_thread_fn);
-    thread_enter(ftdithread);
+    ftdithread_ifa = co_derive(ftdistack_ifa, sizeof ftdistack_ifa, ftdi_thread_fn_ifa);
+    ftdithread_ifb = co_derive(ftdistack_ifb, sizeof ftdistack_ifb, ftdi_thread_fn_ifb);
 #endif
+
+    if (!data_dirty) {
+        struct mode_info mi = storage_mode_get_info(5);
+        if (mi.size != 0 && mi.version == 0x0010) {
+            storage_mode_read(5, ftdi_eeprom, 0, sizeof ftdi_eeprom);
+        }
+    }
 }
 static void leave_cb(void) {
 #ifdef DBOARD_HAS_FTDI
@@ -44,7 +58,10 @@ static void leave_cb(void) {
 
 static void task_cb(void) {
 #ifdef DBOARD_HAS_FTDI
-    ftdi_task();
+    tud_task();
+    thread_enter(ftdithread_ifa);
+    tud_task();
+    thread_enter(ftdithread_ifb);
 #endif
 }
 
@@ -133,15 +150,15 @@ static const char* string_desc_arr[] = {
     [STRID_CONFIG]            = "Configuration descriptor",
     // max string length check:  |||||||||||||||||||||||||||||||
     [STRID_IF_VND_CFG  ]      = "Device cfg/ctl interface",
-    [STRID_IF_VND_FTDI_IFA]   = "FT2232C interface A",
-    [STRID_IF_VND_FTDI_IFB]   = "FT2232C interface B",
+    [STRID_IF_VND_FTDI_IFA]   = "DragonProbe FT2232D interface A",
+    [STRID_IF_VND_FTDI_IFB]   = "DragonProbe FT2232D interface B",
 #ifdef USE_USBCDC_FOR_STDIO
     [STRID_IF_CDC_STDIO]      = "stdio CDC interface (debug)",
 #endif
 };
 // clang-format on
 
-static const tusb_desc_device_t desc_device = {
+static tusb_desc_device_t desc_device = {
     .bLength         = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB          = 0x0110,  // TODO: 0x0200 ? is an eeprom option
@@ -165,10 +182,30 @@ static const uint8_t* my_descriptor_device_cb(void) {
     return (const uint8_t*)&desc_device;
 }
 
+#if CFG_TUD_CDC > 0
+static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
+    switch (itf) {
+#ifdef USE_USBCDC_FOR_STDIO
+        case CDC_N_STDIO:
+            stdio_usb_line_coding_cb(line_coding);
+            break;
+#endif
+    }
+}
+#endif
+
+static uint16_t my_get_size(void) { return sizeof ftdi_eeprom; }
+static void my_get_data(void* dst, size_t offset, size_t maxsize) {
+    memcpy(dst, (const uint8_t*)ftdi_eeprom + offset, maxsize);
+
+    data_dirty = false;
+}
+static bool my_is_dirty(void) { return data_dirty; }
+
 extern struct mode m_05_ftdi;
 // clang-format off
 struct mode m_05_ftdi = {
-    .name = "FTDI FT2232C (single-channel) emulation mode",
+    .name = "FTDI FT2232D emulation mode",
     .version = 0x0010,
     .n_string_desc = sizeof(string_desc_arr)/sizeof(string_desc_arr[0]),
 
@@ -180,8 +217,19 @@ struct mode m_05_ftdi = {
     .task  = task_cb,
     .handle_cmd = handle_cmd_cb,
 
+    .storage = {
+        .stclass = mode_storage_512b,
+        .get_size = my_get_size,
+        .get_data = my_get_data,
+        .is_dirty = my_is_dirty
+    },
+
 #ifdef DBOARD_HAS_FTDI
     .tud_descriptor_device_cb = my_descriptor_device_cb,
+#endif
+
+#if CFG_TUD_CDC > 0
+    .tud_cdc_line_coding_cb = my_cdc_line_coding_cb,
 #endif
 
 #ifdef DBOARD_HAS_FTDI
