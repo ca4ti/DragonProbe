@@ -156,6 +156,7 @@ static void ftdi_task(int itfnum) {
     enum ftdi_mode mode = ftdi_if_get_mode(itf);
     struct ftfifo_fns fifocb = fifocbs[(mode == 0) ? 0 : __builtin_ctz(mode)];
     uint32_t avail;
+    uint8_t cmdbyte;
     switch (mode) {
     case ftmode_uart   : case ftmode_fifo  : case ftmode_cpufifo:
     case ftmode_asyncbb: case ftmode_syncbb:
@@ -173,8 +174,159 @@ static void ftdi_task(int itfnum) {
             if (avail) tud_vendor_n_write(itfnum, itf->readbuf, avail);
         } while (avail == sizeof itf->readbuf);
         break;
-    case ftmode_mpsse: break; // BIG TODO
-    case ftmode_mcuhost: break; // BIG TODO
+    case ftmode_mpsse:
+        avail = 0;
+
+        switch ((cmdbyte = vnd_read_byte(itf, itfnum))) {
+        case ftmpsse_set_dirval_lo: // low byte of output gpio, not to low level
+            itf->writebuf[0] = vnd_read_byte(itf, itfnum); // val
+            itf->writebuf[1] = vnd_read_byte(itf, itfnum); // dir
+            ftdi_if_mpsse_set_dirval_lo(itf, itf->writebuf[1], itf->writebuf[0]);
+            break;
+        case ftmpsse_set_dirval_hi:
+            itf->writebuf[0] = vnd_read_byte(itf, itfnum); // val
+            itf->writebuf[1] = vnd_read_byte(itf, itfnum); // dir
+            ftdi_if_mpsse_set_dirval_hi(itf, itf->writebuf[1], itf->writebuf[0]);
+            break;
+        case ftmpsse_read_lo:
+            itf->readbuf[0] = ftdi_if_mpsse_read_lo(itf);
+            avail = 1;
+            break;
+        case ftmpsse_read_hi:
+            itf->readbuf[0] = ftdi_if_mpsse_read_hi(itf);
+            avail = 1;
+            break;
+        case ftmpsse_loopback_on : ftdi_if_mpsse_loopback(itf, true ); break;
+        case ftmpsse_loopback_off: ftdi_if_mpsse_loopback(itf, false); break;
+        case ftmpsse_set_clkdiv:
+            avail  = vnd_read_byte(itf, itfnum);
+            avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            ftdi_if_mpsse_set_clkdiv(itf, (uint16_t)avail);
+            avail = 0;
+            break;
+
+        case ftmpsse_flush: ftdi_if_mpsse_flush(itf); break;
+        case ftmpsse_wait_io_hi: ftdi_if_mpsse_wait_io(itf, true ); break;
+        case ftmpsse_wait_io_lo: ftdi_if_mpsse_wait_io(itf, false); break;
+
+        case ftmpsse_div5_disable: ftdi_if_mpsse_div5(itf, false); break;
+        case ftmpsse_div5_enable : ftdi_if_mpsse_div5(itf, true ); break;
+        case ftmpsse_data_3ph_en : ftdi_if_mpsse_data_3ph(itf, true ); break;
+        case ftmpsse_data_3ph_dis: ftdi_if_mpsse_data_3ph(itf, false); break;
+        case ftmpsse_clockonly_bits: ftdi_if_mpsse_clockonly(itf, vnd_read_byte(itf, itfnum)); break;
+        case ftmpsse_clockonly_bytes:
+            avail  = vnd_read_byte(itf, itfnum);
+            avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            ftdi_if_mpsse_clockonly(itf, avail);
+            avail = 0;
+            break;
+        case ftmpsse_clock_wait_io_hi: ftdi_if_mpsse_clock_wait_io(itf, true ); break;
+        case ftmpsse_clock_wait_io_lo: ftdi_if_mpsse_clock_wait_io(itf, false); break;
+        case ftmpsse_clock_adapclk_enable : ftdi_if_mpsse_adaptive(itf, true ); break;
+        case ftmpsse_clock_adapclk_disable: ftdi_if_mpsse_adaptive(itf, false); break;
+        case ftmpsse_clock_bits_wait_io_hi:
+            avail  = vnd_read_byte(itf, itfnum);
+            avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            ftdi_if_mpsse_clockonly_wait_io(itf, true, avail);
+            avail = 0;
+            break;
+        case ftmpsse_clock_bits_wait_io_lo:
+            avail  = vnd_read_byte(itf, itfnum);
+            avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            ftdi_if_mpsse_clockonly_wait_io(itf, false, avail);
+            avail = 0;
+            break;
+        case ftmpsse_hi_is_tristate:
+            avail  = vnd_read_byte(itf, itfnum);
+            avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            ftdi_if_mpsse_hi_is_tristate(itf, avail);
+            avail = 0;
+            break;
+
+        default:
+            if (!(cmdbyte & ftmpsse_specialcmd)) {
+                if (cmdbyte & ftmpsse_tmswrite) {
+                    if (cmdbyte & ftmpsse_bitmode) {
+                        itf->writebuf[0] = vnd_read_byte(itf, itfnum); // number of bits
+                        itf->writebuf[1] = vnd_read_byte(itf, itfnum); // data bits to output
+                        itf->readbuf[0] = ftdi_if_mpsse_tms_xfer(itf, cmdbyte, itf->writebuf[0], itf->writebuf[1]);
+                        if (cmdbyte & tdoread) avail = 1;
+                        break;
+                    }
+                    // else: fallthru to error code
+                } else {
+                    if (cmdbyte & bitmode) {
+                        itf->writebuf[0] = vnd_read_byte(itf, itfnum); // number of bits
+                        if (cmdbyte & ftmpsse_tdiwrite)
+                            itf->writebuf[1] = vnd_read_byte(itf, itfnum); // data bits to output
+                        itf->readbuf[0] = ftdi_if_mpsse_xfer_bits(itf, cmdbyte, itf->writebuf[0], itf->writebuf[1]);
+                        if (cmdbyte & tdoread) avail = 1;
+                        break;
+                    } else {
+                        avail  = vnd_read_byte(itf, itfnum);
+                        avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+
+                        for (size_t i = 0; i < avail; i += 64) {
+                            uint32_t thisbatch = avail - i;
+                            if (thisbatch > 64) thisbatch = 64;
+                            for (size_t j = 0; j < thisbatch; ++j)
+                                itf->writebuf[j] = vnd_read_byte(itf, itfnum);
+                            ftdi_if_mpsse_xfer_bytes(itf, cmdbyte, thisbatch, itf->readbuf, itf->writebuf);
+                            tud_vendor_n_write(itfnum, itf->readbuf, thisbatch);
+                        }
+
+                        avail = 0;
+                        break;
+                    }
+                }
+            }
+
+            itf->readbuf[0] = 0xfa;
+            itf->readbuf[1] = cmdbyte;
+            avail = 2;
+            break;
+        }
+
+        if (avail) tud_vendor_n_write(itfnum, itf->readbuf, avail);
+        break;
+    case ftmode_mcuhost:
+        avail = 0;
+        switch ((cmdbyte = vnd_read_byte(itf, itfnum))) {
+        case ftmcu_flush: ftdi_if_mcu_flush(itf); break;
+        case ftmcu_wait_io_hi: ftdi_if_mcu_wait_io(itf, true ); break;
+        case ftmcu_wait_io_lo: ftdi_if_mcu_wait_io(itf, false); break;
+
+        case ftmcu_read8:
+            itf->readbuf[0] = ftdi_if_mcu_read8(itf, vnd_read_byte(itf, itfnum));
+            avail = 1;
+            break;
+        case ftmcu_read16:
+            avail = (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            avail |= vnd_read_byte(itf, itfnum);
+            itf->readbuf[0] = ftdi_if_mcu_read16(itf, (uint16_t)avail);
+            avail = 1;
+            break;
+        case ftmcu_write8:
+            itf->writebuf[0] = vnd_read_byte(itf, itfnum);
+            itf->writebuf[1] = vnd_read_byte(itf, itfnum);
+            ftdi_if_mcu_write8(itf, itf->writebuf[0], itf->writebuf[1]);
+            break;
+        case ftmcu_write16:
+            avail  = (uint32_t)vnd_read_byte(itf, itfnum) << 8;
+            avail |= vnd_read_byte(itf, itfnum);
+            itf->writebuf[0] = vnd_read_byte(itf, itfnum);
+            ftdi_if_mcu_write8(itf, addr, itf->writebuf[0]);
+            break;
+
+        default: // send error response when command doesn't exist
+            itf->readbuf[0] = 0xfa;
+            itf->readbuf[1] = cmdbyte;
+            avail = 2;
+            break;
+        }
+
+        if (avail) tuf_vendor_n_write(itfnum, itf->readbuf, avail);
+        break;
     default: // drop incoming data so that the pipes don't get clogged. can't do much else
         avail = tud_vendor_n_available(itfnum);
         if (avail) tud_vendor_n_read(itfnum, itf->writebuf, avail);

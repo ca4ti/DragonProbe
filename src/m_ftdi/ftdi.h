@@ -154,7 +154,9 @@ enum ftdi_mpsse_cflg {
     ftmpsse_lsbfirst   = 1<<3, // if 0, msb first
     ftmpsse_tdiwrite   = 1<<4, // 1 == do perform output
     ftmpsse_tdoread    = 1<<5, // 1 == do perform input
-    ftmpsse_tmswrite   = 1<<6  // 1 == do perform output?
+    ftmpsse_tmswrite   = 1<<6, // 1 == do perform output?
+
+    ftmpsse_specialcmd = 1<<7  // see below enum if set
 };
 // bitmode: 1 length byte, max=7 (#bits = length+1) for separate bits
 // bytemode: 2 length bytes == number of bytes that follow
@@ -314,8 +316,7 @@ void ftdi_if_mpsse_set_dirval_lo(struct ftdi_interface* itf, uint8_t dir, uint8_
 void ftdi_if_mpsse_set_dirval_hi(struct ftdi_interface* itf, uint8_t dir, uint8_t val);
 uint8_t ftdi_if_mpsse_read_lo(struct ftdi_interface* itf);
 uint8_t ftdi_if_mpsse_read_hi(struct ftdi_interface* itf);
-void ftdi_if_mpsse_loopback_on(struct ftdi_interface* itf);
-void ftdi_if_mpsse_loopback_off(struct ftdi_interface* itf);
+void ftdi_if_mpsse_loopback(struct ftdi_interface* itf, bool enable);
 void ftdi_if_mpsse_set_clkdiv(struct ftdi_interface* itf, uint16_t div);
 
 uint8_t ftdi_if_mpsse_xfer_bits(struct ftdi_interface* itf, int flags, size_t nbits, uint8_t value);
