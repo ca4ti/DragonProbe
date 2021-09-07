@@ -1,6 +1,9 @@
+// vim: set et:
 
 #include "tusb_config.h"
 #include <tusb.h>
+
+#include "thread.h"
 
 #include "m_ftdi/bsp-feature.h"
 #include "m_ftdi/ftdi.h"
@@ -68,7 +71,7 @@
 
 #ifdef DBOARD_HAS_FTDI
 
-uint32_t __builtin_ctz(uint32_t v);
+int __builtin_ctz(unsigned int v);
 
 uint16_t ftdi_eeprom[128];
 
@@ -88,8 +91,8 @@ void ftdi_init(void) {
     ftdi_eeprom[10] = 0x0000; // internal chip
     ftdi_eeprom[0x7f] = ftdi_eeprom_checksum_calc(ftdi_eeprom, 0x7f);
 
-    memset(ftdi_ifa, 0, sizeof ftdi_ifa);
-    memset(ftdi_ifb, 0, sizeof ftdi_ifb);
+    memset(&ftdi_ifa, 0, sizeof ftdi_ifa);
+    memset(&ftdi_ifb, 0, sizeof ftdi_ifb);
     ftdi_ifa.lineprop = sio_bits_8 | sio_stop_1; // 8n1
     ftdi_ifb.lineprop = sio_bits_8 | sio_stop_1; // 8n1
     ftdi_ifa.index = 0;
@@ -98,10 +101,11 @@ void ftdi_init(void) {
     ftdi_if_init(&ftdi_ifb);
 }
 void ftdi_deinit(void) {
-    // TODO: ???
+    ftdi_if_deinit(&ftdi_ifa);
+    ftdi_if_deinit(&ftdi_ifb);
 }
 
-static uint8_t vnd_read_byte(struct ftdi_inteface* itf, int itfnum) {
+static uint8_t vnd_read_byte(struct ftdi_interface* itf, int itfnum) {
     while (itf->rxavail <= 0) {
         if (!tud_vendor_n_mounted(itfnum) || !tud_vendor_n_available(itfnum)) {
             thread_yield();
@@ -128,14 +132,14 @@ struct ftfifo_fns {
     ftfifo_read_fn  read ;
 };
 static const struct ftfifo_fns fifocbs[] = {
-    .{ ftdi_if_uart_write, ftdi_if_uart_read }, // technically mpsse
-    .{ ftdi_if_asyncbb_write, ftdi_if_asyncbb_read },
-    .{ ftdi_if_syncbb_write, ftdi_if_syncbb_read },
-    .{ NULL, NULL }, // mcuhost
-    .{ ftdi_if_fifo_write, ftdi_if_fifo_read },
-    .{ NULL, NULL }, // opto
-    .{ ftdi_if_cpufifo_write, ftdi_if_cpufifo_read },
-    .{ NULL, NULL }, // ft1284
+    { ftdi_if_uart_write, ftdi_if_uart_read }, // technically mpsse
+    { ftdi_if_asyncbb_write, ftdi_if_asyncbb_read },
+    { ftdi_if_syncbb_write, ftdi_if_syncbb_read },
+    { NULL, NULL }, // mcuhost
+    { ftdi_if_fifo_write, ftdi_if_fifo_read },
+    { NULL, NULL }, // opto
+    { ftdi_if_cpufifo_write, ftdi_if_cpufifo_read },
+    { NULL, NULL }, // ft1284
 };
 
 // for handling USB bulk commands
@@ -156,11 +160,11 @@ static void ftdi_task(int itfnum) {
     enum ftdi_mode mode = ftdi_if_get_mode(itf);
     struct ftfifo_fns fifocb = fifocbs[(mode == 0) ? 0 : __builtin_ctz(mode)];
     uint32_t avail;
-    uint8_t cmdbyte;
+    uint8_t cmdbyte = 0;
     switch (mode) {
     case ftmode_uart   : case ftmode_fifo  : case ftmode_cpufifo:
     case ftmode_asyncbb: case ftmode_syncbb:
-        if (fifocb.read == NULL || fifocb.write == NULL) goto case default; // welp
+        if (fifocb.read == NULL || fifocb.write == NULL) goto CASE_DEFAULT; // welp
 
         avail = tud_vendor_n_available(itfnum);
         if (avail) {
@@ -222,8 +226,8 @@ static void ftdi_task(int itfnum) {
             break;
         case ftmpsse_clock_wait_io_hi: ftdi_if_mpsse_clock_wait_io(itf, true ); break;
         case ftmpsse_clock_wait_io_lo: ftdi_if_mpsse_clock_wait_io(itf, false); break;
-        case ftmpsse_clock_adapclk_enable : ftdi_if_mpsse_adaptive(itf, true ); break;
-        case ftmpsse_clock_adapclk_disable: ftdi_if_mpsse_adaptive(itf, false); break;
+        case ftmpsse_adapclk_enable : ftdi_if_mpsse_adaptive(itf, true ); break;
+        case ftmpsse_adapclk_disable: ftdi_if_mpsse_adaptive(itf, false); break;
         case ftmpsse_clock_bits_wait_io_hi:
             avail  = vnd_read_byte(itf, itfnum);
             avail |= (uint32_t)vnd_read_byte(itf, itfnum) << 8;
@@ -243,24 +247,24 @@ static void ftdi_task(int itfnum) {
             avail = 0;
             break;
 
-        default:
+        default: CASE_DEFAULT:
             if (!(cmdbyte & ftmpsse_specialcmd)) {
                 if (cmdbyte & ftmpsse_tmswrite) {
                     if (cmdbyte & ftmpsse_bitmode) {
                         itf->writebuf[0] = vnd_read_byte(itf, itfnum); // number of bits
                         itf->writebuf[1] = vnd_read_byte(itf, itfnum); // data bits to output
                         itf->readbuf[0] = ftdi_if_mpsse_tms_xfer(itf, cmdbyte, itf->writebuf[0], itf->writebuf[1]);
-                        if (cmdbyte & tdoread) avail = 1;
+                        if (cmdbyte & ftmpsse_tdoread) avail = 1;
                         break;
                     }
                     // else: fallthru to error code
                 } else {
-                    if (cmdbyte & bitmode) {
+                    if (cmdbyte & ftmpsse_bitmode) {
                         itf->writebuf[0] = vnd_read_byte(itf, itfnum); // number of bits
                         if (cmdbyte & ftmpsse_tdiwrite)
                             itf->writebuf[1] = vnd_read_byte(itf, itfnum); // data bits to output
                         itf->readbuf[0] = ftdi_if_mpsse_xfer_bits(itf, cmdbyte, itf->writebuf[0], itf->writebuf[1]);
-                        if (cmdbyte & tdoread) avail = 1;
+                        if (cmdbyte & ftmpsse_tdoread) avail = 1;
                         break;
                     } else {
                         avail  = vnd_read_byte(itf, itfnum);
@@ -292,30 +296,31 @@ static void ftdi_task(int itfnum) {
     case ftmode_mcuhost:
         avail = 0;
         switch ((cmdbyte = vnd_read_byte(itf, itfnum))) {
-        case ftmcu_flush: ftdi_if_mcu_flush(itf); break;
-        case ftmcu_wait_io_hi: ftdi_if_mcu_wait_io(itf, true ); break;
-        case ftmcu_wait_io_lo: ftdi_if_mcu_wait_io(itf, false); break;
+        case ftmcu_flush: ftdi_if_mcuhost_flush(itf); break;
+        case ftmcu_wait_io_hi: ftdi_if_mcuhost_wait_io(itf, true ); break;
+        case ftmcu_wait_io_lo: ftdi_if_mcuhost_wait_io(itf, false); break;
 
         case ftmcu_read8:
-            itf->readbuf[0] = ftdi_if_mcu_read8(itf, vnd_read_byte(itf, itfnum));
+            itf->readbuf[0] = ftdi_if_mcuhost_read8(itf, vnd_read_byte(itf, itfnum));
             avail = 1;
             break;
         case ftmcu_read16:
             avail = (uint32_t)vnd_read_byte(itf, itfnum) << 8;
             avail |= vnd_read_byte(itf, itfnum);
-            itf->readbuf[0] = ftdi_if_mcu_read16(itf, (uint16_t)avail);
+            itf->readbuf[0] = ftdi_if_mcuhost_read16(itf, (uint16_t)avail);
             avail = 1;
             break;
         case ftmcu_write8:
             itf->writebuf[0] = vnd_read_byte(itf, itfnum);
             itf->writebuf[1] = vnd_read_byte(itf, itfnum);
-            ftdi_if_mcu_write8(itf, itf->writebuf[0], itf->writebuf[1]);
+            ftdi_if_mcuhost_write8(itf, itf->writebuf[0], itf->writebuf[1]);
             break;
         case ftmcu_write16:
             avail  = (uint32_t)vnd_read_byte(itf, itfnum) << 8;
             avail |= vnd_read_byte(itf, itfnum);
             itf->writebuf[0] = vnd_read_byte(itf, itfnum);
-            ftdi_if_mcu_write8(itf, addr, itf->writebuf[0]);
+            ftdi_if_mcuhost_write8(itf, avail, itf->writebuf[0]);
+            avail = 0;
             break;
 
         default: // send error response when command doesn't exist
@@ -325,7 +330,7 @@ static void ftdi_task(int itfnum) {
             break;
         }
 
-        if (avail) tuf_vendor_n_write(itfnum, itf->readbuf, avail);
+        if (avail) tud_vendor_n_write(itfnum, itf->readbuf, avail);
         break;
     default: // drop incoming data so that the pipes don't get clogged. can't do much else
         avail = tud_vendor_n_available(itfnum);
@@ -347,7 +352,7 @@ uint32_t ftdi_if_decode_baudrate(uint32_t enc_brate) { // basically reversing li
     else if (enc_brate == 2) return FT2232D_CLOCK >> 5;
 
     uint32_t div = (enc_brate & 0x7fff) << 3; // integer part
-    uint32_t div = div | ftdi_brate_frac_lut[(enc_bate >> 14) & 7];
+    div = div | ftdi_brate_frac_lut[(enc_brate >> 14) & 7];
     uint32_t baud = FT2232D_CLOCK / div;
 
     if (baud & 1) baud = (baud >> 1) + 1; // raunding
@@ -458,11 +463,14 @@ bool ftdi_control_xfer_cb(uint8_t rhport, uint8_t stage,
     case sio_getlatency:
         control_buf[0] = ftdi_if_get_latency(itf);
         return tud_control_xfer(rhport, req, control_buf, 1);
-    case sio_setbitbang:
+    case sio_setbitbang: {
+        uint8_t olddir = itf->bb_dir;
+        enum ftdi_sio_bitmode oldmode = itf->bb_mode;
         ftdi_if_set_bitbang(itf,
                 itf->bb_dir  = (req->wValue >> 8),
-                itf->bb_mode = (req->wValue & 0xff));
-        return tud_control_status(rhport, req);
+                itf->bb_mode = (req->wValue & 0xff),
+                olddir, oldmode);
+        } return tud_control_status(rhport, req);
     case sio_readpins:
         control_buf[0] = ftdi_if_read_pins(itf);
         return tud_control_xfer(rhport, req, control_buf, 1);

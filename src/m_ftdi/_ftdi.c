@@ -11,7 +11,7 @@
 #include "m_ftdi/ftdi.h"
 
 static bool data_dirty = false;
-void ftdi_eeprom_dirty_set(bool v) { data_dirty = true; }
+void ftdi_eeprom_dirty_set(bool v) { (void)v; data_dirty = true; }
 bool ftdi_eeprom_dirty_get(void) { return data_dirty; }
 
 #ifdef DBOARD_HAS_FTDI

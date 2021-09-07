@@ -215,10 +215,10 @@ enum ftdi_mode { // combines EEPROM setting + bitmode
     ftmode_syncbb  =  4,
     ftmode_mcuhost =  8,
 
-    ftmode_fifo   = 0x10,
-    ftmode_opto   = 0x20, // not implementing this here
-    ftmode_cpu    = 0x40,
-    ftmode_ft1284 = 0x80, // not impl. on 2232d
+    ftmode_fifo    = 0x10,
+    ftmode_opto    = 0x20, // not implementing this here
+    ftmode_cpufifo = 0x40,
+    ftmode_ft1284  = 0x80, // not impl. on 2232d
 };
 
 enum ftdi_flowctrl {
@@ -264,17 +264,21 @@ extern struct ftdi_interface ftdi_ifa, ftdi_ifb;
 
 // interface control stuff
 
-static inline enum ftdi_mode ftdi_if_get_mode(struct ftdi_interface* itf) {
-    if (itf->bb_mode == 0x10) return ftmode_opto;
+static inline enum ftdi_mode ftdi_get_mode_of(enum ftdi_sio_bitmode bb_mode, uint8_t eepmode) {
+    if (bb_mode == 0x10) return ftmode_opto;
 
-    if (itf->bb_mode == sio_mode_reset) {
+    if (bb_mode == sio_mode_reset) {
         return (eepmode << 4) & 0xf0;
-    } else return itf->bb_mode & 0xf;
+    } else return bb_mode & 0xf;
+}
+static inline enum ftdi_mode ftdi_if_get_mode(struct ftdi_interface* itf) {
+    return ftdi_get_mode_of(itf->bb_mode, itf->index ? FTDI_EEP_IFB_MODE : FTDI_EEP_IFA_MODE);
 }
 uint32_t ftdi_if_decode_baudrate(uint32_t enc_brate);
 
 // control request stuff. implemented by bsp driver
 void ftdi_if_init(struct ftdi_interface* itf);
+void ftdi_if_deinit(struct ftdi_interface* itf);
 
 void ftdi_if_sio_reset(struct ftdi_interface* itf);
 void ftdi_if_sio_tciflush(struct ftdi_interface* itf);
@@ -288,7 +292,8 @@ void ftdi_if_set_eventchar(struct ftdi_interface* itf, bool enable, uint8_t evch
 void ftdi_if_set_errorchar(struct ftdi_interface* itf, bool enable, uint8_t erchar);
 void ftdi_if_set_latency(struct ftdi_interface* itf, uint8_t latency);
 uint8_t ftdi_if_get_latency(struct ftdi_interface* itf);
-void ftdi_if_set_bitbang(struct ftdi_interface* itf, uint8_t dirmask, enum ftdi_sio_bitmode);
+void ftdi_if_set_bitbang(struct ftdi_interface* itf, uint8_t dirmask, enum ftdi_sio_bitmode,
+        uint8_t olddir, enum ftdi_sio_bitmode oldmode);
 uint8_t ftdi_if_read_pins(struct ftdi_interface* itf);
 
 // bulk commands (also implemented by bsp driver)
@@ -333,13 +338,37 @@ void ftdi_if_mpsse_clockonly_wait_io(struct ftdi_interface* itf, bool level, uin
 void ftdi_if_mpsse_hi_is_tristate(struct ftdi_interface* itf, uint16_t pinmask);
 
 
-void ftdi_if_mcu_flush(struct ftdi_interface* itf);
-void ftdi_if_mcu_wait_io(struct ftdi_interface* itf, bool level);
+void ftdi_if_mcuhost_flush(struct ftdi_interface* itf);
+void ftdi_if_mcuhost_wait_io(struct ftdi_interface* itf, bool level);
 
-uint8_t ftdi_if_mcu_read8 (struct ftdi_interface* itf, uint8_t  addr);
-uint8_t ftdi_if_mcu_read16(struct ftdi_interface* itf, uint16_t addr);
-void ftdi_if_mcu_write8 (struct ftdi_interface* itf, uint8_t  addr, uint8_t value);
-void ftdi_if_mcu_write16(struct ftdi_interface* itf, uint16_t addr, uint8_t value);
+uint8_t ftdi_if_mcuhost_read8 (struct ftdi_interface* itf, uint8_t  addr);
+uint8_t ftdi_if_mcuhost_read16(struct ftdi_interface* itf, uint16_t addr);
+void ftdi_if_mcuhost_write8 (struct ftdi_interface* itf, uint8_t  addr, uint8_t value);
+void ftdi_if_mcuhost_write16(struct ftdi_interface* itf, uint16_t addr, uint8_t value);
+
+void ftdi_if_uart_init(struct ftdi_interface* itf);
+void ftdi_if_mpsse_init(struct ftdi_interface* itf);
+void ftdi_if_asyncbb_init(struct ftdi_interface* itf);
+void ftdi_if_syncbb_init(struct ftdi_interface* itf);
+void ftdi_if_mcuhost_init(struct ftdi_interface* itf);
+void ftdi_if_fifo_init(struct ftdi_interface* itf);
+void ftdi_if_cpufifo_init(struct ftdi_interface* itf);
+
+void ftdi_if_uart_deinit(struct ftdi_interface* itf);
+void ftdi_if_mpsse_deinit(struct ftdi_interface* itf);
+void ftdi_if_asyncbb_deinit(struct ftdi_interface* itf);
+void ftdi_if_syncbb_deinit(struct ftdi_interface* itf);
+void ftdi_if_mcuhost_deinit(struct ftdi_interface* itf);
+void ftdi_if_fifo_deinit(struct ftdi_interface* itf);
+void ftdi_if_cpufifo_deinit(struct ftdi_interface* itf);
+
+void ftdi_if_uart_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
+void ftdi_if_mpsse_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
+void ftdi_if_asyncbb_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
+void ftdi_if_syncbb_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
+void ftdi_if_mcuhost_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
+void ftdi_if_fifo_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
+void ftdi_if_cpufifo_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate);
 
 #endif
 

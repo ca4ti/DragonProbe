@@ -84,6 +84,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_jscan/jscan.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/cdc_sump.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_ftdi/_ftdi.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_ftdi/ftdi.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_jtag.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swd.c
@@ -94,6 +96,14 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_jscan/jscan_hw.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_sump/sump_hw.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/base.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/mpsse.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/asyncbb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/syncbb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/mcuhost.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/fifo.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/cpufifo.c
 )
 if(USE_USBCDC_FOR_STDIO)
   target_compile_definitions(${PROJECT} PUBLIC USE_USBCDC_FOR_STDIO=1)
