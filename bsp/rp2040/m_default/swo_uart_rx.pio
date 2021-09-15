@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
 
-.program uart_rx_mini
+.program swo_uart_rx_mini
 
 ; Minimum viable 8n1 UART receiver. Wait for the start bit, then sample 8 bits
 ; with the correct timing.
@@ -21,12 +21,12 @@ bitloop:                ; Loop 8 times
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 
-static inline void uart_rx_mini_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
+static inline void swo_uart_rx_mini_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
     pio_gpio_init(pio, pin);
     gpio_pull_up(pin);
 
-    pio_sm_config c = uart_rx_mini_program_get_default_config(offset);
+    pio_sm_config c = swo_uart_rx_mini_program_get_default_config(offset);
     sm_config_set_in_pins(&c, pin); // for WAIT, IN
     // Shift to right, autopush enabled
     sm_config_set_in_shift(&c, true, true, 8);
@@ -40,7 +40,7 @@ static inline void uart_rx_mini_program_init(PIO pio, uint sm, uint offset, uint
 }
 %}
 
-.program uart_rx
+.program swo_uart_rx
 
 ; Slightly more fleshed-out 8n1 UART receiver which handles framing errors and
 ; break conditions more gracefully.
@@ -63,12 +63,12 @@ good_stop:              ; No delay before returning to start; a little slack is
 
 
 % c-sdk {
-static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
+static inline void swo_uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
     pio_gpio_init(pio, pin);
     gpio_pull_up(pin);
 
-    pio_sm_config c = uart_rx_program_get_default_config(offset);
+    pio_sm_config c = swo_uart_rx_program_get_default_config(offset);
     sm_config_set_in_pins(&c, pin); // for WAIT, IN
     sm_config_set_jmp_pin(&c, pin); // for JMP
     // Shift to right, autopull disabled
@@ -83,7 +83,7 @@ static inline void uart_rx_program_init(PIO pio, uint sm, uint offset, uint pin,
     //pio_sm_set_enabled(pio, sm, true);
 }
 
-static inline char uart_rx_program_getc(PIO pio, uint sm) {
+static inline char swo_uart_rx_program_getc(PIO pio, uint sm) {
     // 8-bit read from the uppermost byte of the FIFO, as data is left-justified
     io_rw_8 *rxfifo_shift = (io_rw_8*)&pio->rxf[sm] + 3;
     while (pio_sm_is_rx_fifo_empty(pio, sm))
