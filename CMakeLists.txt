@@ -58,11 +58,11 @@ endif()
 target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/no_malloc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/libco.S
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/JTAG_DP.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/DAP_vendor.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SWO.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Source/SW_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/DAP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/JTAG_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/DAP_vendor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/SWO.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/SW_DP.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.c
@@ -95,9 +95,9 @@ endif()
 target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/
   ${CMAKE_CURRENT_SOURCE_DIR}/libco/
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/DAP/Firmware/Include/
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Core/Include/
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_5/CMSIS/Driver/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Core/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Driver/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
 )
@@ -130,7 +130,8 @@ if(FAMILY STREQUAL "rp2040")
     target_link_libraries(${PROJECT} pico_stdio)
   endif()
 
-  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/uart_rx.pio)
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_uart_rx.pio)
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_manchester_encoding.pio)
 
   pico_add_extra_outputs(${PROJECT})
 
