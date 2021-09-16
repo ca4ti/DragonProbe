@@ -4,6 +4,8 @@
 
 #define DBOARD_HAS_FTDI
 
+/* TODO: more fine-grained FTDI support/not-support stuff? */
+
 #include "bsp-info.h"
 
 // not all that much here

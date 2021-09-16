@@ -35,6 +35,7 @@ void ftdi_if_deinit(struct ftdi_interface* itf) {
 }
 
 void ftdi_if_set_modemctrl(struct ftdi_interface* itf, uint8_t mask, uint8_t data) {
+    (void)itf; (void)mask; (void)data;
     // TODO: what's this?
 }
 void ftdi_if_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate) {
@@ -50,15 +51,21 @@ void ftdi_if_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate) {
     }
 }
 enum ftdi_sio_modemstat ftdi_if_poll_modemstat(struct ftdi_interface* itf) {
+    (void)itf;
+
     return sio_modem_cts | sio_modem_dts; // TODO: use this to read part of UART flow ctrl?
 }
 void ftdi_if_set_eventchar(struct ftdi_interface* itf, bool enable, uint8_t evchar) {
+    (void)itf; (void)enable; (void)evchar;
     // TODO: when is this used? bitmode0-only? also ftd2xx headers make this look like its not just an "event on char" thing
 }
 void ftdi_if_set_errorchar(struct ftdi_interface* itf, bool enable, uint8_t erchar) {
+    (void)itf; (void)enable; (void)erchar;
     // TODO: when is this used? bitmode0-only? also ftd2xx headers make this look like its not just an "error on char" thing
 }
 uint8_t ftdi_if_read_pins(struct ftdi_interface* itf) {
+    (void)itf;
+
     return 0; // TODO: which pins does this return?
 }
 
@@ -70,9 +77,9 @@ void ftdi_if_set_bitbang(struct ftdi_interface* itf, uint8_t dirmask,
     init_mode(itf, ftdi_if_get_mode(itf));
 }
 
-void ftdi_if_sio_reset(struct ftdi_interface* itf) { /* TODO: ? */ }
-void ftdi_if_sio_tciflush(struct ftdi_interface* itf) { /* TODO: ? */ }
-void ftdi_if_sio_tcoflush(struct ftdi_interface* itf) { /* TODO: ? */ }
-void ftdi_if_set_latency(struct ftdi_interface* itf, uint8_t latency) { /* TODO: ? */ }
+void ftdi_if_sio_reset(struct ftdi_interface* itf) { (void)itf; /* TODO: ? */ }
+void ftdi_if_sio_tciflush(struct ftdi_interface* itf) { (void)itf; /* TODO: ? */ }
+void ftdi_if_sio_tcoflush(struct ftdi_interface* itf) { (void)itf; /* TODO: ? */ }
+void ftdi_if_set_latency(struct ftdi_interface* itf, uint8_t latency) { (void)itf; (void)latency; /* TODO: ? */ }
 uint8_t ftdi_if_get_latency(struct ftdi_interface* itf) { return itf->latency; /* TODO: ? */ }
 

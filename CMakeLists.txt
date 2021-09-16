@@ -158,6 +158,9 @@ if(FAMILY STREQUAL "rp2040")
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_uart_rx.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_manchester_encoding.pio)
 
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/ftdi_uart_rx.pio)
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/ftdi_uart_tx.pio)
+
   pico_add_extra_outputs(${PROJECT})
 
 else()

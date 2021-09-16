@@ -1,7 +1,7 @@
 // vim: set et ts=8:
 
-#ifndef PINOUT_H_
-#define PINOUT_H_
+#ifndef BSP_PINOUT_M_DEFAULT_H_
+#define BSP_PINOUT_M_DEFAULT_H_
 
 // UART config
 #define PINOUT_UART_TX         8

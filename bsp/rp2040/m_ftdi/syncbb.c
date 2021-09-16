@@ -3,13 +3,13 @@
 #include "m_ftdi/ftdi.h"
 
 void ftdi_if_syncbb_init(struct ftdi_interface* itf) {
-
+    (void)itf;
 }
 void ftdi_if_syncbb_deinit(struct ftdi_interface* itf) {
-
+    (void)itf;
 }
 void ftdi_if_syncbb_set_baudrate(struct ftdi_interface* itf, uint32_t baudrate) {
-
+    (void)itf; (void)baudrate;
 }
 
 

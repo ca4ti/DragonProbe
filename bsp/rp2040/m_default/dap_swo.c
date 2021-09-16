@@ -61,6 +61,7 @@ uint32_t SWO_Mode_UART(uint32_t enable) {
         mode_enabled = false;
 
         if (swo_dmach >= 0) {
+            dma_channel_abort(swo_dmach);
             dma_channel_unclaim(swo_dmach); // ugh why is it "dma_channel_xyz" and "dma_xyz_channel"
             swo_dmach = -1;
         }
@@ -189,6 +190,7 @@ uint32_t SWO_Mode_Manchester(uint32_t enable) {
         mode_enabled = false;
 
         if (swo_dmach >= 0) {
+            dma_channel_abort(swo_dmach);
             dma_channel_unclaim(swo_dmach); // ugh why is it "dma_channel_xyz" and "dma_xyz_channel"
             swo_dmach = -1;
         }
