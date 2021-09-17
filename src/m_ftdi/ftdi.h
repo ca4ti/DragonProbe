@@ -252,12 +252,16 @@ struct ftdi_interface {
 
     uint16_t mcu_addr_latch;
 
+    // these are for USB bulk cmds etc.
     // "write" means write to hardware output pins
     // "read" means read from hardware input pins
     uint8_t writebuf[CFG_TUD_VENDOR_RX_BUFSIZE];
     uint8_t readbuf [CFG_TUD_VENDOR_TX_BUFSIZE];
     uint8_t bufbuf  [CFG_TUD_VENDOR_RX_BUFSIZE]; // for buffered IO
     uint32_t rxavail, rxpos;
+
+    uint8_t dma_in_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
+    uint8_t dma_out_buf[CFG_TUD_VENDOR_RX_BUFSIZE];
 };
 
 extern struct ftdi_interface ftdi_ifa, ftdi_ifb;

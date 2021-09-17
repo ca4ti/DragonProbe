@@ -60,6 +60,46 @@ static void deinit_sm(PIO pio, struct chdat* d, const pio_program_t* prg) {
     pio_remove_program(pio, prg, d->off);
 }
 
+static void setup_dmach(struct ftdi_interface* itf, struct chdat* d) {
+    // set up PIO->dma_in_buf DMA:
+    // * src=pio dst=buf 8bit 256words pacing=pio
+    // * IRQ: set overrun bit
+    // * start it
+    // * SETUP AT MODE ENTER, STOP AT MODE EXIT
+    //
+    // set up dma_out_buf->PIO DMA:
+    // * src=buf dst=pio 8bit <num>words pacing=pio
+    // * ~~no IRQ I think?~~ IRQ: next ringbuffer part (see below)
+    // * DO NOT start it on mode enter!
+    // * STOP AT MODE EXIT
+    //
+    // read routine:
+    // * abort DMA
+    // * copy data from dma_in_buf (read xfer len? == remaining of 256 bytes)
+    // * resetup & start DMA:
+    //
+    // write routine:
+    // * if DMA running: set overrun bit, bail out?
+    //   * should use ringbuffer-like structure
+    //   * pointers: dma start, dma end, data end (after dma, contiguous)
+    //     * dma end can be calculated from DMA MMIO, but, race conditions so no
+    //   * use DMA IRQ for next block (and wraparound: dma cannot do wraparound manually)
+    //     * do not start next block if data end == dma start
+    //   * can we set DMA xfer len while in-flight? datasheet p92 2.5.1: nope. sad
+    //   * only bail out when data end == dma start - 1
+    // * copy data to dma_out_buf
+    // * set up & start DMA
+    //
+    // * what with buffers larger than 256 bytes?
+    // * what is the actual FTDI buffer size??
+    // * which bits get set on errors?
+    // * do TCIFLUSH/TCOFLUSH influence these buffers, or only the USB proto
+    //   handling buffers?
+}
+static void stop_dmach(struct chdat* d) {
+
+}
+
 void ftdi_if_uart_init(struct ftdi_interface* itf) {
     if (STATEOF(itf).enabled) return; // shrug
 
