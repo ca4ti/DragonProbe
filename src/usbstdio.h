@@ -13,5 +13,7 @@ void stdio_usb_set_itf_num(int itf);
 void stdio_usb_line_coding_cb(cdc_line_coding_t const* line_coding);
 #endif
 
+void stdio_uart_init(void);
+
 #endif
 

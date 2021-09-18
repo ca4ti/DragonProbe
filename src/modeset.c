@@ -7,7 +7,7 @@
 #include "mode.h"
 #include "storage.h"
 
-extern struct mode m_01_default, m_03_jscan, m_04_sump;
+extern struct mode m_01_default, m_03_jscan, m_04_sump, m_05_ftdi;
 
 // clang-format off
 const struct mode* const mode_list[16] = {
@@ -16,6 +16,7 @@ const struct mode* const mode_list[16] = {
     NULL, // mode 2 (hw chip programming stuff) not implemented yet
     &m_03_jscan,
     &m_04_sump,
+    &m_05_ftdi,
     NULL, // terminating entry
 };
 // clang-format on
@@ -99,6 +100,8 @@ void modes_switch(uint8_t newmode) {
     // maybe wait a second or so for the host to notice this
     sleep_ms(500/2);
 
+    //printf("disconnect\n");
+
     if (newmode == 0) bsp_reset_bootloader();
 
     // now apply the new tusb settings
@@ -164,10 +167,14 @@ void modes_switch(uint8_t newmode) {
         // clang-format on
     }
 
+    //printf("reconnect\n");
+
     // and reconnect
     tud_connect();
     sleep_ms(500/2);
     //while (!tud_mounted()) sleep_ms(5);
+
+    //printf("enter\n");
 
     if (mode_current) mode_current->enter();
 }

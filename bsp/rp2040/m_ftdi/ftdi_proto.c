@@ -1,6 +1,9 @@
 // vim: set et:
 
+#include <hardware/pio.h>
+
 #include "m_ftdi/ftdi.h"
+#include "m_ftdi/ftdi_hw.h"
 
 static void init_mode(struct ftdi_interface* itf, enum ftdi_mode mode) {
     switch (mode) {
@@ -28,10 +31,18 @@ static void deinit_mode(struct ftdi_interface* itf, enum ftdi_mode mode) {
 }
 
 void ftdi_if_init(struct ftdi_interface* itf) {
+    struct ftdi_hw* hw = ftdihw_itf_to_hw(itf);
+
+    ftdihw_init(hw, itf);
+
     init_mode(itf, ftdi_if_get_mode(itf));
 }
 void ftdi_if_deinit(struct ftdi_interface* itf) {
     deinit_mode(itf, ftdi_if_get_mode(itf));
+
+    struct ftdi_hw* hw = ftdihw_itf_to_hw(itf);
+
+    ftdihw_deinit(hw);
 }
 
 void ftdi_if_set_modemctrl(struct ftdi_interface* itf, uint8_t mask, uint8_t data) {
@@ -78,8 +89,12 @@ void ftdi_if_set_bitbang(struct ftdi_interface* itf, uint8_t dirmask,
 }
 
 void ftdi_if_sio_reset(struct ftdi_interface* itf) { (void)itf; /* TODO: ? */ }
-void ftdi_if_sio_tciflush(struct ftdi_interface* itf) { (void)itf; /* TODO: ? */ }
-void ftdi_if_sio_tcoflush(struct ftdi_interface* itf) { (void)itf; /* TODO: ? */ }
+void ftdi_if_sio_tciflush(struct ftdi_interface* itf) {
+    (void)itf; /* TODO: ? */
+}
+void ftdi_if_sio_tcoflush(struct ftdi_interface* itf) {
+    (void)itf; /* TODO: ? */
+}
 void ftdi_if_set_latency(struct ftdi_interface* itf, uint8_t latency) { (void)itf; (void)latency; /* TODO: ? */ }
 uint8_t ftdi_if_get_latency(struct ftdi_interface* itf) { return itf->latency; /* TODO: ? */ }
 

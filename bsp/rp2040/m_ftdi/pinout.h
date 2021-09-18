@@ -2,6 +2,8 @@
 #ifndef BSP_PINOUT_M_FTDI_H_
 #define BSP_PINOUT_M_FTDI_H_
 
+/* NOTE: no C code here! needs to be include-able from PIO asm! */
+
 #define PINOUT_ITF_A_BASE  2
 #define PINOUT_ITF_B_BASE 14
 
@@ -112,22 +114,6 @@
 #define PINOUT_CPUFIFO_A0_OFF   9
 #define PINOUT_CPUFIFO_nRD_OFF 10
 #define PINOUT_CPUFIFO_nWR_OFF 11
-
-struct ftdi_interface;
-
-static inline int PINOUT_idx_to_base(int itf_idx) {
-    return itf_idx ? PINOUT_ITF_B_BASE : PINOUT_ITF_A_BASE;
-}
-static inline int PINOUT_itf_to_base(struct ftdi_interface* itf) {
-    return PINOUT_idx_to_base(*(int*)itf); // can't access "index" directly here, so, shrug
-}
-
-static inline void* PINOUT_idx_to_pio(int itf_idx) {
-    return itf_idx ? PINOUT_ITF_A_PIO : PINOUT_ITF_B_PIO;
-}
-static inline void* PINOUT_itf_to_pio(struct ftdi_interface* itf) {
-    return PINOUT_idx_to_pio(*(int*)itf); // can't access "index" directly here, so, shrug
-}
 
 #endif
 

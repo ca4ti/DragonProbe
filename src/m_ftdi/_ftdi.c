@@ -1,5 +1,6 @@
 // vim: set et:
 
+#include "tusb_config.h"
 #include <tusb.h>
 
 #include "mode.h"
@@ -19,20 +20,25 @@ static cothread_t ftdithread_ifa, ftdithread_ifb;
 static uint8_t    ftdistack_ifa[THREAD_STACK_SIZE>>1], ftdistack_ifb[THREAD_STACK_SIZE>>1];
 
 static void ftdi_thread_fn_ifa(void) {
+    printf("fn ifa thread!\n");
+
     while (1) {
-        ftdi_task_ifa();
+        //ftdi_task_ifa();
         thread_yield();
     }
 }
 static void ftdi_thread_fn_ifb(void) {
+    printf("fn ifb thread!\n");
     while (1) {
-        ftdi_task_ifb();
+        //ftdi_task_ifb();
         thread_yield();
     }
 }
 #endif
 
 static void enter_cb(void) {
+    printf("mode5 enter begin\n");
+
 #ifdef USE_USBCDC_FOR_STDIO
     stdio_usb_set_itf_num(CDC_N_STDIO);
 #endif
@@ -43,20 +49,25 @@ static void enter_cb(void) {
     ftdithread_ifb = co_derive(ftdistack_ifb, sizeof ftdistack_ifb, ftdi_thread_fn_ifb);
 #endif
 
-    if (!data_dirty) {
+    /*if (!data_dirty) {
         struct mode_info mi = storage_mode_get_info(5);
         if (mi.size != 0 && mi.version == 0x0010) {
             storage_mode_read(5, ftdi_eeprom, 0, sizeof ftdi_eeprom);
         }
-    }
+    }*/
+
+    //ftdi_init();
+    printf("mode5 enter end\n");
 }
 static void leave_cb(void) {
+    printf("mode5 leave\n");
 #ifdef DBOARD_HAS_FTDI
-    ftdi_deinit();
+    //ftdi_deinit();
 #endif
 }
 
 static void task_cb(void) {
+    printf("mode5 task\n");
 #ifdef DBOARD_HAS_FTDI
     tud_task();
     thread_enter(ftdithread_ifa);
@@ -66,7 +77,14 @@ static void task_cb(void) {
 }
 
 static void handle_cmd_cb(uint8_t cmd) {
+    printf("mode5 handlecmd %02x\n", cmd);
+    uint8_t resp = 0;
+
     switch (cmd) {
+    case mode_cmd_get_features:
+        resp = 0; // TODO: what do we put here?
+        vnd_cfg_write_resp(cfg_resp_ok, 1, &resp);
+        break;
     default:
         vnd_cfg_write_strf(cfg_resp_illcmd, "unknown mode5 command %02x", cmd);
         break;
@@ -184,6 +202,7 @@ static const uint8_t* my_descriptor_device_cb(void) {
 
 #if CFG_TUD_CDC > 0
 static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
+    printf("mode5 linecoding %02x, %lu\n", itf, line_coding->bit_rate);
     switch (itf) {
 #ifdef USE_USBCDC_FOR_STDIO
         case CDC_N_STDIO:
@@ -225,7 +244,7 @@ struct mode m_05_ftdi = {
     },
 
 #ifdef DBOARD_HAS_FTDI
-    .tud_descriptor_device_cb = my_descriptor_device_cb,
+    //.tud_descriptor_device_cb = my_descriptor_device_cb,
 #endif
 
 #if CFG_TUD_CDC > 0
@@ -233,7 +252,7 @@ struct mode m_05_ftdi = {
 #endif
 
 #ifdef DBOARD_HAS_FTDI
-    .tud_vendor_control_xfer_cb = ftdi_control_xfer_cb,
+    //.tud_vendor_control_xfer_cb = ftdi_control_xfer_cb,
 #endif
 };
 // clang-format on

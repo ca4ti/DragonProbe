@@ -25,6 +25,8 @@ static void vndcfg_thread_fn(void) {
 }
 
 int main() {
+    stdio_uart_init();
+
     thread_init();
 
     board_init();  // tinyusb hardware support function

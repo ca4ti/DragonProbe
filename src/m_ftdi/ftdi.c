@@ -75,6 +75,8 @@ int __builtin_ctz(unsigned int v);
 
 uint16_t ftdi_eeprom[128];
 
+struct ftdi_interface ftdi_ifa, ftdi_ifb;
+
 void ftdi_init(void) {
     // init eeprom defaults
     memset(ftdi_eeprom, 0xff, sizeof ftdi_eeprom);
@@ -97,6 +99,8 @@ void ftdi_init(void) {
     ftdi_ifb.lineprop = sio_bits_8 | sio_stop_1; // 8n1
     ftdi_ifa.index = 0;
     ftdi_ifb.index = 1;
+    ftdi_ifa.modemstat = sio_modem_temt;
+    ftdi_ifb.modemstat = sio_modem_temt;
     ftdi_if_init(&ftdi_ifa);
     ftdi_if_init(&ftdi_ifb);
 }

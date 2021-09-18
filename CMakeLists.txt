@@ -51,6 +51,7 @@ if(FAMILY STREQUAL "rp2040")
   else()
     #pico_enable_stdio_uart(${PROJECT} 1)
   endif()
+  # TODO: separate flag for disabling this one?
   pico_enable_stdio_uart(${PROJECT} 1)
   pico_enable_stdio_usb(${PROJECT} 0)
 else()
@@ -96,7 +97,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_jscan/jscan_hw.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_sump/sump_hw.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/base.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/ftdi_hw.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/ftdi_proto.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/uart.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/mpsse.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_ftdi/asyncbb.c

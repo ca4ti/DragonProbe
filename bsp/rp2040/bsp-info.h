@@ -20,7 +20,7 @@
 #else
 #define CFG_TUD_CDC 2
 #endif
-#define CFG_TUD_VENDOR 2
+#define CFG_TUD_VENDOR 3
 
 /* don't access storage for RAM-only builds */
 #if !PICO_NO_FLASH
