@@ -32,10 +32,12 @@ class UsbConn(DevConn):
         import usb, usb.core
 
         cfg = dev.get_active_configuration()
+        #print("get active", cfg)
 
         if cfg is None:  # should be configured already, but eh
             dev.set_configuration()
             cfg = dev.get_active_configuration()
+            #print("set active", cfg)
 
             if cfg is None:
                 return "Couldn't get or set device configuration, aaaaa"
@@ -45,6 +47,7 @@ class UsbConn(DevConn):
                if i.bInterfaceClass == usb.CLASS_VENDOR_SPEC and
                   i.bInterfaceSubClass == UsbConn._SUBCLASS and
                   i.bInterfaceProtocol == UsbConn._PROTOCOL]
+        #print("vnd itf", itf)
 
         if len(itf) == 0:
             return "No vendor control interface found for device"
@@ -58,12 +61,18 @@ class UsbConn(DevConn):
         epin  = usb.util.find_descriptor(itf, custom_match =
             lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_IN)
 
+        #print("epout", epout, "epin", epin)
+
         try:
             # try to read the version number. if it throws, it means the usbdev
             # is in use by something else
+            #print("write")
             epout.write(b'\x00')
+            #print("wrote")
             resp = epin.read(4)
-        except usb.core.USBError:
+            #print("resp", resp)
+        except usb.core.USBError as e:
+            print("eep", e)
             return "Device is busy, already used by something else? (If you use "+\
                 "the kernel module, use a character device from /dev instead.)"
 
@@ -77,6 +86,7 @@ class UsbConn(DevConn):
         if verno > DevConn._VER_MAX:
             return "Version of device (%04x) too new, must be max. %04x" \
                 % (hex(verno, DevConn._VER_MAX))
+        #print("verno", verno)
 
         return UsbConn(dev, cfg, itf, epin, epout)
 
@@ -88,6 +98,8 @@ class UsbConn(DevConn):
 
         if dev is None or len(dev) != 1:
             return None
+
+        #print("devs", dev)
 
         rv = UsbConn._open_dev(dev[0])
         return None if isinstance(rv, str) else rv
@@ -127,6 +139,8 @@ class UsbConn(DevConn):
         if conntup is None:
             return "Could not open USB device '%s': not recognised" % conn
 
+        #print("conntup", conntup)
+
         dev = None
         if conn_busdev:
             if len(conntup) == 2:
@@ -148,9 +162,12 @@ class UsbConn(DevConn):
         return UsbConn._open_dev(dev[0])
 
     def read_raw(self, arr) -> int:
-        return self._epin.read(arr)
+        rv = self._epin.read(arr)
+        print("read", arr[:rv])
+        return rv
 
     def write_raw(self, b: bytes) -> int:
+        print("write", b)
         return self._epout.write(b)
 
     def __init__(self, dev, cfg, itf, epin, epout):
@@ -168,6 +185,7 @@ class UsbConn(DevConn):
 
         usb.util.release_interface(self._dev, self._itf)
         usb.util.dispose_resources(self._dev)
+        #print("released & disposed")
         self._epout = None
         self._epin  = None
         self._itf = None
@@ -205,6 +223,7 @@ class ChardevConn(DevConn):
                 "a Linux kernel module" % sys.platform
 
         try:
+            #print("try char", conn)
             fd = os.open(conn, os.O_RDWR)
             if fd < 0:
                 raise OSError("Negative file descriptor returned")

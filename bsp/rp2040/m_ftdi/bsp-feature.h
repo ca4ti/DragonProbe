@@ -15,17 +15,20 @@ enum {
 };
 enum {
 #ifdef USE_USBCDC_FOR_STDIO
-    CDC_N_STDIO,
+    CDC_N_STDIO = 0,
 #endif
 
     CDC_N__NITF
 };
 enum {
-    VND_N_FTDI_IFA = 0,
-    VND_N_FTDI_IFB,
-    VND_N_CFG,
+    /*VND_N_FTDI_IFA = 0,
+    VND_N_FTDI_IFB,*/
+    VND_N_CFG = 0,
 
     VND_N__NITF
 };
+
+#define VND_N_FTDI_IFA 42
+#define VND_N_FTDI_IFB 69
 
 #endif

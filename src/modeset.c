@@ -100,7 +100,7 @@ void modes_switch(uint8_t newmode) {
     // maybe wait a second or so for the host to notice this
     sleep_ms(500/2);
 
-    //printf("disconnect\n");
+    printf("disconnect\n");
 
     if (newmode == 0) bsp_reset_bootloader();
 
@@ -167,14 +167,14 @@ void modes_switch(uint8_t newmode) {
         // clang-format on
     }
 
-    //printf("reconnect\n");
+    printf("reconnect\n");
 
     // and reconnect
     tud_connect();
     sleep_ms(500/2);
     //while (!tud_mounted()) sleep_ms(5);
 
-    //printf("enter\n");
+    printf("enter\n");
 
     if (mode_current) mode_current->enter();
 }

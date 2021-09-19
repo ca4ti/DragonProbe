@@ -20,16 +20,16 @@ static cothread_t ftdithread_ifa, ftdithread_ifb;
 static uint8_t    ftdistack_ifa[THREAD_STACK_SIZE>>1], ftdistack_ifb[THREAD_STACK_SIZE>>1];
 
 static void ftdi_thread_fn_ifa(void) {
-    printf("fn ifa thread!\n");
 
     while (1) {
+        printf("fn ifa thread!\n");
         //ftdi_task_ifa();
         thread_yield();
     }
 }
 static void ftdi_thread_fn_ifb(void) {
-    printf("fn ifb thread!\n");
     while (1) {
+        printf("fn ifb thread!\n");
         //ftdi_task_ifb();
         thread_yield();
     }
@@ -37,16 +37,16 @@ static void ftdi_thread_fn_ifb(void) {
 #endif
 
 static void enter_cb(void) {
-    printf("mode5 enter begin\n");
+    printf("mode5 enter begin VND_N_CONFIG=%d\n", VND_N_CFG);
 
 #ifdef USE_USBCDC_FOR_STDIO
     stdio_usb_set_itf_num(CDC_N_STDIO);
 #endif
-    vnd_cfg_set_itf_num(VND_N_CFG);
+    //vnd_cfg_set_itf_num(VND_N_CFG);
 
 #ifdef DBOARD_HAS_FTDI
-    ftdithread_ifa = co_derive(ftdistack_ifa, sizeof ftdistack_ifa, ftdi_thread_fn_ifa);
-    ftdithread_ifb = co_derive(ftdistack_ifb, sizeof ftdistack_ifb, ftdi_thread_fn_ifb);
+    /*ftdithread_ifa = co_derive(ftdistack_ifa, sizeof ftdistack_ifa, ftdi_thread_fn_ifa);
+    ftdithread_ifb = co_derive(ftdistack_ifb, sizeof ftdistack_ifb, ftdi_thread_fn_ifb);*/
 #endif
 
     /*if (!data_dirty) {
@@ -69,10 +69,10 @@ static void leave_cb(void) {
 static void task_cb(void) {
     printf("mode5 task\n");
 #ifdef DBOARD_HAS_FTDI
-    tud_task();
-    thread_enter(ftdithread_ifa);
-    tud_task();
-    thread_enter(ftdithread_ifb);
+    //tud_task();
+    //thread_enter(ftdithread_ifa);
+    //tud_task();
+    //thread_enter(ftdithread_ifb);
 #endif
 }
 
@@ -105,8 +105,8 @@ enum {
     STRID_IF_CDC_STDIO,
 };
 enum {
-    ITF_NUM_VND_FTDI_IFA,
-    ITF_NUM_VND_FTDI_IFB,
+    /*ITF_NUM_VND_FTDI_IFA,
+    ITF_NUM_VND_FTDI_IFB,*/
 
 #if CFG_TUD_VENDOR > 0
     ITF_NUM_VND_CFG,
@@ -121,8 +121,8 @@ enum {
 enum {
     CONFIG_TOTAL_LEN
         = TUD_CONFIG_DESC_LEN
-        + TUD_VENDOR_DESC_LEN
-        + TUD_VENDOR_DESC_LEN
+        /*+ TUD_VENDOR_DESC_LEN
+        + TUD_VENDOR_DESC_LEN*/
 #if CFG_TUD_VENDOR > 0
         + TUD_VENDOR_DESC_LEN
 #endif
@@ -131,7 +131,7 @@ enum {
 #endif
 };
 
-#define EPNUM_VND_FTDI_IFA_OUT  0x02
+/*#define EPNUM_VND_FTDI_IFA_OUT  0x02
 #define EPNUM_VND_FTDI_IFA_IN   0x81
 #define EPNUM_VND_FTDI_IFB_OUT  0x04
 #define EPNUM_VND_FTDI_IFB_IN   0x83
@@ -140,17 +140,23 @@ enum {
 #define EPNUM_VND_CFG_IN        0x85
 #define EPNUM_CDC_STDIO_OUT     0x06
 #define EPNUM_CDC_STDIO_IN      0x86
-#define EPNUM_CDC_STDIO_NOTIF   0x87
+#define EPNUM_CDC_STDIO_NOTIF   0x87*/
+
+#define EPNUM_VND_CFG_OUT       0x01
+#define EPNUM_VND_CFG_IN        0x81
+#define EPNUM_CDC_STDIO_OUT     0x02
+#define EPNUM_CDC_STDIO_IN      0x82
+#define EPNUM_CDC_STDIO_NOTIF   0x83
 
 // clang-format off
 static const uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM__TOTAL, STRID_CONFIG, CONFIG_TOTAL_LEN,
         TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
 
-    TUD_VENDOR_DESCRIPTOR_EX(ITF_NUM_VND_FTDI_IFA, STRID_IF_VND_FTDI_IFA,
-        EPNUM_VND_FTDI_IFA_OUT, EPNUM_VND_FTDI_IFA_IN, CFG_TUD_VENDOR_RX_BUFSIZE, 255, 255),
-    TUD_VENDOR_DESCRIPTOR_EX(ITF_NUM_VND_FTDI_IFB, STRID_IF_VND_FTDI_IFB,
-        EPNUM_VND_FTDI_IFB_OUT, EPNUM_VND_FTDI_IFB_IN, CFG_TUD_VENDOR_RX_BUFSIZE, 255, 255),
+    /*TUD_VENDOR_DESCRIPTOR(ITF_NUM_VND_FTDI_IFA, STRID_IF_VND_FTDI_IFA,
+        EPNUM_VND_FTDI_IFA_OUT, EPNUM_VND_FTDI_IFA_IN, CFG_TUD_VENDOR_RX_BUFSIZE),
+    TUD_VENDOR_DESCRIPTOR(ITF_NUM_VND_FTDI_IFB, STRID_IF_VND_FTDI_IFB,
+        EPNUM_VND_FTDI_IFB_OUT, EPNUM_VND_FTDI_IFB_IN, CFG_TUD_VENDOR_RX_BUFSIZE),*/
 
 #if CFG_TUD_VENDOR > 0
     TUD_VENDOR_DESCRIPTOR_EX(ITF_NUM_VND_CFG, STRID_IF_VND_CFG, EPNUM_VND_CFG_OUT,
@@ -236,12 +242,12 @@ struct mode m_05_ftdi = {
     .task  = task_cb,
     .handle_cmd = handle_cmd_cb,
 
-    .storage = {
+    /*.storage = {
         .stclass = mode_storage_512b,
         .get_size = my_get_size,
         .get_data = my_get_data,
         .is_dirty = my_is_dirty
-    },
+    },*/
 
 #ifdef DBOARD_HAS_FTDI
     //.tud_descriptor_device_cb = my_descriptor_device_cb,

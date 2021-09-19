@@ -127,6 +127,8 @@ void vnd_cfg_task(void) {
     uint8_t cmd = vnd_cfg_read_byte();
     uint8_t verbuf[2];
 
+    //printf("vcfg %02x\n", cmd);
+
     if (cmd & 0xf0) {
         uint8_t mode = (uint8_t)(cmd & 0xf0) >> 4;
         uint8_t mcmd = cmd & 0x0f;
@@ -239,6 +241,8 @@ void vnd_cfg_task(void) {
             break;
         }
     }
+
+    //printf("vnd cfg cmd=%02x done\n", cmd);
 }
 #else /* CFG_TUD_VENDOR == 0 */
 void vnd_cfg_init(void) { }
