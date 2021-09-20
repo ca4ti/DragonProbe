@@ -62,7 +62,7 @@
 //   data:   pointer to sequence bit data
 //   return: none
 #if ((DAP_SWD != 0) || (DAP_JTAG != 0))
-void SWJ_Sequence (uint32_t count, const uint8_t *data) {
+__WEAK void SWJ_Sequence (uint32_t count, const uint8_t *data) {
   uint32_t val;
   uint32_t n;
 
@@ -274,7 +274,7 @@ SWD_TransferFunction(Slow)
 //   request: A[3:2] RnW APnDP
 //   data:    DATA[31:0]
 //   return:  ACK[2:0]
-uint8_t  SWD_Transfer(uint32_t request, uint32_t *data) {
+__WEAK uint8_t  SWD_Transfer(uint32_t request, uint32_t *data) {
   if (DAP_Data.fast_clock) {
     return SWD_TransferFast(request, data);
   } else {

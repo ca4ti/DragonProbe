@@ -227,7 +227,7 @@ static uint32_t DAP_Connect(const uint8_t *request, uint8_t *response) {
   } else {
     port = *request;
   }
-  
+
   switch (port) {
 #if (DAP_SWD != 0)
     case DAP_PORT_SWD:
@@ -398,6 +398,7 @@ static uint32_t DAP_SWJ_Clock(const uint8_t *request, uint8_t *response) {
     return ((4U << 16) | 1U);
   }
 
+  DAP_Data.clock_freq = clock;
   if (clock >= MAX_SWJ_CLOCK(DELAY_FAST_CYCLES)) {
     DAP_Data.fast_clock  = 1U;
     DAP_Data.clock_delay = 1U;

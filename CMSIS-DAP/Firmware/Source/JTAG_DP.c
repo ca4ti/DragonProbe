@@ -75,7 +75,7 @@
 //   tdi:    pointer to TDI generated data
 //   tdo:    pointer to TDO captured data
 //   return: none
-void JTAG_Sequence (uint32_t info, const uint8_t *tdi, uint8_t *tdo) {
+__WEAK void JTAG_Sequence (uint32_t info, const uint8_t *tdi, uint8_t *tdo) {
   uint32_t i_val;
   uint32_t o_val;
   uint32_t bit;
@@ -264,7 +264,7 @@ JTAG_TransferFunction(Slow)
 
 // JTAG Read IDCODE register
 //   return: value read
-uint32_t JTAG_ReadIDCode (void) {
+__WEAK uint32_t JTAG_ReadIDCode (void) {
   uint32_t bit;
   uint32_t val;
   uint32_t n;
@@ -300,7 +300,7 @@ uint32_t JTAG_ReadIDCode (void) {
 // JTAG Write ABORT register
 //   data:   value to write
 //   return: none
-void JTAG_WriteAbort (uint32_t data) {
+__WEAK void JTAG_WriteAbort (uint32_t data) {
   uint32_t n;
 
   PIN_TMS_SET();
@@ -345,7 +345,7 @@ void JTAG_WriteAbort (uint32_t data) {
 // JTAG Set IR
 //   ir:     IR value
 //   return: none
-void JTAG_IR (uint32_t ir) {
+__WEAK void JTAG_IR (uint32_t ir) {
   if (DAP_Data.fast_clock) {
     JTAG_IR_Fast(ir);
   } else {
@@ -358,7 +358,7 @@ void JTAG_IR (uint32_t ir) {
 //   request: A[3:2] RnW APnDP
 //   data:    DATA[31:0]
 //   return:  ACK[2:0]
-uint8_t  JTAG_Transfer(uint32_t request, uint32_t *data) {
+__WEAK uint8_t  JTAG_Transfer(uint32_t request, uint32_t *data) {
   if (DAP_Data.fast_clock) {
     return JTAG_TransferFast(request, data);
   } else {
