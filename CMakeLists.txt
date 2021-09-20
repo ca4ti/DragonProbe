@@ -63,6 +63,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/DAP_vendor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/SWO.c
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/SW_DP.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Source/UART.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/unique.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/alloc.c
@@ -80,6 +81,7 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/cdc_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_uart.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swo.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/spi_serprog.c
@@ -98,6 +100,7 @@ target_include_directories(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Firmware/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Core/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/Driver/Include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS-DAP/RTOS2/Include/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/default/
 )

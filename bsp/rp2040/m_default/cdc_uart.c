@@ -61,6 +61,8 @@ void cdc_uart_deinit(void) {
 }
 
 void cdc_uart_task(void) {
+    if (cdc_uart_dap_override) return;
+
     // Consume uart fifo regardless even if not connected
     uint rx_len = 0;
     while (uart_is_readable(PINOUT_UART_INTERFACE) && (rx_len < sizeof(rx_buf))) {

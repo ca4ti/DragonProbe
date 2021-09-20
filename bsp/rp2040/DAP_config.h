@@ -150,10 +150,10 @@ This information includes:
 
 /// Indicate that UART Communication Port is available.
 /// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
-#define DAP_UART 0  ///< DAP UART:  1 = available, 0 = not available.
+#define DAP_UART 1  ///< DAP UART:  1 = available, 0 = not available.
 
 /// USART Driver instance number for the UART Communication Port.
-#define DAP_UART_DRIVER 0  ///< USART Driver instance number (Driver_USART#).
+#define DAP_UART_DRIVER _DAPFAKE  ///< USART Driver instance number (Driver_USART#).
 
 /// UART Receive Buffer Size.
 #define DAP_UART_RX_BUFFER_SIZE 64U  ///< Uart Receive Buffer Size in bytes (must be 2^n).

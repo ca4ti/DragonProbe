@@ -6,6 +6,9 @@
 
 /* BSP function prototypes for various USB-CDC interfaces */
 #ifdef DBOARD_HAS_UART
+// if true, communicating thru CMSIS-DAP instead, so don't do USB stuff
+extern bool cdc_uart_dap_override;
+
 void cdc_uart_init(void);
 void cdc_uart_deinit(void);
 void cdc_uart_task(void);

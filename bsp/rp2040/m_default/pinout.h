@@ -1,4 +1,4 @@
-// vim: set et:
+// vim: set et ts=8:
 
 #ifndef PINOUT_H_
 #define PINOUT_H_
@@ -46,6 +46,34 @@
 #define PINOUT_LED PICO_DEFAULT_LED_PIN
 #endif
 #endif /* PICOPROBE_LED */
+
+/*
+ * HARDWARE RESOURCE USAGE:
+ *
+ * IRQ:
+ *   DMA0	DAP-UART
+ *   UART1	DAP-UART
+ *
+ * DMA: (max. 12)
+ *   DAP-UART	2
+ *   SWO-UART	1
+ *   SWO-MC	1
+ *
+ * PIO:
+ *
+ * UART0: stdio
+ *
+ * UART1: USB-CDC/DAP-UART
+ *
+ * SPI:
+ *   1: SPI access
+ *
+ * I2C:
+ *   0: I2C access
+ *
+ * ADC:
+ *
+ */
 
 #endif
 
