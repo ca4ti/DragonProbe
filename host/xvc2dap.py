@@ -168,6 +168,8 @@ def xvc2dap_do(args: Any) -> int:
     try:
         dap.connect()
 
+        dap.configure_jtag(args.irlen)
+
         with socket.socket() as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.bind((args.address, args.port))
@@ -203,6 +205,11 @@ def main() -> int:
     parser.add_argument('--serial', type=str, default=None,
                         help="Connect to the CMSIS-DAP device with the "+\
                         "specified serial number, defaults to the first device found.")
+
+    parser.add_argument('--irlen', type=int, default=None, nargs='+',
+                        help="devices and IRLEN configuration, defaults to "+\
+                             "CMSIS-DAP-specific value (usually 1 dev, irlen "+\
+                             "4). Use multiple --irlen args for multiple devices.")
 
     parser.add_argument('address', type=str, default='localhost', nargs='?',
                         help="Host to bind to, for the XVC server, default "+\
