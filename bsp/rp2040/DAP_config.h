@@ -305,76 +305,79 @@ Configures the DAP Hardware I/O pins for JTAG mode:
  - TCK, TMS, TDI, nTRST, nRESET to output mode and set to high level.
  - TDO to input mode.
 */
-__STATIC_INLINE void PORT_JTAG_SETUP(void) {
-    resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
-
-    /* set to default high level */
-    sio_hw->gpio_oe_set = PINOUT_TCK_MASK | PINOUT_TMS_MASK | PINOUT_TDI_MASK | PINOUT_nTRST_MASK |
-                          PINOUT_nRESET_MASK;
-    sio_hw->gpio_set = PINOUT_TCK_MASK | PINOUT_TMS_MASK | PINOUT_TDI_MASK | PINOUT_nTRST_MASK |
-                       PINOUT_nRESET_MASK;
-    /* TDO needs to be an input */
-    sio_hw->gpio_oe_clr = PINOUT_TDO_MASK;
-
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TCK],
-        PADS_BANK0_GPIO0_IE_BITS,  // bits to set: input enable
-        PADS_BANK0_GPIO0_IE_BITS |
-            PADS_BANK0_GPIO0_OD_BITS);  // bits to mask out: input enable, output disable
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TMS], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDI], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDO],
-        PADS_BANK0_GPIO0_IE_BITS |
-            PADS_BANK0_GPIO0_OD_BITS,  // TDO needs to have its output disabled
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nTRST], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nRESET], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-
-    // NOTE: hiZ: ctrl = (ctrl & ~(CTRL_OEOVER_BITS)) | (GPIO_OVERRIDE_LOW << CTRL_OEOVER_LSB);
-    // normal == 0, low == 2
-
-    // set pin modes to general IO (SIO)
-    iobank0_hw->io[PINOUT_JTAG_TCK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-    iobank0_hw->io[PINOUT_JTAG_TMS].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-    iobank0_hw->io[PINOUT_JTAG_TDI].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-    iobank0_hw->io[PINOUT_JTAG_TDO].ctrl = (GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB)
-        /*| (GPIO_OVERRIDE_LOW << IO_BANK0_GPIO0_CTRL_OEOVER_LSB)*/;
-    iobank0_hw->io[PINOUT_JTAG_nTRST].ctrl  = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-    iobank0_hw->io[PINOUT_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-}
+void PORT_JTAG_SETUP(void);
+//__STATIC_INLINE void PORT_JTAG_SETUP(void) {
+//    resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
+//
+//    /* set to default high level */
+//    sio_hw->gpio_oe_set = PINOUT_TCK_MASK | PINOUT_TMS_MASK | PINOUT_TDI_MASK | PINOUT_nTRST_MASK |
+//                          PINOUT_nRESET_MASK;
+//    sio_hw->gpio_set = PINOUT_TCK_MASK | PINOUT_TMS_MASK | PINOUT_TDI_MASK | PINOUT_nTRST_MASK |
+//                       PINOUT_nRESET_MASK;
+//    /* TDO needs to be an input */
+//    sio_hw->gpio_oe_clr = PINOUT_TDO_MASK;
+//
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TCK],
+//        PADS_BANK0_GPIO0_IE_BITS,  // bits to set: input enable
+//        PADS_BANK0_GPIO0_IE_BITS |
+//            PADS_BANK0_GPIO0_OD_BITS);  // bits to mask out: input enable, output disable
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TMS], PADS_BANK0_GPIO0_IE_BITS,
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDI], PADS_BANK0_GPIO0_IE_BITS,
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDO],
+//        PADS_BANK0_GPIO0_IE_BITS |
+//            PADS_BANK0_GPIO0_OD_BITS,  // TDO needs to have its output disabled
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nTRST], PADS_BANK0_GPIO0_IE_BITS,
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nRESET], PADS_BANK0_GPIO0_IE_BITS,
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//
+//    // NOTE: hiZ: ctrl = (ctrl & ~(CTRL_OEOVER_BITS)) | (GPIO_OVERRIDE_LOW << CTRL_OEOVER_LSB);
+//    // normal == 0, low == 2
+//
+//    // set pin modes to general IO (SIO)
+//    iobank0_hw->io[PINOUT_JTAG_TCK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//    iobank0_hw->io[PINOUT_JTAG_TMS].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//    iobank0_hw->io[PINOUT_JTAG_TDI].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//    iobank0_hw->io[PINOUT_JTAG_TDO].ctrl = (GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB)
+//        /*| (GPIO_OVERRIDE_LOW << IO_BANK0_GPIO0_CTRL_OEOVER_LSB)*/;
+//    iobank0_hw->io[PINOUT_JTAG_nTRST].ctrl  = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//    iobank0_hw->io[PINOUT_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//}
 
 /** Setup SWD I/O pins: SWCLK, SWDIO, and nRESET.
 Configures the DAP Hardware I/O pins for Serial Wire Debug (SWD) mode:
  - SWCLK, SWDIO, nRESET to output mode and set to default high level.
  - TDI, nTRST to HighZ mode (pins are unused in SWD mode).
 */
-__STATIC_INLINE void PORT_SWD_SETUP(void) {
-    resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
-
-    /* set to default high level */
-    sio_hw->gpio_oe_set = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK;
-    sio_hw->gpio_set    = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK;
-
-    hw_write_masked(&padsbank0_hw->io[PINOUT_SWCLK], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_SWDIO], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    iobank0_hw->io[PINOUT_SWCLK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-    iobank0_hw->io[PINOUT_SWDIO].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
-}
+void PORT_SWD_SETUP(void);
+//__STATIC_INLINE void PORT_SWD_SETUP(void) {
+//    resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
+//
+//    /* set to default high level */
+//    sio_hw->gpio_oe_set = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK;
+//    sio_hw->gpio_set    = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK;
+//
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_SWCLK], PADS_BANK0_GPIO0_IE_BITS,
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//    hw_write_masked(&padsbank0_hw->io[PINOUT_SWDIO], PADS_BANK0_GPIO0_IE_BITS,
+//        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+//    iobank0_hw->io[PINOUT_SWCLK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//    iobank0_hw->io[PINOUT_SWDIO].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+//}
 
 /** Disable JTAG/SWD I/O Pins.
 Disables the DAP Hardware I/O pins which configures:
  - TCK/SWCLK, TMS/SWDIO, TDI, TDO, nTRST, nRESET to High-Z mode.
 */
-__STATIC_INLINE void PORT_OFF(void) {
+void PORT_OFF(void);
+/*__STATIC_INLINE void PORT_OFF(void) {
     sio_hw->gpio_oe_clr = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK |
                           PINOUT_TDI_MASK  //| PINOUT_TDO_MASK
                         | PINOUT_nTRST_MASK | PINOUT_nRESET_MASK;
-}
+}*/
 
 // SWCLK/TCK I/O pin -------------------------------------
 
