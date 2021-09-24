@@ -17,7 +17,7 @@ static uint32_t
 static int swo_sm = -1, swo_dmach = -1;
 static bool mode_enabled = false;
 
-#define SWO_PIO pio1
+#define SWO_PIO PINOUT_JTAG_SWO_DEV
 
 // Enable or disable SWO Mode (UART)
 //   enable: enable flag

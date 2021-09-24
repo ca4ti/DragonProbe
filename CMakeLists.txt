@@ -45,11 +45,12 @@ if(FAMILY STREQUAL "rp2040")
   # need uart stdio, usb is busy doing other stuff
   if(USE_USBCDC_FOR_STDIO)
     # we're going to manually implement this case
-    pico_enable_stdio_uart(${PROJECT} 0)
+	#pico_enable_stdio_uart(${PROJECT} 0)
     target_compile_definitions(${PROJECT} PUBLIC USE_USBCDC_FOR_STDIO=1 PICO_STDIO_USB=1)
   else()
-    pico_enable_stdio_uart(${PROJECT} 1)
+	  #pico_enable_stdio_uart(${PROJECT} 1)
   endif()
+  pico_enable_stdio_uart(${PROJECT} 1)
   pico_enable_stdio_usb(${PROJECT} 0)
 else()
   message(FATAL_ERROR "Invalid FAMILY '${FAMILY}' specified")
@@ -81,6 +82,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/cdc_sump.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/cdc_uart.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_jtag.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swd.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_uart.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swo.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
@@ -133,6 +136,7 @@ if(FAMILY STREQUAL "rp2040")
     target_link_libraries(${PROJECT} pico_stdio)
   endif()
 
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_jtag.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_uart_rx.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_manchester_encoding.pio)
 

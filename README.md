@@ -120,6 +120,7 @@ projects. These respective licenses can be found in
 - [ ] PIC programming
   - https://github.com/travisgoodspeed/goodfet/tree/master/firmware/apps/pic
 - iCE40 programming??
+  - https://github.com/adamgreig/ffp
 - Renesas E7-{0,1,2} programming thing????
   - Renesas tell us how this works pls
   - https://github.com/szymonh/rl78check is something at least

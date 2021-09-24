@@ -18,6 +18,8 @@
 #define PINOUT_JTAG_TDO    5
 #define PINOUT_JTAG_nTRST  6
 #define PINOUT_JTAG_nRESET 7
+#define PINOUT_JTAG_PIO_DEV pio0
+#define PINOUT_JTAG_SWO_DEV pio1
 
 // SPI config
 #define PINOUT_SPI_DEV  spi1
@@ -60,6 +62,10 @@
  *   SWO-MC	1
  *
  * PIO:
+ *   PIO0: (max. 4)
+ *     JTAG	1
+ *   PIO1: (max. 4)
+ *     SWO	2
  *
  * UART0: stdio
  *
