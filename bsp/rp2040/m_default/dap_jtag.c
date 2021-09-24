@@ -172,8 +172,12 @@ static uint8_t bitswap(uint8_t in) {
 }
 
 void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
-    dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, offset,
-             50*1000, PINOUT_JTAG_TCK, PINOUT_JTAG_TDI, PINOUT_JTAG_TDO);
+    float div = (float)clock_get_hz(clk_sys) / (4 * DAP_Data.clock_freq);
+    if (div < 2) div = 2;
+    else if (div > 65536) div = 65536;
+    pio_sm_set_clkdiv(PINOUT_JTAG_PIO_DEV, jtagsm, div);
+    /*dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, offset,
+             DAP_Data.clock_freq, PINOUT_JTAG_TCK, PINOUT_JTAG_TDI, PINOUT_JTAG_TDO);*/
 
     uint32_t n = info & JTAG_SEQUENCE_TCK;
     if (n == 0) n = 64;
@@ -185,101 +189,54 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     io_ro_8* rx = (io_ro_8*)&PINOUT_JTAG_PIO_DEV->rxf[jtagsm];
 
     uint32_t bytelen = (n + 7) >> 3;
-    uint32_t last_shift = (8 - n) & 7;//(bytelen << 3) - n;
-    printf("n=%lu bytelen=%lu last_shift=%lu\n", n, bytelen, last_shift);
+    uint32_t last_shift = (8 - n) & 7;
+    //printf("n=%lu bytelen=%lu last_shift=%lu\n", n, bytelen, last_shift);
     uint32_t txremain = bytelen,
-             rxremain = last_shift ? bytelen : (bytelen /*+ 1*/);
-    printf("txremain=%lu rxremain=%lu\n", txremain, rxremain);
+             rxremain = last_shift ? bytelen : (bytelen + 1);
+    /*printf("txremain=%lu rxremain=%lu\n", txremain, rxremain);
 
     printf("%s", "tdi: ");
     for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
         printf("0x%x ", ((const uint8_t*)tdi)[j]);
     }
+    printf("%c", '\n');*/
 
-    //printf("init : pc=%x insn=%04lx\n", pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm), pio0_hw->sm[jtagsm].instr);
-    *tx = (uint8_t)(n - 1);
-    //printf("txlen: pc=%x insn=%04lx\n", pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm), pio0_hw->sm[jtagsm].instr);
-    //return;
+    PINOUT_JTAG_PIO_DEV->txf[jtagsm] = (uint8_t)(n - 1);
 
-    bool done_extrabit = false;
     size_t oi = 0, ii = 0;
     while (txremain || rxremain) {
         if (txremain && !pio_sm_is_tx_fifo_full(PINOUT_JTAG_PIO_DEV, jtagsm)) {
-            //printf("tdi%2u: pc=%x insn=%04lx\n", ii, pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm), pio0_hw->sm[jtagsm].instr);
             *tx = bitswap(tdi[ii]);
             --txremain;
-            printf("tx %02x rem %lu smpc=%x\n", tdi[ii], txremain, pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm));
+            //printf("tx %02x rem %lu smpc=%x\n", tdi[ii], txremain, pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm));
             ++ii;
         }
 
         if (rxremain && !pio_sm_is_rx_fifo_empty(PINOUT_JTAG_PIO_DEV, jtagsm)) {
-            //printf("tdo%2u: pc=%x insn=%04lx\n", oi, pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm), pio0_hw->sm[jtagsm].instr);
             uint8_t ov = *rx;
             --rxremain;
-            printf("rx %02x rem %lu smpc=%x\n", ov, rxremain, pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm));
-            if ((info & JTAG_SEQUENCE_TDO) /*&& !(!last_shift && rxremain == 1)*/) {
+            //printf("rx %02x rem %lu smpc=%x\n", ov, rxremain, pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm));
+            if ((info & JTAG_SEQUENCE_TDO)) {
                 if (last_shift && oi == bytelen - 1) {
-                    tdo[oi] = bitswap(ov << last_shift);
+                    //printf("orig=%02x swap=%02x shamt=%lu result=%02x\n", ov, bitswap(ov), last_shift, bitswap(ov)>>last_shift);
+                    tdo[oi] = bitswap(ov) >> last_shift;
                 } else {
                     tdo[oi] = bitswap(ov);
                 }
                 ++oi;
             }
         }
-
-        /*if (rxremain == 1 && txremain == 0 && last_shift == 0) {
-            printf("smpc=%x smin=%04lx\n",
-                    pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, jtagsm), pio0_hw->sm[jtagsm].instr);
-
-            if (!pio_sm_is_tx_fifo_full(PINOUT_JTAG_PIO_DEV, jtagsm) && !done_extrabit) {
-                done_extrabit = true;
-                uint8_t last_byte = tdi[ii-1];
-                uint8_t last_bit = last_byte & 0x80;
-                printf("extrabit %x!\n", last_bit);
-                *tx = last_bit ? 0xff : 0x00;
-            }
-        }*/
     }
 
-    /*if (last_shift) {
-        uint8_t* last = &tdo[bytelen-1];
-        *last = bitswap(*last);
-        *last <<= last_shift;
-        *last = bitswap(*last);
-    }*/
-
-    if (info & JTAG_SEQUENCE_TDO) {
-        printf("%s", "\ntdo: ");
+    /*if (info & JTAG_SEQUENCE_TDO) {
+        printf("%s", "tdo: ");
         for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
             printf("0x%x ", ((const uint8_t*)tdo)[j]);
         }
         printf("%c", '\n');
-    } else printf("%s", "\nno tdo\n");
-
-    /*uint32_t n = info & JTAG_SEQUENCE_TCK;
-    if (n == 0) n = 64;
-
-    bool tms = info & JTAG_SEQUENCE_TMS;
-    // SET TMS TO ^
-
-    for (size_t i = 0; n != 0; --n, ++i) {
-        uint8_t iv = tdi[i];
-        uint8_t ov = 0;
-
-        for (size_t k = 0; k < 8; ++k) {
-            tdi = (iv >> k) & 1;
-            // SET TDI; TCK LOW
-            // DELAY
-            // GET TDO; TCK HI
-            ov |= tdo << k;
-        }
-
-        if (info & JTAG_SEQUENCE_TDO) tdo[i] = ov;
-    }*/
+    } else printf("%s", "no tdo\n");*/
 }
 #endif
-
-// TODO: the following ones can all be implemented in terms of JTAG_Sequence
 
 static void jtag_seq(uint32_t num, int tms, const void* tdi, void* tdo) {
     static uint64_t last_bit = ~(uint64_t)0;
