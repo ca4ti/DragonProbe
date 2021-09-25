@@ -10,7 +10,7 @@
 
 #include "dap_swd.pio.h"
 
-//#define SWD_PIO
+#define SWD_PIO
 
 int swdsm = -1, swdoffset = -1;
 
@@ -38,8 +38,65 @@ void PIN_SWDIO_OUT_DISABLE(void) {
 }
 
 inline static void PIN_SWDIO_SET_PIO(void) { PIN_SWDIO_TMS_SET(); }
+
+/*#define PIN_SWCLK_SET PIN_SWCLK_TCK_SET
+#define PIN_SWCLK_CLR PIN_SWCLK_TCK_CLR
+
+#define SW_WRITE_BIT(bit)               \
+  PIN_SWDIO_OUT(bit);                   \
+  PIN_SWCLK_CLR();                      \
+  PIN_DELAY();                          \
+  PIN_SWCLK_SET();                      \
+  PIN_DELAY()
+
+#define SW_READ_BIT(bit)                \
+  PIN_SWCLK_CLR();                      \
+  PIN_DELAY();                          \
+  bit = PIN_SWDIO_IN();                 \
+  PIN_SWCLK_SET();                      \
+  PIN_DELAY()
+
+#define PIN_DELAY() PIN_DELAY_SLOW(DAP_Data.clock_delay)
+
+void SWD_Sequence (uint32_t info, const uint8_t *swdo, uint8_t *swdi) {
+  printf("hi seq\n");
+  uint32_t val;
+  uint32_t bit;
+  uint32_t n, k;
+
+  n = info & SWD_SEQUENCE_CLK;
+  if (n == 0U) {
+    n = 64U;
+  }
+
+  if (info & SWD_SEQUENCE_DIN) {
+    printf("seq n=%lu din\n", n);
+
+    while (n) {
+      val = 0U;
+      for (k = 8U; k && n; k--, n--) {
+        SW_READ_BIT(bit);
+        val >>= 1;
+        val  |= bit << 7;
+      }
+      val >>= k;
+      *swdi++ = (uint8_t)val;
+      printf("rx %02lx\n", val);
+    }
+  } else {
+    printf("seq n=%lu dout\n", n);
+
+    while (n) {
+      val = *swdo++;
+      printf("tx %02lx\n", val);
+      for (k = 8U; k && n; k--, n--) {
+        SW_WRITE_BIT(val);
+        val >>= 1;
+      }
+    }
+  }
+}*/
 #else
-#error "no"
 
 void PORT_SWD_SETUP(void) {
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
@@ -107,7 +164,7 @@ void SWD_Sequence(uint32_t info, const uint8_t* swdo, uint8_t* swdi) {
     uint32_t txremain = bytelen,
              rxremain = last_shift ? bytelen : (bytelen + 1);
 
-    /*printf("seq start n=%lu bytelen=%lu lsh=%lu txr=%lu rxr=%lu\n",
+    /*printf("seq n=%lu bytelen=%lu lsh=%lu txr=%lu rxr=%lu\n",
             n, bytelen, last_shift, txremain, rxremain);*/
 
     pio_sm_put_blocking(PINOUT_JTAG_PIO_DEV, swdsm,
@@ -140,8 +197,10 @@ void SWD_Sequence(uint32_t info, const uint8_t* swdo, uint8_t* swdi) {
         }
 
         // wait until FIFO empty, so that all bytes have been xmitted
-        //while (!pio_sm_is_tx_fifo_empty(PINOUT_JTAG_PIO_DEV, swdsm)) tight_loop_contents();
+        while (!pio_sm_is_tx_fifo_empty(PINOUT_JTAG_PIO_DEV, swdsm)) tight_loop_contents();
         // ^ isn't enough, because of the side-set, so we need the loop below
+        //   however, we still need the above one because otherwise we might
+        //   somehow miss sending some bits in practice...
 
         // wait until last bit xmitted, and back at the starting insn
         while (pio_sm_get_pc(PINOUT_JTAG_PIO_DEV, swdsm) != swdoffset) tight_loop_contents();
