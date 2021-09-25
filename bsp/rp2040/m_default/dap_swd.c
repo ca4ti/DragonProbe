@@ -10,7 +10,9 @@
 
 #include "dap_swd.pio.h"
 
-#define SWD_PIO
+//#define SWD_PIO
+
+int swdsm = -1, swdoffset = -1;
 
 #ifndef SWD_PIO
 void PORT_SWD_SETUP(void) {
@@ -37,8 +39,7 @@ void PIN_SWDIO_OUT_DISABLE(void) {
 
 inline static void PIN_SWDIO_SET_PIO(void) { PIN_SWDIO_TMS_SET(); }
 #else
-//#error "no"
-int swdsm = -1, swdoffset = -1;
+#error "no"
 
 void PORT_SWD_SETUP(void) {
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
@@ -230,10 +231,10 @@ uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
             uint64_t val = 0;
             parity = 0;
             // FIXME: this is little-endian-only!
-            swd_seq(32, SWD_SEQUENCE_DIN, NULL, (uint8_t*)&val);
+            swd_seq(33, SWD_SEQUENCE_DIN, NULL, (uint8_t*)&val);
 
             for (size_t i = 0; i < 32; ++i) parity += ((uint32_t)val >> i) & 1;
-            if ((parity & 1) != ((val >> 33) & 1)) {
+            if ((parity & 1) != ((uint32_t)(val >> 32) & 1)) {
                 ack = DAP_TRANSFER_ERROR;
             }
             if (data) *data = (uint32_t)val;
@@ -251,7 +252,7 @@ uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
             parity = 0;
             for (size_t i = 0; i < 32; ++i) parity += (val >> i) & 1;
 
-            uint64_t out = val | ((uint64_t)(parity & 1) << 33);
+            uint64_t out = val | ((uint64_t)(parity & 1) << 32);
             // FIXME: this is little-endian-only!
             swd_seq(33, 0, (const uint8_t*)&out, NULL);
         }
@@ -287,7 +288,6 @@ uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
     }
 
     PIN_SWDIO_OUT_ENABLE();
-    // TODO: set SWDIO hi, no clk!
     PIN_SWDIO_SET_PIO();
     return ack;
 }

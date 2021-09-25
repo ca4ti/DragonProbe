@@ -12,6 +12,29 @@
 
 #define JTAG_PIO
 
+int jtagsm = -1, jtagoffset = -1;
+
+void PORT_OFF(void) {
+    if (jtagsm) {
+        pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, false);
+        pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, jtagsm);
+    }
+    if (jtagoffset)
+        pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program, jtagoffset);
+    jtagoffset = jtagsm = -1;
+
+    if (swdsm) {
+        pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, swdsm, false);
+        pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, swdsm);
+    }
+    if (swdoffset)
+        pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_swd_program, swdoffset);
+
+    sio_hw->gpio_oe_clr = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK |
+                          PINOUT_TDI_MASK  //| PINOUT_TDO_MASK
+                        | PINOUT_nTRST_MASK | PINOUT_nRESET_MASK;
+}
+
 #ifndef JTAG_PIO
 void PORT_JTAG_SETUP(void) {
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
@@ -54,11 +77,11 @@ void PORT_JTAG_SETUP(void) {
     iobank0_hw->io[PINOUT_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 }
 
-void PORT_OFF(void) {
+/*void PORT_OFF(void) {
     sio_hw->gpio_oe_clr = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK |
                           PINOUT_TDI_MASK  //| PINOUT_TDO_MASK
                         | PINOUT_nTRST_MASK | PINOUT_nRESET_MASK;
-}
+}*/
 
 void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     uint32_t n = info & JTAG_SEQUENCE_TCK;
@@ -101,7 +124,6 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     } else printf("%s", "\nno tdo\n");
 }
 #else
-int jtagsm = -1, jtagoffset = -1;
 
 void PORT_JTAG_SETUP(void) {
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
@@ -148,27 +170,6 @@ void PORT_JTAG_SETUP(void) {
         jtagoffset = pio_add_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program);
     dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, jtagoffset,
              50*1000, PINOUT_JTAG_TCK, PINOUT_JTAG_TDI, PINOUT_JTAG_TDO);
-}
-
-void PORT_OFF(void) {
-    if (jtagsm) {
-        pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, false);
-        pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, jtagsm);
-    }
-    if (jtagoffset)
-        pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program, jtagoffset);
-    jtagoffset = jtagsm = -1;
-
-    if (swdsm) {
-        pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, swdsm, false);
-        pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, swdsm);
-    }
-    if (swdoffset)
-        pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_swd_program, swdoffset);
-
-    sio_hw->gpio_oe_clr = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK |
-                          PINOUT_TDI_MASK  //| PINOUT_TDO_MASK
-                        | PINOUT_nTRST_MASK | PINOUT_nRESET_MASK;
 }
 
 static uint8_t bitswap(uint8_t in) {
