@@ -137,6 +137,7 @@ if(FAMILY STREQUAL "rp2040")
   endif()
 
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_jtag.pio)
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swd.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_uart_rx.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_manchester_encoding.pio)
 

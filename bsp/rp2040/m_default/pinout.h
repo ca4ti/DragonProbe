@@ -64,6 +64,7 @@
  * PIO:
  *   PIO0: (max. 4)
  *     JTAG	1
+ *     SWD	1
  *   PIO1: (max. 4)
  *     SWO	2
  *

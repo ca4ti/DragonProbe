@@ -440,13 +440,15 @@ __STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit) {
 Configure the SWDIO DAP hardware I/O pin to output mode. This function is
 called prior \ref PIN_SWDIO_OUT function calls.
 */
-__STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void) { sio_hw->gpio_oe_set = PINOUT_SWDIO_MASK; }
+//__STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void) { sio_hw->gpio_oe_set = PINOUT_SWDIO_MASK; }
+void PIN_SWDIO_OUT_ENABLE(void);
 
 /** SWDIO I/O pin: Switch to Input mode (used in SWD mode only).
 Configure the SWDIO DAP hardware I/O pin to input mode. This function is
 called prior \ref PIN_SWDIO_IN function calls.
 */
-__STATIC_FORCEINLINE void PIN_SWDIO_OUT_DISABLE(void) { sio_hw->gpio_oe_clr = PINOUT_SWDIO_MASK; }
+//__STATIC_FORCEINLINE void PIN_SWDIO_OUT_DISABLE(void) { sio_hw->gpio_oe_clr = PINOUT_SWDIO_MASK; }
+void PIN_SWDIO_OUT_DISABLE(void);
 
 // TDI Pin I/O ---------------------------------------------
 
@@ -635,6 +637,8 @@ __STATIC_INLINE uint8_t RESET_TARGET(void) {
 }
 
 ///@}
+
+extern int swdsm, swdoffset, jtagsm, jtagoffset;
 
 #endif /* __DAP_CONFIG_H__ */
 

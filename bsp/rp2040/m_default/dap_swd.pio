@@ -1,0 +1,66 @@
+; vim: set et:
+
+.program dap_swd
+.side_set 1 opt
+
+; Pin assignments:
+; - SWCLK is side-set pin 0
+; - SWDIO is OUT pin 0 and IN pin 0
+;
+; Autopush and autopull must be enabled, and the serial frame size is set by
+; configuring the push/pull threshold (32 bits). Shift should be left
+;
+; data is captured on the leading edge of each SWCLK pulse, and
+; transitions on the trailing edge, or some time before the first leading edge.
+
+start_thing:
+    pull
+    out y,  1
+    out x, 31         side 0
+    jmp !y start_swdo side 0
+
+start_swdi:
+loop_swdi:
+    in pins, 1        side 1
+    jmp x-- loop_swdi side 0
+end_swdi:
+    push              side 0
+    jmp start_thing   side 0
+
+start_swdo:
+loop_swdo:
+    out pins, 1       side 0
+    jmp x-- loop_swdo side 1
+end_swdo:
+    jmp start_thing   side 0
+
+% c-sdk {
+static inline void dap_swd_program_init(PIO pio, uint sm, uint offset,
+        uint16_t freq, uint pin_swclk, uint pin_swdio) {
+    pio_sm_config c = dap_swd_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, pin_swdio, 1);
+    sm_config_set_in_pins(&c, pin_swdio);
+    sm_config_set_sideset_pins(&c, pin_swclk);
+    // (shift to left, autopush/pull, threshold=nbits)
+    sm_config_set_out_shift(&c, false, true, 8); // shift left feature is broken???
+    sm_config_set_in_shift(&c, false, true, 8);
+    sm_config_set_clkdiv(&c, (float)clock_get_hz(clk_sys) / (2 * freq));
+
+    // SWCLK is high, SWDIO is input (pull hi)
+    pio_sm_set_pins_with_mask(pio, sm,
+            (1u << pin_swclk),
+            (1u << pin_swclk) | (1u << pin_swdio));
+    pio_sm_set_pindirs_with_mask(pio, sm,
+            (1u << pin_swclk) | (0u << pin_swdio),
+            (1u << pin_swclk) | (1u << pin_swdio));
+    pio_gpio_init(pio, pin_swclk);
+    pio_gpio_init(pio, pin_swdio);
+
+    // swd is synchronous, so bypass input synchroniser to reduce input delay.
+    hw_set_bits(&pio->input_sync_bypass, 1u << pin_swdio);
+    gpio_set_pulls(pin_swclk, false, true); // SWDIO is pulled up
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+%}

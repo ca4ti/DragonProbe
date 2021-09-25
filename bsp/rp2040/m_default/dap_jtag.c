@@ -7,10 +7,8 @@
 #include "DAP_config.h"
 #include <DAP.h>
 
-#include "tusb_config.h"
-#include <tusb.h>
-
 #include "dap_jtag.pio.h"
+#include "dap_swd.pio.h"
 
 #define JTAG_PIO
 
@@ -103,7 +101,7 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     } else printf("%s", "\nno tdo\n");
 }
 #else
-static int jtagsm = -1, offset = -1;
+int jtagsm = -1, jtagoffset = -1;
 
 void PORT_JTAG_SETUP(void) {
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
@@ -145,17 +143,28 @@ void PORT_JTAG_SETUP(void) {
     iobank0_hw->io[PINOUT_JTAG_nTRST].ctrl  = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
     iobank0_hw->io[PINOUT_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 
-    jtagsm = pio_claim_unused_sm(PINOUT_JTAG_PIO_DEV, true);
-    offset = pio_add_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program);
-    dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, offset,
+    if (jtagsm == -1) jtagsm = pio_claim_unused_sm(PINOUT_JTAG_PIO_DEV, true);
+    if (jtagoffset == -1)
+        jtagoffset = pio_add_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program);
+    dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, jtagoffset,
              50*1000, PINOUT_JTAG_TCK, PINOUT_JTAG_TDI, PINOUT_JTAG_TDO);
 }
 
 void PORT_OFF(void) {
-    pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, false);
-    pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, jtagsm);
-    pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program, offset);
-    offset = jtagsm = -1;
+    if (jtagsm) {
+        pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, false);
+        pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, jtagsm);
+    }
+    if (jtagoffset)
+        pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program, jtagoffset);
+    jtagoffset = jtagsm = -1;
+
+    if (swdsm) {
+        pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, swdsm, false);
+        pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, swdsm);
+    }
+    if (swdoffset)
+        pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_swd_program, swdoffset);
 
     sio_hw->gpio_oe_clr = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK |
                           PINOUT_TDI_MASK  //| PINOUT_TDO_MASK
@@ -201,10 +210,9 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     }
     printf("%c", '\n');*/
 
-    PINOUT_JTAG_PIO_DEV->txf[jtagsm] = (uint8_t)(n - 1);
+    pio_sm_put_blocking(PINOUT_JTAG_PIO_DEV, jtagsm, (uint8_t)(n - 1));
 
-    size_t oi = 0, ii = 0;
-    while (txremain || rxremain) {
+    for (size_t oi = 0, ii = 0; txremain || rxremain; tight_loop_contents()) {
         if (txremain && !pio_sm_is_tx_fifo_full(PINOUT_JTAG_PIO_DEV, jtagsm)) {
             *tx = bitswap(tdi[ii]);
             --txremain;
@@ -243,22 +251,28 @@ static void jtag_seq(uint32_t num, int tms, const void* tdi, void* tdo) {
     static uint64_t last_bit = ~(uint64_t)0;
     uint64_t devnull = 0;
 
-    bool notdi, notdo;
+    bool notdi = tdi == NULL, notdo = tdo == NULL;
 
-    if ((notdi = (tdi == NULL))) tdi = &last_bit;
-    if ((notdo = (tdo == NULL))) tdo = &devnull;
-    else tms |= JTAG_SEQUENCE_TDO;
+    if (!notdo) tms |= JTAG_SEQUENCE_TDO;
+
+    const void* jdi;
+    void* jdo;
 
     uint32_t nreal;
     for (uint32_t i = 0; i < num; i += nreal) {
         uint32_t nmod = (num - i) & 63;
         nreal = nmod ? nmod : 64;
 
-        JTAG_Sequence(nmod | tms, (const uint8_t*)tdi + (i >> 3), (uint8_t*)tdo + (i >> 3));
+        jdi = notdi ? (const void*)&last_bit : ((const uint8_t*)tdi + (i >> 3));
+        jdo = notdo ? (      void*)&devnull  : ((      uint8_t*)tdo + (i >> 3));
+
+        JTAG_Sequence(nmod | tms, jdi, jdo);
     }
 
-    uint8_t lastbyte = *((const uint8_t*)tdi + (num >> 3));
-    last_bit = (lastbyte & (1 << (num & 7))) ? ~(uint64_t)0 : (uint64_t)0;
+    if (tdi) {
+        uint8_t lastbyte = *((const uint8_t*)tdi + (((num + 7) >> 3)) - 1);
+        last_bit = (lastbyte & (1 << (num & 7))) ? ~(uint64_t)0 : (uint64_t)0;
+    }
 }
 
 uint32_t JTAG_ReadIDCode(void) {

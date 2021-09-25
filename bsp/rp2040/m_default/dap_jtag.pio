@@ -1,5 +1,8 @@
 ; vim: set et:
 
+; code mostly from https://github.com/phdussud/pico-dirtyJtag/blob/master/jtag.pio
+; which doesn't have a license...
+
 .program dap_jtag
 .side_set 1 opt
 

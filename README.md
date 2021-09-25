@@ -71,15 +71,17 @@ libco is licensed under the [ISC license](https://opensource.org/licenses/ISC).
 
 Some code has been incorporated from the [DapperMime](https://github.com/majbthrd/DapperMime),
 [picoprobe-sump](https://github.com/perexg/picoprobe-sump),
-[JTAGenum](https://github.com/cyphunk/JTAGenum) and
-[SWDscan](https://github.com/szymonh/SWDscan)
+[JTAGenum](https://github.com/cyphunk/JTAGenum),
+[SWDscan](https://github.com/szymonh/SWDscan) and the [Raspberry Pico
+examples](https://github.com/raspberrypi/pico-examples/)
 projects. These respective licenses can be found in
 [this](./LICENSE.dappermime), [this](./LICENSE.picoprobe-sump),
-[this](./LICENSE.jtagenum) and [this](./LICENSE.swdscan) file.
+[this](./LICENSE.jtagenum), [this](./LICENSE.swdscan) and
+[this](./LICENSE.pico-examples) file.
 
 ## TODO
 
-- [ ] **A (VID and) PID, and maybe better subclass & protocol IDs for the vnd cfg itf**
+- [ ] **A (VID and) PID**
 - [ ] GPL license headers on every file
 - [x] Debug interface to send printf stuff directly to USB, instead of having
       to use the UART interface as a loopback thing.
@@ -87,7 +89,7 @@ projects. These respective licenses can be found in
 - [x] I2C support ~~by emulating the I2C Tiny USB~~
   - [x] Expose RP2040-internal temperature ADC on I2C-over-USB bus?
   - [ ] ~~Does SMBus stuff need special treatment here?~~ ~~No.~~  Actually, some
-    parts do, but, laziness.
+        parts do, but, laziness.
   - [x] 10-bit I2C address support (Needs poking at the Pico SDK, as it only
         supports 7-bit ones).
 - [ ] **1-wire**
@@ -98,7 +100,6 @@ projects. These respective licenses can be found in
     - interface 1 ("B"): index 2, epin 0x04, epout 0x83
     - interface 2 ("C"): index 3, epin 0x06, epout 0x85
     - interface 3 ("D"): index 4, epin 0x08, epout 0x87
-  - ~~or, FX2 emulation mode??? (useful links: https://sigrok.org/wiki/Fx2lafw ; https://sigrok.org/wiki/CWAV_USBee_SX/Info )~~ has a ROM/fw and everything, so, maybe not
 - [ ] "Complex Trigger" mode for aiding with glitching triggers, by turning
       UART/SPI/I2C/eMMC/... sequences into a GPIO toggle
 - [ ] Mode where you can define custom PIO stuff for custom pinouts/protocols??????

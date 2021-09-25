@@ -92,7 +92,7 @@ __WEAK void SWJ_Sequence (uint32_t count, const uint8_t *data) {
 //   swdi:   pointer to SWDIO captured data
 //   return: none
 #if (DAP_SWD != 0)
-void SWD_Sequence (uint32_t info, const uint8_t *swdo, uint8_t *swdi) {
+__WEAK void SWD_Sequence (uint32_t info, const uint8_t *swdo, uint8_t *swdi) {
   uint32_t val;
   uint32_t bit;
   uint32_t n, k;
