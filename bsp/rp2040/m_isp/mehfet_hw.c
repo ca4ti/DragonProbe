@@ -56,8 +56,12 @@ void mehfet_hw_disconnect(void) {
     sbw_deinit();
 }
 
-void mehfet_hw_reset_target(void) {
-
+void mehfet_hw_set_clkspeed(bool fast) {
+    if (fast) {
+        sbw_set_freq(true, 350e3);
+    } else {
+        sbw_set_freq(false, 50e3);
+    }
 }
 uint8_t mehfet_hw_get_old_lines(void) {
     return (sbw_get_last_tclk() ? 1 : 0)
@@ -109,12 +113,6 @@ enum mehfet_resettap_status mehfet_hw_reset_tap(enum mehfet_resettap_flags flags
                 break;
             }
         }
-    }
-
-    if (flags & mehfet_rsttap_highspeed) {
-        sbw_set_freq(true, 350e3);
-    } else {
-        sbw_set_freq(false, 50e3);
     }
 
     return rv;

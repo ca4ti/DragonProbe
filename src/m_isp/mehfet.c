@@ -47,19 +47,19 @@ static uint8_t read_byte(void) {
     rxpos = 0;
 
     // empty tinyusb internal buffer
-    if (tud_vendor_n_mounted(VND_N_CFG)) {
-        while (tud_vendor_n_available(VND_N_CFG)) {
-            tud_vendor_n_read(VND_N_CFG, rx_buf, sizeof rx_buf);
+    if (tud_vendor_n_mounted(VND_N_MEHFET)) {
+        while (tud_vendor_n_available(VND_N_MEHFET)) {
+            tud_vendor_n_read(VND_N_MEHFET, rx_buf, sizeof rx_buf);
         }
     }
 }*/
 static void write_flush(void) {
     // TODO: is this needed?
-    while (tud_vendor_n_write_available(VND_N_CFG) < txpos) {
+    while (tud_vendor_n_write_available(VND_N_MEHFET) < txpos) {
         thread_yield();
     }
 
-    tud_vendor_n_write(VND_N_CFG, tx_buf, txpos);
+    tud_vendor_n_write(VND_N_MEHFET, tx_buf, txpos);
     txpos = 0;
 }
 static void write_byte(uint8_t v) {
@@ -79,15 +79,19 @@ static struct cmdlen read_cmd_len(void) {
             lastbyte = cmd;
     uint32_t l = 0;
 
+    //printf("cmd=%02x\n", cmd);
+
     for (size_t i = 0; (i < 4) && (lastbyte & 0x80); ++i) {
         lastbyte = read_byte();
+        //printf("lenbyte=%02x\n");
 
         uint8_t mask = (i == 3) ? 0xff : 0x7f;
         l |= (lastbyte & mask) << (i * 7);
     }
 
+    //printf("len=0x%x\n");
     plpos = 0;
-    return (struct cmdlen){ .len = l, .cmd = cmd };
+    return (struct cmdlen){ .len = l, .cmd = cmd & 0x7f };
 }
 
 static inline uint8_t read_pl(void) {
@@ -153,6 +157,7 @@ void mehfet_task(void) {
 
     switch (cmdhdr.cmd) {
     case mehfet_info:
+        //printf("in info cmd\n");
         if (cmdhdr.len != 0) write_resp_str(mehfet_badargs, "Info takes no parameters");
         else {
             // TODO: add flag once Loop has been implemented
@@ -179,6 +184,7 @@ void mehfet_task(void) {
 
             memcpy(&buf[8], name, bufsize - 8);
 
+            //printf("infocmd done\n");
             write_resp(mehfet_ok, bufsize, buf);
         }
         break;
@@ -270,11 +276,11 @@ void mehfet_task(void) {
             write_resp(mehfet_ok, 0, NULL);
         }
         break;
-    case mehfet_reset_target:
-        if (cmdhdr.len != 0) write_resp_str(mehfet_badargs, "ResetTarget takes no parameters");
+    case mehfet_set_clkspeed:
+        if (cmdhdr.len != 1) write_resp_str(mehfet_badargs, "SetClkSpeed takes one parameter byte");
         else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
-            mehfet_hw_reset_target();
+            mehfet_hw_set_clkspeed(read_pl() != 0);
             write_resp(mehfet_ok, 0, NULL);
         }
         break;

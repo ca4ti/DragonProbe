@@ -18,7 +18,7 @@ enum mehfet_cmd {
     mehfet_connect       = 0x03,
     mehfet_disconnect    = 0x04,
     mehfet_delay         = 0x05,
-    mehfet_reset_target  = 0x06,
+    mehfet_set_clkspeed  = 0x06,
     mehfet_get_old_lines = 0x07,
     mehfet_tdio_seq      = 0x08,
     mehfet_tms_seq       = 0x09,
@@ -90,7 +90,7 @@ void mehfet_hw_delay_us(uint32_t t);
 void mehfet_hw_timer_start(bool us, uint32_t to_reach);
 bool mehfet_hw_timer_reached(void);
 
-void mehfet_hw_reset_target(void);
+void mehfet_hw_set_clkspeed(bool fast);
 uint8_t mehfet_hw_get_old_lines(void);
 
 void mehfet_hw_tdio_seq(uint32_t ncyc, bool tmslvl, const uint8_t* tdi, uint8_t* tdo);
