@@ -3,11 +3,14 @@
 #ifndef PINOUT_H_
 #define PINOUT_H_
 
+// NOTE NOTE NOTE: as mode2 shares some stuff with mode1 (CMSIS-DAP, UART),
+//                 make sure that pinouts are compatible etc.
+
 // UART config
 #define PINOUT_UART_TX         8
 #define PINOUT_UART_RX         9
-#define PINOUT_UART_CTS       10
-#define PINOUT_UART_RTS       11
+/*#define PINOUT_UART_CTS       10
+#define PINOUT_UART_RTS       11*/
 #define PINOUT_UART_INTERFACE uart1
 #define PINOUT_UART_BAUDRATE  115200
 
@@ -21,17 +24,10 @@
 #define PINOUT_JTAG_PIO_DEV pio0
 #define PINOUT_JTAG_SWO_DEV pio0
 
-// SPI config
-#define PINOUT_SPI_DEV  spi1
-#define PINOUT_SPI_SCLK 14
-#define PINOUT_SPI_MOSI 15
-#define PINOUT_SPI_MISO 12
-#define PINOUT_SPI_nCS  13
-
-// I2C config
-#define PINOUT_I2C_DEV i2c0
-#define PINOUT_I2C_SCL 21
-#define PINOUT_I2C_SDA 20
+// SBW config
+#define PINOUT_SBW_PIO pio1
+#define PINOUT_SBW_TCK  14
+#define PINOUT_SBW_TDIO 15
 
 // LED config
 
@@ -69,19 +65,18 @@
  *
  *     PIO0 IS NOW FULL!
  *   PIO1: (max. 4 SM, max. 32 insn)
+ *     SBW	1	32
  *
  * UART: stdio
  *   0: stdio
  *   1: USB-CDC/DAP-UART
  *
  * SPI:
- *   1: SPI access
  *
  * I2C:
- *   0: I2C access
  *
  * ADC:
- *   temperature sensor
+ *
  */
 
 #endif

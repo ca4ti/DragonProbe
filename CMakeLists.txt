@@ -77,6 +77,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/cdc_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/tempsensor.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_default/vnd_i2ctinyusb.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_isp/_isp.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/m_isp/mehfet.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_jscan/_jscan.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_jscan/jscan.c
   ${CMAKE_CURRENT_SOURCE_DIR}/src/m_sump/_sump.c
@@ -89,6 +91,8 @@ target_sources(${PROJECT} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/i2c_tinyusb.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/spi_serprog.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/tempsensor.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_isp/mehfet_hw.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_isp/sbw_hw.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_jscan/jscan_hw.c
   ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_sump/sump_hw.c
 )
@@ -140,6 +144,7 @@ if(FAMILY STREQUAL "rp2040")
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/dap_swd.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_uart_rx.pio)
   pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_default/swo_manchester_encoding.pio)
+  pico_generate_pio_header(${PROJECT} ${CMAKE_CURRENT_SOURCE_DIR}/bsp/${FAMILY}/m_isp/sbw.pio)
 
   pico_add_extra_outputs(${PROJECT})
 

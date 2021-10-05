@@ -1,0 +1,206 @@
+
+.program sbw
+.side_set 1
+
+; Pin assignments:
+; - SBWTCK is side-set pin 0
+; - SBWTDIO is OUT/IN pin 0
+;
+; Autopush and autopull must be enabled, set to 8
+; SBWTDIO input should not be guarded with sync flipflops, as TDO xfers are synchronous
+
+PUBLIC start:
+    ; SBWTCK hi to not lose/reset debug mode
+    pull                        side 1 ; clear leftover OSR bits, pull in new data
+startloop:
+    out exec, 16                side 1 ; use for set y, 0/1 ; in x, num ; jmp addr
+    jmp startloop               side 1
+
+; "subroutine" "calling convention"
+; * set y, 0/1 : initial TMS (sbw_seq) / TDI (sbw_tms_seq) / TCLK (sbw_tclk_burst) value
+; * in  x, num : number of JTAG cycles (sbw_seq/sbw_tms_seq) / TCLK half-cycles (sbw_tclk_burst)
+; * jmp subroutine
+; * ^ all 'side 1'
+
+; y: static TMS value to use
+; x: number of JTAG clock cycles minus one
+; TDI output gets sourced bit by bit from the TX FIFO
+; TDO input gets sent bit by bit to the RX FIFO
+PUBLIC sbw_seq:
+sbw_seq_iter:
+    ; tms slot:
+        set pindirs, 1          side 1      ; SBWTDIO is now output
+        mov pins,    y          side 1      ; output static TMS value
+        nop                     side 0 [1]  ; target reads TMS at falling edge
+    ; tdi slot:
+        out pins, 1             side 1 [1]  ; output TDI from FIFO
+        nop                     side 0 [1]  ; target reads TDI at falling edge
+    ; tdo slot:
+        set pindirs, 0          side 1 [1]  ; we need some clock pulse
+        nop                     side 0      ; give target some time to drive IO
+        in pins, 1              side 0      ; input TDO
+
+        jmp x--, sbw_seq_iter   side 1      ; also gives target some time to stop driving IO
+        ; NOTE: there's a glitch: if TMS=TDO!=TDI and !=TDI_next,
+        ;       then there's a short glitch (wrong voltage level) in the
+        ;       TDO->TMS high clock phase. it's benign.
+
+    push                        side 1      ; flush ISR
+    jmp start                   side 1
+
+
+; y: static TDI value to use
+; x: number of JTAG clock cycles minus one
+; TMS output gets sourced bit by bit from the TX FIFO
+PUBLIC sbw_tms_seq:
+    ; tms slot
+        set pindirs, 1          side 1      ; SBWTDIO is now output
+        out pins, 1             side 1      ; output TMS from FIFO
+        nop                     side 0 [1]  ; target reads TMS at falling edge
+    ; tdi slot
+        mov pins, y             side 1 [1]  ; output static TDI value
+        nop                     side 0 [1]  ; target reads TDI at falling edge
+    ; tdo slot
+        set pindirs, 0          side 1 [1]
+        jmp x--, sbw_tms_seq    side 0 [1]  ; ignore returned TDO, go back
+
+    jmp start                   side 1
+
+
+; stationary SBWTCK values are:
+;             jmp
+; TMS TDI TDO |TMS TDI TDO
+; |   |   |   ||   |   |
+; 1100110011001110011001100 ...
+;
+; a full cycle takes 13 cycles, a single slot 4
+; the SM divider should be sysclk/(4*baudrate)
+; baudrate shouldn't exceed 20 MHz (typical value is 18 MHz?)
+; SBWTCK LOW phases shouldn't exceed 7us, so the baudrate should be at least 40 kHz
+
+; y: initial/previous TCLK value
+; x: number of TCLK *half*-cycles minus one!
+; TCLK values get sourced from the TX FIFO. best is to use a DMA with fixed
+;      source address, with value 0x55/0xaa (depending on y) for strobes, or
+;      0x00/0xff (and x=0) for a single set/clear.
+; alternatively, one could set the "load-bearing instruction" to a
+; "set pins, 0/1 side 1 [12]" for a fixed value useful for single sets/clears
+PUBLIC sbw_tclk_burst:
+        set pindirs, 1          side 1      ; SBWTDIO is now output
+    ; tms slot:
+        set pins,   0           side 1      ; stay in run-test/idle TAP state
+        nop                     side 0      ; target reads TMS at falling edge
+        mov pins,   y           side 0      ; during low phase, prepare TCLK
+    ; tdi slot:
+        nop                     side 1 [12] ; wait a bit
+    burst_loop:
+;PUBLIC sbw_tclk_burst_loadbearing_insn:
+        out pins, 1             side 1 [12] ; in the middle of TDI hiphase: do TCLK
+        jmp x--, burst_loop     side 1 [12]
+        nop                     side 0 [1]  ; need a low clock edge for TDO
+    ; tdo slot:
+        set pindirs, 0          side 1 [1]
+        nop                     side 0 [1]
+
+   ;jmp start                   side 1 ; not needed because of wrapping
+; 32 insns -- filling one entire PIO instruction memory
+
+; TODO: update this paragraph
+; a full TCLK cycle in this burst mode takes 24 PIOSM cycles. at a "standard"
+; baudrate of 18 MHz, this ends up being 375 kHz, which is in the required
+; range when doing eg. flash programming. at the max baudrate (20 MHz), the
+; TCLK speed is 417 kHz, which is still ok. max TCLK would be, if PIOSM freq is
+; 125 MHz, 2.6 MHz, which is good enough imo
+; TODO: determine minimum baudrate for stable TCLK (12 MHz?)
+
+
+% c-sdk {
+static inline void sbw_pio_init(PIO pio, uint sm, uint prog_offs,
+        float freq, uint pin_sbwclk, uint pin_sbwio) {
+    if (freq < 72e3) freq = 72e3;
+    if (freq > 20e6) freq = 20e6;
+
+    pio_sm_set_enabled(pio, sm, false);
+
+    pio_sm_config c = sbw_program_get_default_config(prog_offs);
+    sm_config_set_out_pins(&c, pin_sbwio, 1);
+    sm_config_set_set_pins(&c, pin_sbwio, 1);
+    sm_config_set_in_pins(&c, pin_sbwio);
+    sm_config_set_sideset_pins(&c, pin_sbwclk);
+    sm_config_set_out_shift(&c, false, true, 8);
+    sm_config_set_in_shift(&c, false, true, 8);
+    sm_config_set_clkdiv(&c, (float)clock_get_hz(clk_sys) / (4 * freq));
+    pio_sm_init(pio, sm, prog_offs, &c);
+
+    // SBWTDIO is low, SBWTCK is high, SBWTDIO is input by default
+    pio_sm_set_pindirs_with_mask(pio, sm,
+            (1u << pin_sbwclk) | (1u << pin_sbwio), (1u << pin_sbwclk) | (1u << pin_sbwio));
+
+    // need to do an extra set with sideset to make sure clk stays high and
+    // there's no glitch
+    pio_sm_exec(pio, sm, pio_encode_set(pio_pins, 1) | pio_encode_sideset(1, 1));
+
+    // SBW is mostly synchronous, bypass input synchroniser to reduce delay
+    hw_set_bits(&pio->input_sync_bypass, 1u << pin_sbwio);
+
+    gpio_set_pulls(pin_sbwio, false, true); // SBWTDIO is pulldn
+
+    pio_sm_set_enabled(pio, sm, true);
+
+    // set padsbank func to PIO *after* initing PIO, otherwise a glitch occurs
+    pio_gpio_init(pio, pin_sbwclk);
+    pio_gpio_init(pio, pin_sbwio );
+}
+
+// meant for sbw_seq/sbw_tms_seq
+static inline void sbw_pio_set_baudrate(PIO pio, uint sm, float freq) {
+    if (freq < 72e3) freq = 72e3;
+    if (freq > 20e6) freq = 20e6;
+
+    pio_sm_set_clkdiv(pio, sm, (float)clock_get_hz(clk_sys) / (4 * freq));
+}
+
+// meant for sbw_tclk_burst
+static inline void sbw_pio_set_tclkfreq(PIO pio, uint sm, float freq) {
+    if (freq < 250e3) freq = 250e3;
+    if (freq > 450e3) freq = 450e3;
+
+    pio_sm_set_clkdiv(pio, sm, (float)clock_get_hz(clk_sys) / (24 * freq));
+}
+
+static inline uint16_t sbw_pio_gen_setx(uint x) {
+    return pio_encode_set(pio_x, x) | pio_encode_sideset(1, 1) | (1<<12);
+}
+static inline uint16_t sbw_pio_gen_sety(uint y) {
+    return pio_encode_set(pio_y, y) | pio_encode_sideset(1, 1) | (1<<12);
+}
+static inline uint16_t sbw_pio_gen_outx(uint bits) {
+    return pio_encode_out(pio_x, bits) | pio_encode_sideset(1, 1) | (1<<12);
+}
+// subroutine is one of "sbw_offset_sbw_seq", "sbw_offset_sbw_tms_seq", "sbw_offset_sbw_tclk_burst"
+static inline uint16_t sbw_pio_gen_jmp(uint subroutine) {
+    return pio_encode_jmp(subroutine) | pio_encode_sideset(1, 1) | (1<<12);
+}
+
+/*static inline uint16_t sbw_pio_loadbearing_gen_outpins(void) {
+    return pio_encode_out(pio_pins, 1) | pio_encode_sideset(1, 1) | pio_encode_delay(12) | (1<<12);
+}
+static inline uint16_t sbw_pio_loadbearing_gen_setpins(uint value) {
+    return pio_encode_set(pio_pins, value) | pio_encode_sideset(1, 1) | pio_encode_delay(12) | (1<<12);
+}
+
+static inline void sbw_pio_loadbearing_set_outpins(PIO pio) {
+    pio->instr_mem[sbw_offset_sbw_tclk_burst_loadbearing_insn] =
+        sbw_pio_loadbearing_gen_outpins();
+}
+static inline void sbw_pio_loadbearing_set_setpins(PIO pio, uint value) {
+    pio->instr_mem[sbw_offset_sbw_tclk_burst_loadbearing_insn] =
+        sbw_pio_loadbearing_gen_setpins(value);
+}*/
+
+/*static inline bool sbw_pio_is_idle(PIO pio, uint sm, uint offset) {
+    return pio_sm_get_pc(pio, sm) < sbw_offset_sbw_seq + offset;
+}*/
+
+%}
+

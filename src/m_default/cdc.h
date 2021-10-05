@@ -2,7 +2,7 @@
 #ifndef CDC_H_
 #define CDC_H_
 
-#include "m_default/bsp-feature.h"
+/*#include "m_default/bsp-feature.h"*/
 
 /* BSP function prototypes for various USB-CDC interfaces */
 #ifdef DBOARD_HAS_UART

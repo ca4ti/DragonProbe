@@ -20,6 +20,6 @@
 #else
 #define CFG_TUD_CDC 2
 #endif
-#define CFG_TUD_VENDOR 1
+#define CFG_TUD_VENDOR 2
 
 #endif

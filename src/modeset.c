@@ -6,13 +6,13 @@
 #include "board.h" /* bsp_reset_bootloader() */
 #include "mode.h"
 
-extern struct mode m_01_default, m_03_jscan, m_04_sump;
+extern struct mode m_01_default, m_02_isp, m_03_jscan, m_04_sump;
 
 // clang-format off
 const struct mode* const mode_list[16] = {
     NULL, // dummy 0 entry
     &m_01_default, // entry 1 CANNOT be NULL!
-    NULL, // mode 2 (hw chip programming stuff) not implemented yet
+    &m_02_isp, //NULL, // mode 2 (hw chip programming stuff) not implemented yet
     &m_03_jscan,
     &m_04_sump,
     NULL, // terminating entry

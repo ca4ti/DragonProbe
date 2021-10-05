@@ -4,6 +4,8 @@
 #include <hardware/gpio.h>
 #include <hardware/pio.h>
 
+#include "util.h"
+
 #include "DAP_config.h"
 #include <DAP.h>
 
@@ -170,15 +172,6 @@ void PORT_JTAG_SETUP(void) {
         jtagoffset = pio_add_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program);
     dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, jtagoffset,
              50*1000, PINOUT_JTAG_TCK, PINOUT_JTAG_TDI, PINOUT_JTAG_TDO);
-}
-
-static uint8_t bitswap(uint8_t in) {
-    static const uint8_t lut[16] = {
-        0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
-        0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf
-    };
-
-    return (lut[in&0xf] << 4) | lut[in>>4];
 }
 
 void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {

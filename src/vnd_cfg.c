@@ -12,7 +12,7 @@
 
 #if CFG_TUD_VENDOR > 0
 static uint8_t rx_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
-static uint8_t tx_buf[CFG_TUD_VENDOR_TX_BUFSIZE];
+static uint8_t tx_buf[CFG_TUD_VENDOR_RX_BUFSIZE];
 
 static uint32_t rxavail, rxpos, txpos;
 
@@ -30,6 +30,7 @@ void vnd_cfg_set_itf_num(int itf) {
     VND_N_CFG = itf;
 }
 
+// TODO: this is duplicated several times over the codebase, maybe reduce this
 uint8_t vnd_cfg_read_byte(void) {
     while (rxavail <= 0) {
         if (!tud_vendor_n_mounted(VND_N_CFG) || !tud_vendor_n_available(VND_N_CFG)) {

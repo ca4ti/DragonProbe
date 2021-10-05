@@ -8,6 +8,8 @@
 #include "DAP_config.h"
 #include <DAP.h>
 
+#include "util.h"
+
 #include "dap_swd.pio.h"
 
 #define SWD_PIO
@@ -133,15 +135,6 @@ void PIN_SWDIO_OUT_DISABLE(void) {
 inline static void PIN_SWDIO_SET_PIO(void) {
     pio_sm_set_pins_with_mask(PINOUT_JTAG_PIO_DEV, swdsm,
             (1u << PINOUT_SWDIO), (1u << PINOUT_SWDIO));
-}
-
-static uint8_t bitswap(uint8_t in) {
-    static const uint8_t lut[16] = {
-        0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
-        0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf
-    };
-
-    return (lut[in&0xf] << 4) | lut[in>>4];
 }
 
 void SWD_Sequence(uint32_t info, const uint8_t* swdo, uint8_t* swdi) {

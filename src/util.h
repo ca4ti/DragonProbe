@@ -15,5 +15,7 @@ uint8_t get_unique_id_u8 (uint8_t * desc_str);
 uint8_t get_unique_id_u16(uint16_t* desc_str);
 // clang-format on
 
+uint8_t bitswap(uint8_t in);
+
 #endif
 

@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 
+#include "tusb_config.h"
 #include <tusb.h>
 
 #include "m_default/bsp-feature.h"
@@ -57,6 +58,7 @@ uint32_t sp_spi_get_buf_limit(void) {
     return sizeof(rx_buf) - 1;
 }
 
+// TODO: this is duplicated several times over the codebase, maybe reduce this
 static uint8_t read_byte_cdc(void) {
     while (rxavail <= 0) {
         if (!tud_cdc_n_connected(CDC_N_SERPROG) || !tud_cdc_n_available(CDC_N_SERPROG)) {

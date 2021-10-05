@@ -10,6 +10,7 @@ from .protocol import *
 
 FEATURES_OF_MODE = {
     1: ["UART", "CMSIS-DAP", "SPI", "I2C", "temperature sensor", "1-wire"],
+    2: ["UART", "CMSIS-DAP", "MehFET"],
     3: ["JTAG", "SWD"],
     4: ["SUMP"]
 }
