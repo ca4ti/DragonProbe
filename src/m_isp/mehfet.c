@@ -83,7 +83,7 @@ static struct cmdlen read_cmd_len(void) {
         lastbyte = read_byte();
 
         uint8_t mask = (i == 3) ? 0xff : 0x7f;
-        l |= (lastbyte & mask) << (i * 8);
+        l |= (lastbyte & mask) << (i * 7);
     }
 
     plpos = 0;
@@ -272,6 +272,7 @@ void mehfet_task(void) {
         break;
     case mehfet_reset_target:
         if (cmdhdr.len != 0) write_resp_str(mehfet_badargs, "ResetTarget takes no parameters");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             mehfet_hw_reset_target();
             write_resp(mehfet_ok, 0, NULL);
@@ -279,6 +280,7 @@ void mehfet_task(void) {
         break;
     case mehfet_get_old_lines:
         if (cmdhdr.len != 0) write_resp_str(mehfet_badargs, "GetOldLines takes no parameters");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint8_t v = mehfet_hw_get_old_lines();
             write_resp(mehfet_ok, 1, &v);
@@ -290,6 +292,7 @@ void mehfet_task(void) {
         // stack size is 512b
         else if (cmdhdr.len > 128 + 5) write_resp_str(mehfet_badargs,
                 "TdioSequence: too much data to process, can do max. 1024 bits (128B) at once");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint32_t ncyc = 0;
             ncyc |= (uint32_t)read_pl() << 0 ;
@@ -319,6 +322,7 @@ void mehfet_task(void) {
         // stack size is 512b
         else if (cmdhdr.len > 256 + 5) write_resp_str(mehfet_badargs,
                 "TmsSequence: too much data to process, can do max. 2048 bits (256B) at once");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint32_t ncyc = 0;
             ncyc |= (uint32_t)read_pl() << 0 ;
@@ -344,6 +348,7 @@ void mehfet_task(void) {
         break;
     case mehfet_tclk_edge:
         if (cmdhdr.len != 1) write_resp_str(mehfet_badargs, "TclkEdge takes one parameter byte");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint8_t newtclk = read_pl();
             mehfet_hw_tclk_edge(newtclk);
@@ -352,6 +357,7 @@ void mehfet_task(void) {
         break;
     case mehfet_tclk_burst:
         if (cmdhdr.len != 4) write_resp_str(mehfet_badargs, "TclkBurst takes 4 parameter bytes");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint32_t ncyc = 0;
             ncyc |= (uint32_t)read_pl() << 0 ;
@@ -367,6 +373,7 @@ void mehfet_task(void) {
     case mehfet_reset_tap:
         if (!(mehfet_hw_get_caps() & mehfet_cap_has_reset_tap)) write_resp(mehfet_nocaps, 0, NULL);
         else if (cmdhdr.len != 1) write_resp_str(mehfet_badargs, "ResetTAP takes one parameter byte");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint8_t v = mehfet_hw_reset_tap(read_pl());
             write_resp(mehfet_ok, 1, &v);
@@ -375,6 +382,7 @@ void mehfet_task(void) {
     case mehfet_irshift:
         if (!(mehfet_hw_get_caps() & mehfet_cap_has_irshift)) write_resp(mehfet_nocaps, 0, NULL);
         else if (cmdhdr.len != 1) write_resp_str(mehfet_badargs, "IRshift takes one parameter byte");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint8_t newir = read_pl();
             uint8_t oldir = mehfet_hw_shift_ir(newir);
@@ -387,6 +395,7 @@ void mehfet_task(void) {
                 "DRshift takes at least a bit count and some data (at least 5 bytes)");
         else if (cmdhdr.len > 128 + 4) write_resp_str(mehfet_badargs,
                 "DRshift: too much data to process, can do max. 1024 bits (128B)");
+        else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         else {
             uint32_t nbits = 0;
             nbits |= (uint32_t)read_pl() << 0 ;
@@ -412,6 +421,7 @@ void mehfet_task(void) {
     case mehfet_loop:
         // TODO
         write_resp_str(mehfet_nocaps, "not implemented yet, sorry");
+        //else if (connstat == mehfet_conn_none) write_resp(mehfet_badstate, 0, NULL);
         break;
 
     default:
