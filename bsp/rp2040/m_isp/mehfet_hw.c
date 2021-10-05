@@ -78,16 +78,46 @@ void mehfet_hw_tclk_burst(uint32_t ncyc) {
     sbw_tclk_burst(ncyc);
 }
 
-void mehfet_hw_reset_tap(void) {
-    // TDI always 1
-    // TMS=1,1,1,1,1,1    -- reset TAP state to initial
-    // TMS=0              -- test-logic-reset to run-test/idle
-    // TMS=1,0,1,0,1      -- perform fuse check
-    // TMS=1,0            -- back to run-test/idle (needed for SBW only)
+enum mehfet_resettap_status mehfet_hw_reset_tap(enum mehfet_resettap_flags flags) {
+    enum mehfet_resettap_status rv = 0;
 
-    //const uint16_t tms_seq = 0x1abf;//0x3f | (0<<6) | (0x15 << 7) | (0x1 << 12);
-    const uint8_t tms_seq[2] = {0xbf,0x1a};
-    sbw_tms_sequence(14, true, tms_seq);
+    if (flags & mehfet_rsttap_do_reset) {
+        // TDI always 1
+        // TMS=1,1,1,1,1,1    -- reset TAP state to initial
+        // TMS=0              -- test-logic-reset to run-test/idle
+        // TMS=1,0,1,0,1      -- perform fuse check
+        // TMS=1,0            -- back to run-test/idle (needed for SBW only)
+
+        //const uint16_t tms_seq = 0x1abf;//0x3f | (0<<6) | (0x15 << 7) | (0x1 << 12);
+        const uint8_t tms_seq[2] = {0xbf,0x1a};
+        sbw_tms_sequence(14, true, tms_seq);
+    }
+
+    if (flags & mehfet_rsttap_fuse_do) {
+        // TDI always 1
+        // TMS=01010110 // same sequence as above, but without TAP reset
+        const uint8_t tms_seq = 0x6a;
+        sbw_tms_sequence(8, true, &tms_seq);
+    }
+
+    if (flags & mehfet_rsttap_fuse_read) {
+        for (size_t i = 0; i < 3; ++i) {
+            mehfet_hw_shift_ir(0x14); // CNTRL_SIG_CAPTURE
+            uint16_t dr = mehfet_hw_shift_dr16(0xaaaa);
+            if (dr == 0x5555) {
+                rv |= mehfet_rsttap_fuse_blown;
+                break;
+            }
+        }
+    }
+
+    if (flags & mehfet_rsttap_highspeed) {
+        sbw_set_freq(true, 350e3);
+    } else {
+        sbw_set_freq(false, 50e3);
+    }
+
+    return rv;
 }
 
 uint8_t mehfet_hw_shift_ir(uint8_t newir) {

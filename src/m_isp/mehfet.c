@@ -366,10 +366,10 @@ void mehfet_task(void) {
 
     case mehfet_reset_tap:
         if (!(mehfet_hw_get_caps() & mehfet_cap_has_reset_tap)) write_resp(mehfet_nocaps, 0, NULL);
-        else if (cmdhdr.len != 0) write_resp_str(mehfet_badargs, "ResetTAP takes no parameters");
+        else if (cmdhdr.len != 1) write_resp_str(mehfet_badargs, "ResetTAP takes one parameter byte");
         else {
-            mehfet_hw_reset_tap();
-            write_resp(mehfet_ok, 0, NULL);
+            uint8_t v = mehfet_hw_reset_tap(read_pl());
+            write_resp(mehfet_ok, 1, &v);
         }
         break;
     case mehfet_irshift:

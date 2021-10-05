@@ -286,12 +286,12 @@ static void my_hid_set_report_cb(uint8_t instance, uint8_t report_id,
 #if CFG_TUD_CDC > 0
 static void my_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* line_coding) {
     switch (itf) {
-/*#ifdef DBOARD_HAS_UART
+#ifdef DBOARD_HAS_UART
         case CDC_N_UART:
             cdc_uart_set_coding(line_coding->bit_rate, line_coding->stop_bits,
                     line_coding->parity, line_coding->data_bits);
             break;
-#endif*/
+#endif
 #ifdef USE_USBCDC_FOR_STDIO
         case CDC_N_STDIO:
             stdio_usb_line_coding_cb(line_coding);
