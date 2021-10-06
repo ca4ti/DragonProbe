@@ -1,9 +1,11 @@
 // vim: set et:
 
+#include <hardware/gpio.h>
 #include <hardware/timer.h>
 #include <pico/time.h>
 
 #include "util.h"
+#include "m_isp/pinout.h"
 #include "m_isp/sbw_hw.h"
 
 #include "m_isp/mehfet.h"
@@ -29,7 +31,9 @@ void mehfet_hw_init(void) {
 void mehfet_hw_deinit(void) {
     // shrug
     sbw_deinit(); // can't hurt
-    // TODO: reset pin gpio mux stuff
+
+    gpio_set_function(PINOUT_SBW_TCK , GPIO_FUNC_NULL);
+    gpio_set_function(PINOUT_SBW_TDIO, GPIO_FUNC_NULL);
 }
 
 __attribute__((__const__))
@@ -45,8 +49,7 @@ const char* /*error string, NULL if no error*/ mehfet_hw_connect(enum mehfet_con
     sbw_preinit(conn & mehfet_conn_nrstmask);
 
     if (!sbw_init()) {
-        // TODO: release target
-        // TODO: reset pin gpio mux stuff
+        mehfet_hw_deinit();
         return "SBW PIO init failed";
     }
 

@@ -249,6 +249,7 @@ void mehfet_task(void) {
         if (cmdhdr.len != 0) write_resp_str(mehfet_badargs, "Disconnect takes no parameters");
         else {
             if (connstat != mehfet_conn_none) mehfet_hw_disconnect();
+            connstat = mehfet_conn_none;
 
             write_resp(mehfet_ok, 0, NULL);
         }

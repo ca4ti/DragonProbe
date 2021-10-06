@@ -59,8 +59,8 @@ enum mehfet_conn {
     mehfet_conn_jtag_entryseq = 2,
     mehfet_conn_sbw_entryseq  = 3,
 
-    mehfet_conn_typemask = 0x7f,
-    mehfet_conn_nrstmask = 0x80
+    mehfet_conn_typemask   = 0x7f,
+    mehfet_conn_nrstmask   = 0x80
 };
 
 enum mehfet_resettap_flags {

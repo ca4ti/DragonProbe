@@ -15,8 +15,6 @@
 #include "sbw.pio.h"
 
 void sbw_preinit(bool nrst) {
-    // TODO: nrst
-
     //SLAU320AJ 2.3.1.1 ; SLAS722G p36:
     // TEST/SBWTCK low for >100 us: reset debug state
     // set nRST/NMI/SBWTDIO low: avoid sending an NMI when the debugger detaches
@@ -25,14 +23,7 @@ void sbw_preinit(bool nrst) {
     // TEST low for >0.025us <7us: latch on "we want SBW" signal
     // TEST high again for >1 us: ready to SBW
 
-    //gpio_put(PINOUT_SBW_TCK , false);
-    gpio_put(PINOUT_SBW_TDIO, true );
-    gpio_put(PINOUT_SBW_TDIO, false);
-    gpio_set_dir(PINOUT_SBW_TCK , true);
-    gpio_set_dir(PINOUT_SBW_TDIO, true);
-    gpio_set_function(PINOUT_SBW_TCK , GPIO_FUNC_SIO);
-    gpio_set_function(PINOUT_SBW_TDIO, GPIO_FUNC_SIO);
-
+    // old impl, doesn't work, don't use
     /*// TCK, TDIO now low
     busy_wait_ms(4);//busy_wait_us_32(150); // reset debug state while keeping CPU in reset
 
@@ -44,6 +35,18 @@ void sbw_preinit(bool nrst) {
     busy_wait_us_32(3);
     gpio_put(PINOUT_SBW_TCK , true ); // start SBW stuff
     busy_wait_ms(5);//busy_wait_us_32(100); // wait a bit more*/
+
+    // TODO: test #if 0 & switch over if it works
+#if 1
+    (void)nrst; // always assumed nrst=false here :/
+    // from slau320 sources
+    //gpio_put(PINOUT_SBW_TCK , false);
+    gpio_put(PINOUT_SBW_TDIO, true ); // FIXME: ummmm TCK ???
+    gpio_put(PINOUT_SBW_TDIO, false);
+    gpio_set_dir(PINOUT_SBW_TCK , true);
+    gpio_set_dir(PINOUT_SBW_TDIO, true);
+    gpio_set_function(PINOUT_SBW_TCK , GPIO_FUNC_SIO);
+    gpio_set_function(PINOUT_SBW_TDIO, GPIO_FUNC_SIO);
 
     gpio_put(PINOUT_SBW_TCK , false);
     gpio_put(PINOUT_SBW_TDIO, true);
@@ -69,6 +72,48 @@ void sbw_preinit(bool nrst) {
 
     // "phase 5"
     busy_wait_ms(5);
+
+
+    //// new impl:
+#else
+    // from MSP430.DLL 'BIOS' (FETUIF?) sources
+    // can handle SBW/JTAG selection and nRST stuff
+
+    // TEST = TCK
+    // nRESET = TDIO = NMI
+    gpio_put(PINOUT_SBW_TCK , true/*false*/); // tck = test
+    gpio_put(PINOUT_SBW_TDIO, nrst/*true*/);
+    gpio_set_dir(PINOUT_SBW_TCK , true);
+    gpio_set_dir(PINOUT_SBW_TDIO, true);
+    gpio_set_function(PINOUT_SBW_TCK , GPIO_FUNC_SIO);
+    gpio_set_function(PINOUT_SBW_TDIO, GPIO_FUNC_SIO);
+    busy_wait_ms(4/*1*/); // 4?
+
+    gpio_put(PINOUT_SBW_TDIO, nrst);
+    busy_wait_us_32(1);
+    gpio_put(PINOUT_SBW_TCK , true);
+    // activate test logic
+    busy_wait_ms(20/*100*/); // 20 should be ok here I think?
+
+    // "phase 1"
+    gpio_put(PINOUT_SBW_TDIO, true); // false here if you want JTAG
+    busy_wait_us_32(40); // 60?
+
+    // "phase 2"
+    gpio_put(PINOUT_SBW_TCK, false); // ??? // true for JTAG?
+
+    // "phase 3"
+    // something (TDIO hi?) to do if RSTLOW & JTAG?
+    busy_wait_us_32(1);
+
+    // "phase 4"
+    gpio_put(PINOUT_SBW_TCK , true); // ??? // false for JTAG?
+    busy_wait_us_32(40/*60*/); // 40 should be ok here I think?
+
+    // phase 5
+    // something (TDIO hi?) to do if RSTHIGH & JTAG?
+    busy_wait_ms(5);
+#endif
 }
 
 static int sbw_piosm = -1, sbw_offset = -1;

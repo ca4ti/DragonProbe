@@ -26,8 +26,8 @@
 
 // SBW config
 #define PINOUT_SBW_PIO pio1
-#define PINOUT_SBW_TCK  14
-#define PINOUT_SBW_TDIO 15
+#define PINOUT_SBW_TCK  10
+#define PINOUT_SBW_TDIO 11
 
 // LED config
 
