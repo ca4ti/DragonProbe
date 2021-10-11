@@ -101,6 +101,7 @@ void SWD_Sequence (uint32_t info, const uint8_t *swdo, uint8_t *swdi) {
 #else
 
 void PORT_SWD_SETUP(void) {
+    //printf("swd setup\n");
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
 
     /* set to default high level */
@@ -114,7 +115,7 @@ void PORT_SWD_SETUP(void) {
     iobank0_hw->io[PINOUT_SWCLK].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
     iobank0_hw->io[PINOUT_SWDIO].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 
-    if (swdsm == -1) swdsm = pio_claim_unused_sm(PINOUT_JTAG_PIO_DEV, true);
+    if (swdsm == -1) swdsm = pio_claim_unused_sm(PINOUT_JTAG_PIO_DEV, false);
     if (swdoffset == -1)
         swdoffset = pio_add_program(PINOUT_JTAG_PIO_DEV, &dap_swd_program);
     dap_swd_program_init(PINOUT_JTAG_PIO_DEV, swdsm, swdoffset,
@@ -138,6 +139,7 @@ inline static void PIN_SWDIO_SET_PIO(void) {
 }
 
 void SWD_Sequence(uint32_t info, const uint8_t* swdo, uint8_t* swdi) {
+    //printf("swd sequence\n");
     pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, swdsm, true);
     //busy_wait_us_32(0);
 
@@ -209,7 +211,8 @@ void SWD_Sequence(uint32_t info, const uint8_t* swdo, uint8_t* swdi) {
 }
 #endif
 
-void swd_seq(uint32_t count, uint32_t flags, const uint8_t* swdo, uint8_t* swdi) {
+static void swd_seq(uint32_t count, uint32_t flags, const uint8_t* swdo, uint8_t* swdi) {
+    //printf("swd seqbase count=%lu\n", count);
     static uint64_t last_bit = ~(uint64_t)0;
     uint64_t devnull = 0;
 
@@ -245,24 +248,38 @@ void swd_seq(uint32_t count, uint32_t flags, const uint8_t* swdo, uint8_t* swdi)
         uint8_t lastbyte = swdo[((count + 7) >> 3) - 1];
         last_bit = (lastbyte & (1 << (count & 7))) ? ~(uint64_t)0 : (uint64_t)0;
     }
+
+    //printf("swd seqbase end\n");
 }
 
+void jtag_tms_seq(uint32_t count, const uint8_t* data);
+
 void SWJ_Sequence(uint32_t count, const uint8_t* data) {
-    swd_seq(count, 0, data, NULL);
+    //printf("swj sequence\n");
 
-    /*for (uint32_t i = 0, k = 0; i < count; ++i) {
-        if ((i & 7) == 0) {
-            val = data[k];
-            ++k;
-        }
+    // we can't just do a swd_seq() call here, as the debugger might be in JTAG
+    // instead of SWD mode.
 
-        swdio = (val >> (i & 7)) & 1;
-        // SET SWDIO
-        // SWCLK LO; DELAY; SWCLK HI; DELAY
+    if ((swdsm == -1 || swdoffset == -1) && jtagsm >= 0 && jtagoffset >= 0) {
+        jtag_tms_seq(count, data); // JTAG mode -- handle in JTAG code
+    } else if (swdsm >= 0 && swdoffset >= 0) {
+        swd_seq(count, 0, data, NULL); // SWD mode - we can do just this
+    } else {
+        //printf("E: SWJ_Sequence while not in JTAG or SBW mode\n");
+        // welp - can't really report an error to the upper CMSIS-DAP layers
+
+        jtag_tms_seq(count, data); // uses only SIO for now so ¯\_(ツ)_/¯
+    }
+
+    // hackier but stabler
+    /*jtag_tms_seq(count, data);
+    if (swdsm != -1 && swdoffset != -1 && jtagsm == -1 && jtagoffset == -1) {
+        gpio_set_function(PINOUT_JTAG_TMS, GPIO_FUNC_PIO0);
     }*/
 }
 
 uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
+    //printf("swd xfer request=%08lx\n", request);
     uint32_t parity;
     uint8_t swdo;
 
@@ -275,11 +292,13 @@ uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
 
     uint8_t ack = 0;
     swd_seq(3, SWD_SEQUENCE_DIN, NULL, &ack);
+    //printf("  ack=%hhu\n", ack);
 
     uint32_t num;
     switch (ack) {
     case DAP_TRANSFER_OK:
         if (request & DAP_TRANSFER_RnW) {
+            //printf("  xfer ok, r\n");
             uint64_t val = 0;
             parity = 0;
             // FIXME: this is little-endian-only!
@@ -295,6 +314,7 @@ uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
 
             //PIN_SWDIO_OUT_ENABLE();
         } else { // write
+            //printf("  xfer ok, w\n");
             swd_seq(DAP_Data.swd_conf.turnaround, SWD_SEQUENCE_DIN, NULL, NULL);
 
             //PIN_SWDIO_OUT_ENABLE();
@@ -309,36 +329,45 @@ uint8_t SWD_Transfer(uint32_t request, uint32_t* data) {
             swd_seq(33, 0, (const uint8_t*)&out, NULL);
         }
 
+        //printf("  set ts\n");
         if (request & DAP_TRANSFER_TIMESTAMP) DAP_Data.timestamp = TIMESTAMP_GET();
 
         num = DAP_Data.transfer.idle_cycles;
-        for (uint32_t i = 0; i < num; num += 64) {
+        //printf("  idlecyc=%lu\n", num);
+        for (uint32_t i = 0; i < num; i += 64) {
             uint64_t swdio = 0;
 
             uint32_t cyc = num - i;
             if (cyc > 64) cyc = 64;
 
+            //printf("  sequence of %lu\n", cyc);
             SWD_Sequence((cyc & SWD_SEQUENCE_CLK), (const uint8_t*)&swdio, NULL);
         }
+        //printf("  idlecyc end\n");
         break;
     case DAP_TRANSFER_WAIT: case DAP_TRANSFER_FAULT:
         num = DAP_Data.swd_conf.turnaround;
         if (DAP_Data.swd_conf.data_phase &&  (request & DAP_TRANSFER_RnW)) {
             num += 33; // 32 bits + parity
         }
+        //printf("  wait/fault: %lu\n", num);
 
         swd_seq(num, SWD_SEQUENCE_DIN, NULL, NULL);
 
         if (DAP_Data.swd_conf.data_phase && !(request & DAP_TRANSFER_RnW)) {
+            //printf("  w/f dataphase\n");
+
             uint64_t swdio = 0;
             swd_seq(33, 0, (const uint8_t*)&swdio, NULL); // 32 data bits + parity
         }
         break;
     default: // protocol error
+        //printf("  proto error\n");
         swd_seq(DAP_Data.swd_conf.turnaround + 33, SWD_SEQUENCE_DIN, NULL, NULL);
         break;
     }
 
+    //printf("  finished\n");
     PIN_SWDIO_OUT_ENABLE();
     PIN_SWDIO_SET_PIO();
     return ack;

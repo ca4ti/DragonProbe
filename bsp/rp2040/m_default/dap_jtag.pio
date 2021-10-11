@@ -33,6 +33,7 @@ static inline void dap_jtag_program_init(PIO pio, uint sm, uint offset,
         uint16_t freq, uint pin_tck, uint pin_tdi, uint pin_tdo) {
     pio_sm_config c = dap_jtag_program_get_default_config(offset);
     sm_config_set_out_pins(&c, pin_tdi, 1);
+    //sm_config_set_set_pins(&c, pin_tdi, 1);
     sm_config_set_in_pins(&c, pin_tdo);
     sm_config_set_sideset_pins(&c, pin_tck);
     // (shift to left, autopush/pull, threshold=nbits)

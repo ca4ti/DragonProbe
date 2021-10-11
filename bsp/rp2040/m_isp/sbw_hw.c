@@ -36,7 +36,6 @@ void sbw_preinit(bool nrst) {
     gpio_put(PINOUT_SBW_TCK , true ); // start SBW stuff
     busy_wait_ms(5);//busy_wait_us_32(100); // wait a bit more*/
 
-    // TODO: test #if 0 & switch over if it works
 #if 1
     (void)nrst; // always assumed nrst=false here :/
     // from slau320 sources
@@ -78,6 +77,7 @@ void sbw_preinit(bool nrst) {
 #else
     // from MSP430.DLL 'BIOS' (FETUIF?) sources
     // can handle SBW/JTAG selection and nRST stuff
+    // ... but it doesn't seem to work
 
     // TEST = TCK
     // nRESET = TDIO = NMI

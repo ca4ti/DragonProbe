@@ -4,10 +4,14 @@
 #define BSP_INFO_H_
 
 /*#define USB_VID 0x2e8a*/ /* Raspberry Pi */
-#define USB_VID 0xcafe     /* TinyUSB */
+/*#define USB_VID 0xcafe*/     /* TinyUSB */
 /*#define USB_VID 0x1209*/ /* Generic */
 /*#define USB_VID 0x1d50*/ /* OpenMoko */
-#define USB_PID 0x1312
+/*#define USB_PID 0x1312*/
+
+/* openFPGAloader silliness */
+#define USB_VID 0x0d28 /* NXP */
+#define USB_PID 0x0204 /* ARM mbed */
 
 // TODO: other RP2040 boards
 #define INFO_BOARDNAME "RP2040 Pico"

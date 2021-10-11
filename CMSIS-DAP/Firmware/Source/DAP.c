@@ -1642,10 +1642,12 @@ uint32_t DAP_ProcessCommand(const uint8_t *request, uint8_t *response) {
 
   *response++ = *request;
 
+  //printf("dap cmd=%02hhx\n", *request);
   switch (*request++) {
     case ID_DAP_Info:
       num = DAP_Info(*request, response+1);
       *response = (uint8_t)num;
+      //printf("cmd info\n");
       return ((2U << 16) + 2U + num);
 
     case ID_DAP_HostStatus:
@@ -1752,9 +1754,11 @@ uint32_t DAP_ProcessCommand(const uint8_t *request, uint8_t *response) {
 
     default:
       *(response-1) = ID_DAP_Invalid;
+      //printf("cmd invalid\n");
       return ((1U << 16) | 1U);
   }
 
+  //printf("cmd end\n");
   return ((1U << 16) + 1U + num);
 }
 

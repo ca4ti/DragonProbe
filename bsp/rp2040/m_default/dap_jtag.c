@@ -17,20 +17,24 @@
 int jtagsm = -1, jtagoffset = -1;
 
 void PORT_OFF(void) {
-    if (jtagsm) {
+    //printf("disable\n");
+    if (jtagsm >= 0) {
         pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, false);
         pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, jtagsm);
     }
-    if (jtagoffset)
+    if (jtagoffset >= 0) {
         pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program, jtagoffset);
+    }
     jtagoffset = jtagsm = -1;
 
-    if (swdsm) {
+    if (swdsm >= 0) {
         pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, swdsm, false);
         pio_sm_unclaim(PINOUT_JTAG_PIO_DEV, swdsm);
     }
-    if (swdoffset)
+    if (swdoffset >= 0) {
         pio_remove_program(PINOUT_JTAG_PIO_DEV, &dap_swd_program, swdoffset);
+    }
+    swdoffset = swdsm = -1;
 
     sio_hw->gpio_oe_clr = PINOUT_SWCLK_MASK | PINOUT_SWDIO_MASK |
                           PINOUT_TDI_MASK  //| PINOUT_TDO_MASK
@@ -85,16 +89,16 @@ void PORT_JTAG_SETUP(void) {
                         | PINOUT_nTRST_MASK | PINOUT_nRESET_MASK;
 }*/
 
-void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
+/*void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     uint32_t n = info & JTAG_SEQUENCE_TCK;
     if (n == 0) n = 64;
 
-    printf("seq hi 0x%lx\n", info);
-
-    printf("%s", "tdi: ");
-    for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
-        printf("0x%x ", ((const uint8_t*)tdi)[j]);
-    }
+//    printf("seq hi 0x%lx\n", info);
+//
+//    printf("%s", "tdi: ");
+//    for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
+//        printf("0x%x ", ((const uint8_t*)tdi)[j]);
+//    }
 
     if (info & JTAG_SEQUENCE_TMS) PIN_SWDIO_TMS_SET();
     else PIN_SWDIO_TMS_CLR();
@@ -117,17 +121,32 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     n = info & JTAG_SEQUENCE_TCK;
     if (n == 0) n = 64;
 
-    if (info & JTAG_SEQUENCE_TDO) {
-        printf("%s", "\ntdo: ");
-        for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
-            printf("0x%x ", ((const uint8_t*)tdo)[j]);
-        }
-        printf("%c", '\n');
-    } else printf("%s", "\nno tdo\n");
+//    if (info & JTAG_SEQUENCE_TDO) {
+//        printf("%s", "\ntdo: ");
+//        for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
+//            printf("0x%x ", ((const uint8_t*)tdo)[j]);
+//        }
+//        printf("%c", '\n');
+//    } else printf("%s", "\nno tdo\n");
+}*/
+
+void jtag_tms_seq(uint32_t count, const uint8_t* data) {
+    for (size_t i = 0; i < count; ++i) {
+        uint8_t byte = data[i >> 3],
+                bit  = (byte >> (i & 7)) & 1;
+
+        if (bit) PIN_SWDIO_TMS_SET();
+        else PIN_SWDIO_TMS_CLR();
+        PIN_SWCLK_TCK_CLR();
+        PIN_DELAY_SLOW(DAP_Data.clock_delay);
+        PIN_SWCLK_TCK_SET();
+        PIN_DELAY_SLOW(DAP_Data.clock_delay);
+    }
 }
 #else
 
 void PORT_JTAG_SETUP(void) {
+    //printf("jtag setup\n");
     resets_hw->reset &= ~(RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS);
 
     /* set to default high level */
@@ -167,14 +186,19 @@ void PORT_JTAG_SETUP(void) {
     iobank0_hw->io[PINOUT_JTAG_nTRST].ctrl  = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
     iobank0_hw->io[PINOUT_JTAG_nRESET].ctrl = GPIO_FUNC_SIO << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 
-    if (jtagsm == -1) jtagsm = pio_claim_unused_sm(PINOUT_JTAG_PIO_DEV, true);
+    if (jtagsm == -1) jtagsm = pio_claim_unused_sm(PINOUT_JTAG_PIO_DEV, false);
     if (jtagoffset == -1)
         jtagoffset = pio_add_program(PINOUT_JTAG_PIO_DEV, &dap_jtag_program);
     dap_jtag_program_init(PINOUT_JTAG_PIO_DEV, jtagsm, jtagoffset,
              50*1000, PINOUT_JTAG_TCK, PINOUT_JTAG_TDI, PINOUT_JTAG_TDO);
 }
 
+#define JTAG_SEQUENCE_NO_TMS 0x80000u /* should be large enough */
+
 void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
+    //printf("jtag seq\n");
+    //pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, true);
+
     float div = (float)clock_get_hz(clk_sys) / (4 * DAP_Data.clock_freq);
     if (div < 2) div = 2;
     else if (div > 65536) div = 65536;
@@ -185,8 +209,10 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     uint32_t n = info & JTAG_SEQUENCE_TCK;
     if (n == 0) n = 64;
 
-    if (info & JTAG_SEQUENCE_TMS) PIN_SWDIO_TMS_SET();
-    else PIN_SWDIO_TMS_CLR();
+    //if (!(n & JTAG_SEQUENCE_NO_TMS)) {
+        if (info & JTAG_SEQUENCE_TMS) PIN_SWDIO_TMS_SET();
+        else PIN_SWDIO_TMS_CLR();
+    //}
 
     io_wo_8* tx = (io_wo_8*)&PINOUT_JTAG_PIO_DEV->txf[jtagsm];
     io_ro_8* rx = (io_ro_8*)&PINOUT_JTAG_PIO_DEV->rxf[jtagsm];
@@ -196,9 +222,9 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
     //printf("n=%lu bytelen=%lu last_shift=%lu\n", n, bytelen, last_shift);
     uint32_t txremain = bytelen,
              rxremain = last_shift ? bytelen : (bytelen + 1);
-    /*printf("txremain=%lu rxremain=%lu\n", txremain, rxremain);
+    //printf("txremain=%lu rxremain=%lu\n", txremain, rxremain);
 
-    printf("%s", "tdi: ");
+    /*printf("%s", "tdi: ");
     for (size_t j = 0; j < ((n + 7) >> 3); ++j) {
         printf("0x%x ", ((const uint8_t*)tdi)[j]);
     }
@@ -238,6 +264,54 @@ void JTAG_Sequence(uint32_t info, const uint8_t* tdi, uint8_t* tdo) {
         }
         printf("%c", '\n');
     } else printf("%s", "no tdo\n");*/
+
+    //pio_sm_set_enabled(PINOUT_JTAG_PIO_DEV, jtagsm, false);
+}
+
+void jtag_tms_seq(uint32_t count, const uint8_t* data) {
+    //printf("jtag tms seq\n");
+    // work around openFPGAloader bug (how did this even get here?)
+    if (DAP_Data.clock_delay == 0) {
+        DAP_Data.clock_delay = 8;
+    }
+
+    /*pio_sm_set_out_pins(PINOUT_JTAG_PIO_DEV, jtagsm, PINOUT_JTAG_TMS, 1);
+    pio_sm_set_set_pins(PINOUT_JTAG_PIO_DEV, jtagsm, PINOUT_JTAG_TMS, 1);
+    pio_sm_set_pins(PINOUT_JTAG_PIO_DEV, jtagsm, gpio_get(PINOUT_JTAG_TMS)?1:0);
+    gpio_set_function(PINOUT_JTAG_TMS, GPIO_FUNC_PIO0 + ((PINOUT_JTAG_PIO_DEV == pio0) ? 0 : 1));
+
+    for (uint32_t i = 0, n; i < count; i += n) {
+        n = count - i;
+        if (n == 0) break;
+        if (n > 64) n = 64;
+        n &= JTAG_SEQUENCE_TCK;
+        JTAG_Sequence(n | JTAG_SEQUENCE_NO_TMS, data, NULL);
+    }
+
+    gpio_put(PINOUT_JTAG_TMS, data[(count >> 3)] & (1 << (count & 7)));
+    gpio_set_function(PINOUT_JTAG_TMS, GPIO_FUNC_SIO);
+    pio_sm_set_out_pins(PINOUT_JTAG_PIO_DEV, jtagsm, PINOUT_JTAG_TDI, 1);
+    pio_sm_set_set_pins(PINOUT_JTAG_PIO_DEV, jtagsm, PINOUT_JTAG_TDI, 1);*/
+
+    // FIXME: above doesn't seem to work somehow -- so fall back to bit-banging
+
+    const uint8_t tdibit = 0xff;
+    PIN_SWCLK_TCK_SET();
+    gpio_set_function(PINOUT_JTAG_TMS, GPIO_FUNC_SIO);
+    gpio_set_function(PINOUT_JTAG_TCK, GPIO_FUNC_SIO);
+    for (size_t i = 0; i < count; ++i) {
+        uint8_t byte = data[i >> 3],
+                bit  = byte & (1 << (i & 7));//(byte >> (i & 7)) & 1;
+
+        //JTAG_Sequence(1 | (bit ? JTAG_SEQUENCE_TMS : 0), &tdibit, NULL);
+        if (bit) PIN_SWDIO_TMS_SET();
+        else PIN_SWDIO_TMS_CLR();
+        PIN_SWCLK_TCK_CLR();
+        PIN_DELAY_SLOW(DAP_Data.clock_delay);
+        PIN_SWCLK_TCK_SET();
+        PIN_DELAY_SLOW(DAP_Data.clock_delay);
+    }
+    gpio_set_function(PINOUT_JTAG_TCK, GPIO_FUNC_PIO0);
 }
 #endif
 
@@ -270,6 +344,7 @@ static void jtag_seq(uint32_t num, int tms, const void* tdi, void* tdo) {
 }
 
 uint32_t JTAG_ReadIDCode(void) {
+    //printf("jtag readID\n");
     // tdi=NULL: ~~0xff!~~ repeat last-seen bit, ignore otherwise
     // tdo=NULL: ignore
     jtag_seq(1, JTAG_SEQUENCE_TMS, NULL, NULL);
@@ -310,6 +385,7 @@ uint32_t JTAG_ReadIDCode(void) {
 }
 
 void JTAG_IR(uint32_t ir) {
+    //printf("jtag IR\n");
     jtag_seq(2,JTAG_SEQUENCE_TMS, NULL, NULL);
     jtag_seq(2,0, NULL, NULL);
     uint64_t v = ~(uint64_t)0;
@@ -411,7 +487,7 @@ static uint8_t xfer_base(uint32_t request, uint32_t* data, bool check_ack) {
 exit:
     jtag_seq(1,JTAG_SEQUENCE_TMS, NULL, NULL);
     jtag_seq(1,0, NULL, NULL);
-    PIN_TDI_OUT(1); // TODO: TDI HI (no clk)
+    PIN_TDI_OUT(1); // TDI HI (no clk)
     if (request & DAP_TRANSFER_TIMESTAMP) DAP_Data.timestamp = TIMESTAMP_GET();
     if (check_ack) jtag_seq(DAP_Data.transfer.idle_cycles, 0, NULL, NULL);
     return (uint8_t)ack;
@@ -525,10 +601,12 @@ exit:
 }
 
 void JTAG_WriteAbort(uint32_t data) {
+    //printf("jtag wrabort\n");
     xfer_base(0 /* write,A2=0,A3=0 */, &data, false);
 }
 
 uint8_t JTAG_Transfer(uint32_t request, uint32_t* data) {
+    //printf("jtag xfer\n");
     return xfer_base(request, data, true);
 }
 //#endif
