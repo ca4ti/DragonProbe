@@ -54,17 +54,22 @@ void PORT_JTAG_SETUP(void) {
     sio_hw->gpio_oe_clr = PINOUT_TDO_MASK;
 
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TCK],
-        PADS_BANK0_GPIO0_IE_BITS,  // bits to set: input enable
-        PADS_BANK0_GPIO0_IE_BITS |
-            PADS_BANK0_GPIO0_OD_BITS);  // bits to mask out: input enable, output disable
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TMS], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDI], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+        PADS_BANK0_GPIO0_IE_BITS  // bits to set: input enable
+            | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS         // bits to mask out: input enable, output disable
+            | PADS_BANK0_GPIO0_SLEWFAST_BITS);
+    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TMS],
+        PADS_BANK0_GPIO0_IE_BITS | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS
+            | PADS_BANK0_GPIO0_SLEWFAST_BITS);
+    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDI],
+        PADS_BANK0_GPIO0_IE_BITS | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS
+            | PADS_BANK0_GPIO0_SLEWFAST_BITS);
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDO],
-        PADS_BANK0_GPIO0_IE_BITS |
-            PADS_BANK0_GPIO0_OD_BITS,  // TDO needs to have its output disabled
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS  // TDO needs to have its output disabled
+            | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS | PADS_BANK0_GPIO0_SLEWFAST_BITS);
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nTRST], PADS_BANK0_GPIO0_IE_BITS,
         PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nRESET], PADS_BANK0_GPIO0_IE_BITS,
@@ -158,17 +163,22 @@ void PORT_JTAG_SETUP(void) {
     sio_hw->gpio_oe_clr = PINOUT_TDO_MASK;
 
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TCK],
-        PADS_BANK0_GPIO0_IE_BITS,  // bits to set: input enable
-        PADS_BANK0_GPIO0_IE_BITS |
-            PADS_BANK0_GPIO0_OD_BITS);  // bits to mask out: input enable, output disable
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TMS], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
-    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDI], PADS_BANK0_GPIO0_IE_BITS,
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+        PADS_BANK0_GPIO0_IE_BITS  // bits to set: input enable
+            | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS         // bits to mask out: input enable, output disable
+            | PADS_BANK0_GPIO0_SLEWFAST_BITS);
+    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TMS],
+        PADS_BANK0_GPIO0_IE_BITS | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS
+            | PADS_BANK0_GPIO0_SLEWFAST_BITS);
+    hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDI],
+        PADS_BANK0_GPIO0_IE_BITS | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS
+            | PADS_BANK0_GPIO0_SLEWFAST_BITS);
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_TDO],
-        PADS_BANK0_GPIO0_IE_BITS |
-            PADS_BANK0_GPIO0_OD_BITS,  // TDO needs to have its output disabled
-        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS  // TDO needs to have its output disabled
+            | (GPIO_SLEW_RATE_SLOW << PADS_BANK0_GPIO0_SLEWFAST_LSB),
+        PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS | PADS_BANK0_GPIO0_SLEWFAST_BITS);
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nTRST], PADS_BANK0_GPIO0_IE_BITS,
         PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
     hw_write_masked(&padsbank0_hw->io[PINOUT_JTAG_nRESET], PADS_BANK0_GPIO0_IE_BITS,
