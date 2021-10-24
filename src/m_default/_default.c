@@ -21,6 +21,10 @@
 /* temperature sensor */
 #include "m_default/tempsensor.h"
 
+// TODO: CMSIS-DAP USB bulk:
+// * DAP_ExecuteCommand (returns response size)
+// * interface: vendor, 0.0 subclass/proto, EP1, CMSIS-DAP in name
+
 enum m_default_cmds {
     mdef_cmd_spi = mode_cmd__specific,
     mdef_cmd_i2c,
@@ -100,6 +104,34 @@ static void leave_cb(void) {
 #endif
 }
 
+void dap_do_bulk_stuff(int itf) {
+    // FIXME: move to a separate file, maybe
+    static uint8_t rx_buf[DAP_PACKET_SIZE];
+    static uint8_t tx_buf[DAP_PACKET_SIZE];
+    static uint32_t rxpos = 0;
+
+    if (tud_vendor_n_mounted(itf) && tud_vendor_n_available(itf)) {
+        uint32_t avail = tud_vendor_n_read(itf, &rx_buf[rxpos], sizeof rx_buf - rxpos);
+        uint32_t pos2 = rxpos + avail;
+
+        if (pos2) {
+            uint32_t res = DAP_ExecuteCommand(&rx_buf[rxpos], tx_buf);
+
+            uint16_t respcount = (uint16_t)res,
+                     reqcount = (uint16_t)(res>>16);
+
+            if (reqcount < pos2) {
+                // welp, let's wait
+                rxpos = pos2;
+            } else {
+                tud_vendor_n_write(itf, tx_buf, respcount);
+                memmove(rx_buf, &rx_buf[rxpos+reqcount], DAP_PACKET_SIZE - reqcount);
+                rxpos = 0;
+            }
+        }
+    }
+}
+
 static void task_cb(void) {
 #ifdef DBOARD_HAS_UART
     tud_task();
@@ -109,6 +141,8 @@ static void task_cb(void) {
     tud_task();
     thread_enter(serprogthread);
 #endif
+
+    dap_do_bulk_stuff(VND_N_CMSISDAP);
 }
 
 static void handle_cmd_cb(uint8_t cmd) {
@@ -190,12 +224,16 @@ enum {
 
     STRID_IF_VND_CFG,
     STRID_IF_HID_CMSISDAP,
+    STRID_IF_VND_CMSISDAP,
     STRID_IF_VND_I2CTINYUSB,
     STRID_IF_CDC_UART,
     STRID_IF_CDC_SERPROG,
     STRID_IF_CDC_STDIO,
 };
 enum {
+#ifdef DBOARD_HAS_CMSISDAP
+    ITF_NUM_VND_CMSISDAP,
+#endif
 #if CFG_TUD_VENDOR > 0
     ITF_NUM_VND_CFG,
 #endif
@@ -230,6 +268,7 @@ enum {
         + TUD_I2CTINYUSB_LEN
 #endif
 #ifdef DBOARD_HAS_CMSISDAP
+        + TUD_VENDOR_DESC_LEN
         + TUD_HID_INOUT_DESC_LEN
 #endif
 #ifdef DBOARD_HAS_UART
@@ -243,29 +282,20 @@ enum {
 #endif
 };
 
-#define EPNUM_VND_CFG_OUT       0x01
-#define EPNUM_VND_CFG_IN        0x81
-#define EPNUM_HID_CMSISDAP      0x02
-#define EPNUM_CDC_UART_OUT      0x03
-#define EPNUM_CDC_UART_IN       0x83
-#define EPNUM_CDC_UART_NOTIF    0x84
-#define EPNUM_CDC_SERPROG_OUT   0x05
-#define EPNUM_CDC_SERPROG_IN    0x85
-#define EPNUM_CDC_SERPROG_NOTIF 0x86
-#define EPNUM_CDC_STDIO_OUT     0x07
-#define EPNUM_CDC_STDIO_IN      0x87
-#define EPNUM_CDC_STDIO_NOTIF   0x88
-
-/*#define EPNUM_CDC_UART_OUT      0x02
-#define EPNUM_CDC_UART_IN       0x82
-#define EPNUM_CDC_UART_NOTIF    0x83
-#define EPNUM_HID_CMSISDAP      0x04
-#define EPNUM_CDC_SERPROG_OUT   0x05
-#define EPNUM_CDC_SERPROG_IN    0x85
-#define EPNUM_CDC_SERPROG_NOTIF 0x86
-#define EPNUM_CDC_STDIO_OUT     0x07
-#define EPNUM_CDC_STDIO_IN      0x87
-#define EPNUM_CDC_STDIO_NOTIF   0x88*/
+#define EPNUM_VND_DAP_OUT       0x01
+#define EPNUM_VND_DAP_IN        0x81
+#define EPNUM_VND_CFG_OUT       0x02
+#define EPNUM_VND_CFG_IN        0x82
+#define EPNUM_HID_CMSISDAP      0x03
+#define EPNUM_CDC_UART_OUT      0x04
+#define EPNUM_CDC_UART_IN       0x84
+#define EPNUM_CDC_UART_NOTIF    0x85
+#define EPNUM_CDC_SERPROG_OUT   0x06
+#define EPNUM_CDC_SERPROG_IN    0x86
+#define EPNUM_CDC_SERPROG_NOTIF 0x87
+#define EPNUM_CDC_STDIO_OUT     0x08
+#define EPNUM_CDC_STDIO_IN      0x88
+#define EPNUM_CDC_STDIO_NOTIF   0x89
 
 // clang-format off
 #if CFG_TUD_HID > 0
@@ -277,6 +307,11 @@ static const uint8_t desc_hid_report[] = { // ugh
 static const uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM__TOTAL, STRID_CONFIG, CONFIG_TOTAL_LEN,
         TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+
+#ifdef DBOARD_HAS_CMSISDAP
+    TUD_VENDOR_DESCRIPTOR_EX(ITF_NUM_VND_CMSISDAP, STRID_IF_VND_CMSISDAP, EPNUM_VND_DAP_OUT,
+        EPNUM_VND_DAP_IN, CFG_TUD_VENDOR_RX_BUFSIZE, 0, 0),
+#endif
 
 #if CFG_TUD_VENDOR > 0
     TUD_VENDOR_DESCRIPTOR_EX(ITF_NUM_VND_CFG, STRID_IF_VND_CFG, EPNUM_VND_CFG_OUT,
@@ -321,6 +356,7 @@ static const char* string_desc_arr[] = {
     // max string length check:  |||||||||||||||||||||||||||||||
     [STRID_IF_VND_CFG  ]      = "Device cfg/ctl interface",
     [STRID_IF_HID_CMSISDAP]   = "CMSIS-DAP HID interface",
+    [STRID_IF_VND_CMSISDAP]   = "CMSIS-DAP bulk interface",
     [STRID_IF_VND_I2CTINYUSB] = "I2C-Tiny-USB interface",
     [STRID_IF_CDC_UART]       = "UART CDC interface",
     [STRID_IF_CDC_SERPROG]    = "Serprog CDC interface",

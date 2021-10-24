@@ -25,8 +25,9 @@ enum {
     CDC_N__NITF
 };
 enum {
+    VND_N_CMSISDAP = 0,
 #if CFG_TUD_VENDOR > 0
-    VND_N_CFG = 0,
+    VND_N_CFG,
 #endif
 
     VND_N__NITF
