@@ -122,10 +122,10 @@ void dap_do_bulk_stuff(int itf) {
 
             if (reqcount < pos2) {
                 // welp, let's wait
-                rxpos = pos2;
+                rxpos = 0;//pos2;
             } else {
                 tud_vendor_n_write(itf, tx_buf, respcount);
-                memmove(rx_buf, &rx_buf[rxpos+reqcount], DAP_PACKET_SIZE - reqcount);
+                //memmove(rx_buf, &rx_buf[rxpos+reqcount], DAP_PACKET_SIZE - reqcount);
                 rxpos = 0;
             }
         }
