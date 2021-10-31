@@ -192,17 +192,17 @@ enum {
 
 #define EPNUM_VND_DAP_OUT       0x01
 #define EPNUM_VND_DAP_IN        0x81
-#define EPNUM_VND_CFG_OUT       0x02
-#define EPNUM_VND_CFG_IN        0x82
-#define EPNUM_HID_CMSISDAP      0x03
-#define EPNUM_CDC_UART_OUT      0x04
-#define EPNUM_CDC_UART_IN       0x84
-#define EPNUM_CDC_UART_NOTIF    0x85
-#define EPNUM_VND_MEHFET_OUT    0x06
-#define EPNUM_VND_MEHFET_IN     0x86
-#define EPNUM_CDC_STDIO_OUT     0x07
-#define EPNUM_CDC_STDIO_IN      0x87
-#define EPNUM_CDC_STDIO_NOTIF   0x88
+#define EPNUM_VND_CFG_OUT       0x02/*-1*/
+#define EPNUM_VND_CFG_IN        0x82/*-1*/
+#define EPNUM_HID_CMSISDAP      0x03/*-1*/
+#define EPNUM_CDC_UART_OUT      0x04/*-1*/
+#define EPNUM_CDC_UART_IN       0x84/*-1*/
+#define EPNUM_CDC_UART_NOTIF    0x85/*-1*/
+#define EPNUM_VND_MEHFET_OUT    0x06/*-1*/
+#define EPNUM_VND_MEHFET_IN     0x86/*-1*/
+#define EPNUM_CDC_STDIO_OUT     0x07/*-1*/
+#define EPNUM_CDC_STDIO_IN      0x87/*-1*/
+#define EPNUM_CDC_STDIO_NOTIF   0x88/*-1*/
 
 // clang-format off
 #if CFG_TUD_HID > 0
@@ -294,6 +294,7 @@ static void my_hid_set_report_cb(uint8_t instance, uint8_t report_id,
     (void)report_id;
     (void)report_type;
 
+    memset(tx_buffer, 0, CFG_TUD_HID_EP_BUFSIZE);
     DAP_ProcessCommand(rx_buffer, tx_buffer);
 
     tud_hid_report(0, tx_buffer, response_size);

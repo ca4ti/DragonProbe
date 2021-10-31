@@ -106,28 +106,35 @@ static void leave_cb(void) {
 
 void dap_do_bulk_stuff(int itf) {
     // FIXME: move to a separate file, maybe
-    static uint8_t rx_buf[DAP_PACKET_SIZE];
-    static uint8_t tx_buf[DAP_PACKET_SIZE];
-    static uint32_t rxpos = 0;
+    /*static*/ uint8_t rx_buf[DAP_PACKET_SIZE];
+    /*static*/ uint8_t tx_buf[DAP_PACKET_SIZE];
+    //static uint32_t rxpos = 0;
+    const uint32_t rxpos=0;
 
     if (tud_vendor_n_mounted(itf) && tud_vendor_n_available(itf)) {
+        memset(rx_buf, 0, DAP_PACKET_SIZE);
         uint32_t avail = tud_vendor_n_read(itf, &rx_buf[rxpos], sizeof rx_buf - rxpos);
         uint32_t pos2 = rxpos + avail;
 
-        if (pos2) {
+        if (avail) {
+            memset(tx_buf, 0, DAP_PACKET_SIZE);
             uint32_t res = DAP_ExecuteCommand(&rx_buf[rxpos], tx_buf);
 
             uint16_t respcount = (uint16_t)res,
                      reqcount = (uint16_t)(res>>16);
+            //printf("avail=%04lx resp=%04x req=%04x rxpos=%lx\n", avail, respcount, reqcount, rxpos);
 
-            if (reqcount < pos2) {
-                // welp, let's wait
-                rxpos = 0;//pos2;
+            if (reqcount > pos2) { // command requires more data than available, so, welp
+                tx_buf[0] = rx_buf[0]; // something
+                tx_buf[1] = 0xff;
+                tud_vendor_n_write(itf, tx_buf, 2);
+                //rxpos=0;//pos2;
             } else {
                 tud_vendor_n_write(itf, tx_buf, respcount);
                 //memmove(rx_buf, &rx_buf[rxpos+reqcount], DAP_PACKET_SIZE - reqcount);
-                rxpos = 0;
+                //rxpos = 0;
             }
+            //printf("->rxpos=%lx\n", rxpos);
         }
     }
 }
@@ -284,18 +291,18 @@ enum {
 
 #define EPNUM_VND_DAP_OUT       0x01
 #define EPNUM_VND_DAP_IN        0x81
-#define EPNUM_VND_CFG_OUT       0x02
-#define EPNUM_VND_CFG_IN        0x82
-#define EPNUM_HID_CMSISDAP      0x03
-#define EPNUM_CDC_UART_OUT      0x04
-#define EPNUM_CDC_UART_IN       0x84
-#define EPNUM_CDC_UART_NOTIF    0x85
-#define EPNUM_CDC_SERPROG_OUT   0x06
-#define EPNUM_CDC_SERPROG_IN    0x86
-#define EPNUM_CDC_SERPROG_NOTIF 0x87
-#define EPNUM_CDC_STDIO_OUT     0x08
-#define EPNUM_CDC_STDIO_IN      0x88
-#define EPNUM_CDC_STDIO_NOTIF   0x89
+#define EPNUM_VND_CFG_OUT       0x02/*-1*/
+#define EPNUM_VND_CFG_IN        0x82/*-1*/
+#define EPNUM_HID_CMSISDAP      0x03/*-1*/
+#define EPNUM_CDC_UART_OUT      0x04/*-1*/
+#define EPNUM_CDC_UART_IN       0x84/*-1*/
+#define EPNUM_CDC_UART_NOTIF    0x85/*-1*/
+#define EPNUM_CDC_SERPROG_OUT   0x06/*-1*/
+#define EPNUM_CDC_SERPROG_IN    0x86/*-1*/
+#define EPNUM_CDC_SERPROG_NOTIF 0x87/*-1*/
+#define EPNUM_CDC_STDIO_OUT     0x08/*-1*/
+#define EPNUM_CDC_STDIO_IN      0x88/*-1*/
+#define EPNUM_CDC_STDIO_NOTIF   0x89/*-1*/
 
 // clang-format off
 #if CFG_TUD_HID > 0
@@ -393,6 +400,7 @@ static void my_hid_set_report_cb(uint8_t instance, uint8_t report_id,
     (void)report_id;
     (void)report_type;
 
+    memset(tx_buffer, 0, CFG_TUD_HID_EP_BUFSIZE);
     DAP_ProcessCommand(rx_buffer, tx_buffer);
 
     tud_hid_report(0, tx_buffer, response_size);
