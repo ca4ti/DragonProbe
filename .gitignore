@@ -1,6 +1,5 @@
 cmake-build/
-build/
-build-flash/
+build*/
 ex/
 compile_commands.json
 _old/

@@ -106,7 +106,7 @@ extern "C" {
 //------------- CLASS -------------//
 #define CFG_TUD_MSC  0
 #define CFG_TUD_MIDI 0
-#define CFG_TUD_NET  0
+#define CFG_TUD_ECM_RNDIS  0
 // see also: bsp/<family>/bsp-info.h
 
 #define CFG_TUD_HID_EP_BUFSIZE 64
