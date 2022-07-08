@@ -469,3 +469,16 @@ struct mode m_01_default = {
 };
 // clang-format on
 
+#if defined(DBOARD_HAS_UART)
+// FIXME: use mode-specific callback here?
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
+    (void)dtr;
+
+    if (mode_current != &m_01_default) return;
+
+    if (itf == CDC_N_UART) {
+        cdc_uart_set_hwflow(rts);
+    }
+}
+#endif
+

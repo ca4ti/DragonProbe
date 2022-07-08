@@ -15,7 +15,7 @@
 #define PINOUT_JTAG_TCK    2  // == SWCLK
 #define PINOUT_JTAG_TMS    3  // == SWDIO
 #define PINOUT_JTAG_TDI    4
-#define PINOUT_JTAG_TDO    5
+#define PINOUT_JTAG_TDO    5  // == SWO
 #define PINOUT_JTAG_nTRST  6
 #define PINOUT_JTAG_nRESET 7
 #define PINOUT_JTAG_PIO_DEV pio0

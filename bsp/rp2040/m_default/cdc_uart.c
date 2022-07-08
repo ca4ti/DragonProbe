@@ -48,8 +48,10 @@ void cdc_uart_init(void) {
 
     gpio_set_function(PINOUT_UART_TX, GPIO_FUNC_UART);
     gpio_set_function(PINOUT_UART_RX, GPIO_FUNC_UART);
+    gpio_set_function(PINOUT_UART_CTS, GPIO_FUNC_SIO);
+    gpio_set_function(PINOUT_UART_RTS, GPIO_FUNC_SIO);
     uart_init(PINOUT_UART_INTERFACE, lc_brate/*PINOUT_UART_BAUDRATE*/);
-    uart_set_hw_flow(PINOUT_UART_INTERFACE, hwflow, hwflow);
+    //uart_set_hw_flow(PINOUT_UART_INTERFACE, hwflow, hwflow);
     uart_set_format(PINOUT_UART_INTERFACE, lc_data, lc_stop, lc_parity);
 
     bi_decl(bi_2pins_with_func(PINOUT_UART_TX, PINOUT_UART_RX, GPIO_FUNC_UART));
@@ -58,6 +60,8 @@ void cdc_uart_deinit(void) {
     uart_deinit(PINOUT_UART_INTERFACE);
     gpio_set_function(PINOUT_UART_TX, GPIO_FUNC_NULL);
     gpio_set_function(PINOUT_UART_RX, GPIO_FUNC_NULL);
+    gpio_set_function(PINOUT_UART_CTS, GPIO_FUNC_NULL);
+    gpio_set_function(PINOUT_UART_RTS, GPIO_FUNC_NULL);
 }
 
 void cdc_uart_task(void) {
@@ -90,6 +94,8 @@ bool cdc_uart_get_hwflow(void) {
 bool cdc_uart_set_hwflow(bool enable) {
     hwflow = enable;
     //uart_set_hw_flow(PINOUT_UART_INTERFACE, enable, enable);
+    // TODO: CTS
+    gpio_put(PINOUT_UART_RTS, enable);
     return true;
 }
 
