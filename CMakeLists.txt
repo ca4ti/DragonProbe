@@ -21,19 +21,14 @@ if(FAMILY STREQUAL "rp2040")
   option(PICO_NO_FLASH "Disable writing the compiled program to flash, and only load it to RAM. Useful for testing, but not much else (OFF by default)." OFF)
   option(PICO_COPY_TO_RAM "Run all code in RAM, while the program is also stored on flash. On bootup, everything will be copied to RAM (OFF by default)." OFF)
 
-  if (USE_SYSTEMWIDE_PICOSDK)
-    set(TOP "$ENV{PICO_SDK_PATH}/lib/tinyusb")
-    get_filename_component(TOP "${TOP}" REALPATH)
-    include(cmake/pico_sdk_import.cmake)
-  else()
-    set(PICO_SDK_PATH ${TOP}/hw/mcu/raspberrypi/pico-sdk)
-    include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
-  endif()
+  include(pico_sdk_import.cmake)
+  set(TOP "${PICO_SDK_PATH}/lib/tinyusb")
+  get_filename_component(TOP "${TOP}" REALPATH)
 
-  include(${TOP}/hw/bsp/${FAMILY}/family.cmake) # tinyusb stuff
+  include(${TOP}/hw/bsp/family_support.cmake) # tinyusb stuff
 
   family_get_project_name(PROJECT ${CMAKE_CURRENT_LIST_DIR})
-  project(${PROJECT})
+  project(${PROJECT} C CXX)
   family_initialize_project(PROJECT ${CMAKE_CURRENT_LIST_DIR}) # calls pico_sdk_init()
   #pico_sdk_init()
 
