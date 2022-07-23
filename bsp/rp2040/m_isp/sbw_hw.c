@@ -300,7 +300,7 @@ void sbw_clrset_tclk(bool value) {
 void sbw_tclk_burst(uint32_t ncyc) {
     //sbw_pio_loadbearing_set_outpins(PINOUT_SBW_PIO);
 
-    uint32_t txremain = ((ncyc + 7) >> 3) * 2;
+    uint32_t txremain = ((ncyc + 7) >> 3) * 2 - 1;
 
     // MSB-first
     uint8_t pattern = last_tclk ? 0x55 : 0xaa;

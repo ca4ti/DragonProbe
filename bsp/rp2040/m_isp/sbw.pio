@@ -86,18 +86,18 @@ PUBLIC sbw_tms_seq:
 ; alternatively, one could set the "load-bearing instruction" to a
 ; "set pins, 0/1 side 1 [12]" for a fixed value useful for single sets/clears
 PUBLIC sbw_tclk_burst:
-        set pindirs, 1          side 1      ; SBWTDIO is now output
+        set pindirs, 1          side 1     ; SBWTDIO is now output
     ; tms slot:
-        set pins,   0           side 1      ; stay in run-test/idle TAP state
-        nop                     side 0      ; target reads TMS at falling edge
-        mov pins,   y           side 0      ; during low phase, prepare TCLK
+        set pins,   0           side 1     ; stay in run-test/idle TAP state
+        nop                     side 0     ; target reads TMS at falling edge
+        mov pins,   y           side 0     ; during low phase, prepare TCLK
     ; tdi slot:
-        nop                     side 1 [12] ; wait a bit
+        nop                     side 1 [6] ; wait a bit
     burst_loop:
 ;PUBLIC sbw_tclk_burst_loadbearing_insn:
-        out pins, 1             side 1 [12] ; in the middle of TDI hiphase: do TCLK
-        jmp x--, burst_loop     side 1 [12]
-        nop                     side 0 [1]  ; need a low clock edge for TDO
+        out pins, 1             side 1 [6] ; in the middle of TDI hiphase: do TCLK
+        jmp x--, burst_loop     side 1 [6]
+        nop                     side 0 [1] ; need a low clock edge for TDO
     ; tdo slot:
         set pindirs, 0          side 1 [1]
         nop                     side 0 [1]
